@@ -5,3 +5,5 @@
 {"id":"evt_5be5b459","kind":"ticket.submitted","at":"2026-09-12T06:23:39.540Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f"}
 {"id":"evt_63904b3d","kind":"ticket.submitted","at":"2026-09-12T07:18:48.991Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f"}
 {"id":"evt_5922fafd","kind":"ticket.submitted","at":"2026-09-12T07:58:39.404Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f"}
+{"id":"evt_37421dbb","kind":"ticket.submitted","at":"2026-09-12T08:24:53.007Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f"}
+{"id":"evt_b40733f4","kind":"checkpoint.recorded","at":"2026-09-12T08:30:22.152Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f","checkpoint_id":"cp_manual_independent-review-pass_f742"}

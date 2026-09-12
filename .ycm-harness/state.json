@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-12T07:58:39.398Z",
+  "updated_at": "2026-09-12T08:30:22.154Z",
   "active_goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -33,14 +33,25 @@
         "Grade floors such as C- parse as minimumGrade C- rather than an unknown hyphen token; npm test and npm run typecheck pass."
       ],
       "blocked_by": [],
-      "status": "in_review",
+      "status": "done",
       "code_changed": true,
       "order": 0,
       "created_at": "2026-09-12T06:05:54.100Z",
-      "updated_at": "2026-09-12T07:58:39.395Z"
+      "updated_at": "2026-09-12T08:29:44.628Z"
     }
   },
-  "checkpoints": {},
+  "checkpoints": {
+    "cp_manual_independent-review-pass_f742": {
+      "id": "cp_manual_independent-review-pass_f742",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "manual",
+      "title": "independent review PASS",
+      "notes": "Round-3 panel PASS (tech_lead, spec_reviewer, user_advocate, uiux, project_manager) with no high findings. Default /map is the official MSCS Seattle program at readable zoom. Deferred: first-paint subset, dangling external chips, explorer keyword spill, duplicate OR text on CS 5004.",
+      "decisions": [],
+      "created_at": "2026-09-12T08:30:22.152Z"
+    }
+  },
   "evidence": {
     "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-bd090b": {
       "id": "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-bd090b",
@@ -77,6 +88,36 @@
         "submitted_at": "2026-09-12T07:58:39.397Z"
       },
       "recorded_at": "2026-09-12T07:58:39.397Z"
+    },
+    "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-f44c6e": {
+      "id": "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-f44c6e",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "other",
+      "submission_digest": "f5f40286759309653496c17c4aaa29f3b49ba1b222107ad4fdaeec32dee925a5",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-12T08:24:53.001Z"
+      },
+      "recorded_at": "2026-09-12T08:24:53.001Z"
+    },
+    "evidence-e45b7550": {
+      "id": "evidence-e45b7550",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "verification",
+      "submission_digest": "f5f40286759309653496c17c4aaa29f3b49ba1b222107ad4fdaeec32dee925a5",
+      "evidence_digest": "7abaaac1c75c3f01c41b4e55bcc29847c58b71c24096acf4c02d30d8012c23a0",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-e45b7550.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "graph-impl-r3",
+        "verifier_run": "graph-ver-r3",
+        "knowledge": "none",
+        "submitted_at": "2026-09-12T08:29:44.626Z"
+      },
+      "recorded_at": "2026-09-12T08:29:44.628Z"
     }
   },
   "wiki": {
