@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { readCatalog } from "@/lib/catalog";
 import { refreshCatalog } from "@/scraper/refresh";
@@ -10,7 +11,8 @@ let lastRefreshStartedAt = 0;
 const REFRESH_COOLDOWN_MS = 30_000;
 
 function errorResponse(error: unknown, status = 500) {
-  const message = error instanceof Error ? error.message : "Catalog operation failed.";
+  const message =
+    status < 500 && error instanceof Error ? error.message : "Catalog operation failed.";
   return NextResponse.json({ error: message }, { status });
 }
 
@@ -27,6 +29,19 @@ function isCrossSite(request: NextRequest): boolean {
   }
 }
 
+function tokenMatches(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  const providedBuffer = Buffer.from(provided);
+  const expectedBuffer = Buffer.from(expected);
+  return providedBuffer.length === expectedBuffer.length && timingSafeEqual(providedBuffer, expectedBuffer);
+}
+
+function isRefreshAuthorized(request: NextRequest): boolean {
+  const expected = process.env.CATALOG_REFRESH_TOKEN;
+  if (expected) return tokenMatches(request.headers.get("x-catalog-refresh-token"), expected);
+  return process.env.NODE_ENV === "development";
+}
+
 export async function GET() {
   try {
     return NextResponse.json(readCatalog(), {
@@ -39,6 +54,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   if (isCrossSite(request)) return errorResponse(new Error("Cross-site catalog refresh refused."), 403);
+  if (!isRefreshAuthorized(request)) {
+    return errorResponse(new Error("Catalog refresh is not authorized."), 401);
+  }
   // Browser fetch POST always has a ReadableStream body; reject only non-empty payloads.
   const payload = await request.arrayBuffer();
   if (payload.byteLength > 0) {

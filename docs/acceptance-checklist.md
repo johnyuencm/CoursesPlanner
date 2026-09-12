@@ -6,7 +6,7 @@ This is the independent verification checklist, not a claim of completion.
 - Compare normalized total credits, required core (including CS 5011), three breadth categories and elective rules against the saved official program HTML.
 - Compare at least five course records against official bulk HTML, including no prerequisites, OR alternatives, grouped AND/OR, reciprocal corequisites, and variable credits.
 - Unknown expressions remain unknown. Missing course pages never become "no prerequisites". Relationship edges contain only extracted codes.
-- Initial app loads normalized local JSON without fetching Northeastern. Refresh is explicit, bounded, same-origin, and retains the previous snapshot on failure.
+- Initial app loads normalized local JSON without fetching Northeastern. Refresh is explicit, bounded, same-origin, unauthorized without a local refresh token outside `next dev`, and retains the previous snapshot on failure.
 - Cache records catalog edition, update timestamp and source URLs. Frontend cannot mutate scrape URLs or filesystem paths.
 
 ## Student flow

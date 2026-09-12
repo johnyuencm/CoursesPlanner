@@ -94,7 +94,7 @@ The refresh pipeline:
 7. Atomically replaces raw network responses and normalized JSON only after parsing and validation succeed.
 8. Falls back to an existing stale raw source when a refresh request fails. Missing optional department sources produce warnings and explicit placeholders; missing required sources still fail.
 
-The UI's **Refresh Catalog** button calls same-origin `POST /api/catalog`. The route rejects cross-site browser requests and request bodies, deduplicates concurrent refreshes, and applies a 30-second cooldown. If refresh fails after the app has already loaded a catalog, the browser keeps the last loaded catalog and reports the error.
+The UI's **Refresh Catalog** button calls same-origin `POST /api/catalog`. That route is for local demos: it is open only in `NODE_ENV=development` (typical `next dev`, loopback) unless `CATALOG_REFRESH_TOKEN` is set. When the token is set, POST requires the matching `x-catalog-refresh-token` header. Cross-site browser requests and request bodies are rejected, concurrent refreshes are deduplicated, and a 30-second cooldown applies. Production/`next start` refreshes should use `npm run catalog:refresh` rather than an unauthenticated POST. If refresh fails after the app has already loaded a catalog, the browser keeps the last loaded catalog and reports the error.
 
 `data/raw/cs5800-search.html`, `data/raw/cs6140-search.html`, and similarly named search files are research fixtures. Normal ingestion uses bulk subject pages instead.
 
@@ -192,7 +192,18 @@ Start development server:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. For a production server on a shared network, bind loopback if you expose refresh at all:
+
+```bash
+npx next start --hostname 127.0.0.1
+```
+
+Prefer the CLI for operators. To allow HTTP refresh outside development, set a local secret and send it as a header (never put this token in client-side code):
+
+```bash
+export CATALOG_REFRESH_TOKEN="a long random local secret"
+curl -X POST -H "x-catalog-refresh-token: $CATALOG_REFRESH_TOKEN" http://127.0.0.1:3000/api/catalog
+```
 
 If raw cache entries are fresh, normal refresh rebuilds normalized JSON without downloading those sources. Force a network attempt with:
 
@@ -214,6 +225,7 @@ Browser acceptance criteria are documented in [`docs/acceptance-checklist.md`](d
 
 ## Security and trust boundaries
 
+- `GET /api/catalog` only reads the local cache. `POST /api/catalog` is not an unauthenticated refresh: it requires `CATALOG_REFRESH_TOKEN` via `x-catalog-refresh-token`, or is limited to `NODE_ENV=development`.
 - Remote fetch targets are code-defined; refresh accepts no caller-supplied URL.
 - Redirects must remain HTTPS on `catalog.northeastern.edu` and may not enter blocked search/archive paths.
 - Responses and cached files are size-bounded.
