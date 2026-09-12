@@ -357,7 +357,7 @@ textarea { resize: vertical; }
 .graph-panel { min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
 .graph-panel-heading { display: flex; justify-content: space-between; gap: 1rem; padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 0.68rem; }
 .graph-panel-heading span { display: flex; gap: 0.3rem; align-items: center; }
-.flow-canvas { height: 620px; background: #fbfcfd; }
+.flow-canvas { height: min(72vh, 760px); min-height: 560px; background: #fbfcfd; }
 .graph-course-node { position: relative; width: 196px; border: 1px solid transparent; border-radius: 10px; background: var(--purple-soft); box-shadow: var(--shadow); transition: box-shadow 140ms, border-color 140ms; }
 .graph-course-node.graph-core { background: var(--red-soft); }
 .graph-course-node.graph-breadth { background: var(--blue-soft); }
@@ -389,7 +389,7 @@ textarea { resize: vertical; }
 .graph-inspector { padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); align-self: start; box-shadow: var(--shadow); }
 .graph-inspector h2 { margin: 0.45rem 0 0.15rem; color: var(--ink); font-size: 1.2rem; }
 .inspector-course-title { color: var(--ink-soft); font-size: 0.8rem; }
-.inspector-focus { margin-top: 0.7rem; }
+.inspector-focus { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.45rem; }
 .inspector-relationships { margin-top: 1.2rem; padding-top: 0.9rem; border-top: 1px solid var(--line); }
 .inspector-relationships h3 { display: flex; justify-content: space-between; margin: 0.9rem 0 0.15rem; font-size: 0.82rem; }
 .inspector-relationships h3 span { color: var(--red-dark); }
@@ -657,7 +657,7 @@ textarea { resize: vertical; }
   .segmented-control button { flex: 1; justify-content: center; }
   .graph-inspector { display: block; }
   .inspector-relationships { margin-top: 1rem; padding: 1rem 0 0; border-left: 0; border-top: 1px solid var(--line); }
-  .flow-canvas { height: 540px; }
+  .flow-canvas { height: min(62vh, 560px); min-height: 420px; }
   .semester-header { grid-template-columns: 1fr auto; }
   .semester-order { grid-column: 1; }
   .semester-name { grid-column: 1 / 3; }
