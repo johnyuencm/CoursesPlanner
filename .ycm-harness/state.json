@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-12T07:18:48.985Z",
+  "updated_at": "2026-09-12T07:58:39.398Z",
   "active_goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -37,7 +37,7 @@
       "code_changed": true,
       "order": 0,
       "created_at": "2026-09-12T06:05:54.100Z",
-      "updated_at": "2026-09-12T07:18:48.984Z"
+      "updated_at": "2026-09-12T07:58:39.395Z"
     }
   },
   "checkpoints": {},
@@ -65,6 +65,18 @@
         "submitted_at": "2026-09-12T07:18:48.985Z"
       },
       "recorded_at": "2026-09-12T07:18:48.985Z"
+    },
+    "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-a8df47": {
+      "id": "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-a8df47",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "other",
+      "submission_digest": "b74f9626889deed110011b638e1b3dd857ded93defcaaf5096b66971e39c509f",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-12T07:58:39.397Z"
+      },
+      "recorded_at": "2026-09-12T07:58:39.397Z"
     }
   },
   "wiki": {
