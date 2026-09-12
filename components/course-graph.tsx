@@ -37,7 +37,7 @@ function centerNode(
 function CourseNode({ data }: NodeProps<GraphNode>) {
   return <div className={`graph-course-node ${data.nodeClass} ${data.emphasized ? "graph-emphasized" : ""} ${data.focused ? "graph-focused" : ""} ${data.compact ? "graph-compact" : ""}`}>
     <Handle type="target" position={Position.Left} />
-    <button type="button" tabIndex={-1} className="graph-node-main nodrag" onClick={() => data.selectCourse(data.code)} aria-label={`Select ${data.code}, ${data.title}. ${data.kind}.`}>
+    <button type="button" className="graph-node-main nodrag" onClick={() => data.selectCourse(data.code)} aria-label={`Select ${data.code}, ${data.title}. ${data.kind}.${data.relation ? ` ${data.relation}.` : ""}`}>
       <span className="graph-node-meta"><span>{data.kind}</span><span>{data.credits}</span></span>
       <strong>{data.code}</strong>
       <span className="graph-node-title">{data.title}</span>
@@ -48,6 +48,7 @@ function CourseNode({ data }: NodeProps<GraphNode>) {
     </div>
     <div className="graph-node-tooltip" role="tooltip">
       <strong>{data.code} · {data.credits}</strong>
+      {data.relation ? <span>{data.relation}</span> : null}
       <span>Prerequisites: {data.prerequisites}</span>
       <span>Corequisites: {data.corequisites}</span>
     </div>
@@ -143,19 +144,22 @@ function GraphWorkspace() {
     setSearch("");
     if (!onMap) {
       setDepth("1");
-      return;
+    } else {
+      centerNode(getNode, setCenter, code);
     }
-    centerNode(getNode, setCenter, code);
+    requestAnimationFrame(() => {
+      document.getElementById("graph-inspector")?.focus({ preventScroll: true });
+    });
   };
   return <>
     <PageHeading title="Prerequisite Graph" description="Explore every official MSCS Seattle course and the cataloged prerequisites that connect them." actions={<div className="graph-toolbar"><div className="graph-search-wrap"><div className="search-field"><Search size={16} /><input type="search" aria-label="Search courses in graph" placeholder="Search courses in graph…" value={search} onChange={(event) => setSearch(event.target.value)} /></div>{search && <div className="graph-search-results">{matches.length ? matches.map((course) => <button key={course.code} onClick={() => focus(course.code)}><strong>{course.code}</strong><span>{course.title}{visible.has(course.code) ? "" : " · not on this view — opens neighborhood"}</span><Crosshair size={14} /></button>) : <p>No matching courses. Try another code or title.</p>}</div>}</div><FitToViewButton /></div>} />
-    <div className="graph-legend" aria-label="Map legend"><span><i className="legend-node core" /> Required</span><span><i className="legend-node breadth" /> Breadth</span><span><i className="legend-node elective" /> Elective</span><span><i className="legend-node completed" /> Completed</span><span><i className="legend-node external" /> Locked / external</span><span><i className="legend-line" /> Prerequisite relationship</span></div>
+    <div className="graph-legend" aria-label="Map legend"><span><i className="legend-node core" /> Required</span><span><i className="legend-node breadth" /> Breadth</span><span><i className="legend-node elective" /> Elective</span><span><i className="legend-node completed" /> Completed</span><span><i className="legend-node external" /> Locked / external</span><span><i className="legend-node emphasis" /> Linked to selected</span><span><i className="legend-line" /> Prerequisite relationship</span></div>
     <div className="graph-layout">
       <section className="graph-panel" aria-label="Course prerequisite relationships">
         <a className="graph-skip" href="#graph-inspector">Skip map to selected course</a>
         <div className="graph-panel-heading">
           <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : <><Crosshair size={15} /> Focused on <strong>{focusCode}</strong></>}</span>
-          <span role="status">{graph.nodes.length} courses · {graph.edges.length} links</span>
+          <span role="status">{graph.nodes.length} courses · {graph.edges.length} links. Selected {selectedCode}{depth === "program" ? "" : ` · focused on ${focusCode}`}.</span>
           <div className="segmented-control" aria-label="Map display">
             <button type="button" aria-pressed={view === "graph"} className={view === "graph" ? "selected" : ""} onClick={() => setView("graph")}><Network size={15} /> Map</button>
             <button type="button" aria-pressed={view === "table"} className={view === "table" ? "selected" : ""} onClick={() => setView("table")}><List size={15} /> Table</button>
@@ -215,7 +219,7 @@ function GraphWorkspace() {
         </div>}
         {view === "graph" && depth === "program" && <p className="graph-canvas-hint">The map starts at a readable zoom around the selected course. All {graph.nodes.length} official and direct-prerequisite courses are on this map — use the minimap or Fit to view to see them at once.</p>}
       </section>
-      <aside className="graph-inspector" id="graph-inspector">
+      <aside className="graph-inspector" id="graph-inspector" tabIndex={-1}>
         {badge && <span className={badge.className}>{badge.label}</span>}
         <h2>{selectedCode}</h2>
         <p className="inspector-course-title">{selected?.title ?? "External course reference"}</p>

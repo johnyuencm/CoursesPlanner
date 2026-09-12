@@ -373,7 +373,7 @@ textarea { resize: vertical; }
 .graph-course-node.graph-elective { background: var(--purple-soft); }
 .graph-course-node.graph-completed { background: var(--green-soft); }
 .graph-course-node.graph-external { border-style: dashed; background: #eef0f3; }
-.graph-course-node.graph-emphasized { }
+.graph-course-node.graph-emphasized { border-color: #4b6cb3; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.28); }
 .graph-course-node.graph-focused { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22); }
 .graph-node-main { width: 100%; display: flex; flex-direction: column; padding: 0.62rem 0.7rem 0.5rem; border: 0; background: none; text-align: left; cursor: pointer; }
 .graph-node-meta { display: flex; justify-content: space-between; color: var(--ink-soft); font-size: 0.53rem; text-transform: uppercase; letter-spacing: 0.05em; }
