@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-12T06:06:14.554Z",
+  "updated_at": "2026-09-12T06:23:39.531Z",
   "active_goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -33,15 +33,28 @@
         "Grade floors such as C- parse as minimumGrade C- rather than an unknown hyphen token; npm test and npm run typecheck pass."
       ],
       "blocked_by": [],
-      "status": "in_progress",
+      "status": "in_review",
       "code_changed": true,
       "order": 0,
       "created_at": "2026-09-12T06:05:54.100Z",
-      "updated_at": "2026-09-12T06:06:14.552Z"
+      "updated_at": "2026-09-12T06:23:39.529Z"
     }
   },
   "checkpoints": {},
-  "evidence": {},
+  "evidence": {
+    "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-bd090b": {
+      "id": "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-bd090b",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "other",
+      "submission_digest": "63a0e5825a500e2b39a3ca5d31c151f0913f37a3b6ddb605b4f48a1765d35217",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-12T06:23:39.531Z"
+      },
+      "recorded_at": "2026-09-12T06:23:39.531Z"
+    }
+  },
   "wiki": {
     "initialized": false,
     "sources": {},
