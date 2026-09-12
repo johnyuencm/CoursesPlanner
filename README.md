@@ -8,7 +8,7 @@ The application explains the current catalog requirements, exposes parsed prereq
 
 - **Degree overview** for total credits, required core, breadth areas, and electives.
 - **Course explorer** with search, requirement, breadth, credit, prerequisite, eligibility, and topic filters.
-- **Prerequisite graph** with upstream and downstream exploration plus an accessible relationship table.
+- **Prerequisite graph** of the official MSCS Seattle program, with neighborhood zoom, upstream/downstream emphasis, and an accessible relationship table.
 - **Plan builder** with academic and internship/co-op terms, drag-and-drop, keyboard drag controls, and native move menus.
 - **Live validation** for prerequisites, corequisites, credits, core, breadth diversity, and electives.
 - **Next-course view** that reports prerequisite eligibility separately from actual course offerings.
