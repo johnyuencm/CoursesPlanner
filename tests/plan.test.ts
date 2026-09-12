@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { emptyPlan, loadPlan, parsePlan, STORAGE_KEY } from "../lib/plan";
+import { emptyPlan, loadPlan, parsePlan, parsePlanBackup, restorePlan, serializePlanBackup, STORAGE_KEY } from "../lib/plan";
 
 test("emptyPlan starts in Fall 2026 with five fresh terms and one co-op", () => {
   const first = emptyPlan();
@@ -139,4 +139,51 @@ test("loadPlan safely recovers from absent, corrupt, and unavailable storage", (
   });
   assert.match(unavailable.error ?? "", /storage denied/);
   assert.deepEqual(unavailable.plan, emptyPlan());
+});
+
+test("plan backup round-trips every version-1 plan field, including empty terms and unknown courses", () => {
+  const plan = {
+    version: 1 as const,
+    completedCourses: ["CY 9999"],
+    waivedCourses: ["CS 5010"],
+    completedCredits: { "CY 9999": 3 },
+    semesters: [
+      { id: "empty", name: "Empty term", type: "academic" as const, courses: [] },
+      { id: "coop", name: "Co-op", type: "coop" as const, courses: [{ code: "DS 9999", credits: 1 }] },
+    ],
+  };
+  assert.deepEqual(parsePlanBackup(serializePlanBackup(plan)), plan);
+});
+
+test("backup parsing rejects invalid JSON and oversized text before a restore can begin", () => {
+  assert.throws(() => parsePlanBackup("not json"), /valid JSON/i);
+  assert.throws(() => parsePlanBackup(" ".repeat(1_000_001)), /too large/i);
+  assert.throws(() => parsePlanBackup("é".repeat(500_001)), /too large/i);
+});
+
+test("restore writes the validated replacement before returning it to the UI", () => {
+  const replacement = { ...emptyPlan(), semesters: [] };
+  let stored = "";
+  const restored = restorePlan({ setItem: (_key, value) => { stored = value; } }, replacement);
+  assert.deepEqual(restored, replacement);
+  assert.deepEqual(JSON.parse(stored), replacement);
+
+  assert.throws(
+    () => restorePlan({ setItem: () => { throw new Error("storage denied"); } }, replacement),
+    /storage denied/,
+  );
+
+  let writes = 0;
+  assert.throws(
+    () => restorePlan({ setItem: () => { writes += 1; } }, { ...replacement, version: 2 }),
+    /version 1/,
+  );
+  assert.equal(writes, 0);
+
+  const saved: string[] = [];
+  const storage = { setItem: (_key: string, value: string) => { saved.push(value); } };
+  restorePlan(storage, replacement);
+  restorePlan(storage, { ...replacement, completedCourses: ["CS 5010"] });
+  assert.equal(saved.length, 2);
+  assert.deepEqual(JSON.parse(saved[1]).completedCourses, ["CS 5010"]);
 });

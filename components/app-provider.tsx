@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { Catalog, DegreeProgress, StudentPlan } from "@/lib/types";
-import { emptyPlan, loadPlan, parsePlan, STORAGE_KEY } from "@/lib/plan";
+import { emptyPlan, loadPlan, parsePlan, restorePlan, serializePlanBackup, STORAGE_KEY } from "@/lib/plan";
 import { validatePlan } from "@/lib/validation";
 
 type PickerState = { semesterId?: string; courseCode?: string } | null;
@@ -23,6 +23,8 @@ interface AppContextValue {
   storageError: string | null;
   retrySave: () => void;
   resetPlan: () => void;
+  exportPlanBackup: () => string;
+  restorePlanBackup: (candidate: StudentPlan) => boolean;
   detailCode: string | null;
   openCourse: (code: string | null) => void;
   picker: PickerState;
@@ -172,6 +174,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setStorageError(null);
     announce("Your plan has been reset. No courses are marked completed or waived.");
   };
+  const exportPlanBackup = useCallback(() => serializePlanBackup(plan), [plan]);
+  const restorePlanBackup = useCallback((candidate: StudentPlan) => {
+    try {
+      // Persist first: a failed write must never replace the plan the user is viewing.
+      const restored = restorePlan(window.localStorage, candidate);
+      setPlan(restored);
+      setStorageBlocked(false);
+      setPersistence("saved");
+      setStorageError(null);
+      announce("Backup restored and saved on this device.");
+      return true;
+    } catch (error) {
+      setPersistence("error");
+      setStorageError(error instanceof Error ? error.message : "Your browser could not save this restored plan.");
+      announce("Backup could not be restored because this browser could not save it. Your current plan is unchanged.");
+      return false;
+    }
+  }, [announce]);
   const setCourseStatus = (code: string, status: CourseStatus, credits?: number) => {
     setPlan((current) => {
       const completedCredits = { ...current.completedCredits };
@@ -212,7 +232,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     announce(`${newItems.map((item) => item.code).join(" and ")} added to your plan. Check the live audit for prerequisites and corequisites.`);
   };
 
-  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, careerTargetId, setCareerTargetId, notice, announce }}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, careerTargetId, setCareerTargetId, notice, announce }}>{children}</AppContext.Provider>;
 }
 
 export function useApp() {
