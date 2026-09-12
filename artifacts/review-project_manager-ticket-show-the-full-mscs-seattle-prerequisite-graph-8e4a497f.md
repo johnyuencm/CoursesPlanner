@@ -1,132 +1,145 @@
 # project_manager review — ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f
 
-Verdict: **PASS** (fix-loop round 2; no high findings)
+Verdict: **PASS** (fix-loop round 3 of 3; no high findings)
 
 Goal: Complete MSCS Seattle prerequisite graph vs the official catalog page.
-Reviewed state: branch `fix/complete-prereq-graph`, HEAD `2fd63b5`. Round-2 product
-diff: `9ecd96e..HEAD` = `51ffb41` (readable map), `6b0961c` (explorer search),
-`b26c0a2` (review artifacts), `2fd63b5` (submit). Reviewer is not the implementer.
-The only file written by this review is this artifact. Harness status was **not**
-treated as proof: ticket is `in_review`, `"checkpoints": {}`, and `evidence` holds
-only two `submission-*` records — **no verify run exists**.
+Reviewed state: branch `fix/complete-prereq-graph`, HEAD `6caccf1` (submit). Latest
+product: `6273251` (`git diff 2fd63b5..6273251` = 2 files, +11/−7). Reviewer is not
+the implementer. The only file written by this review is this artifact. Harness
+status was **not** treated as proof: ticket is `in_review`, `"checkpoints": {}`,
+and `evidence` holds three `submission-*` records — **no verify run exists**.
 
-This is the independent PM pass after the `user_advocate` FAIL on UA-1 (unreadable
-default map). `tech_lead` still has a round-1 artifact at `9ecd96e`; their
-high/medium findings are debated below rather than re-litigated as a full re-review.
-Same-HEAD artifacts from `spec_reviewer` (PASS) and `uiux` (FAIL, F1/F2 high) are
-dispositioned as evidence, not as this seat's score.
+This is the independent PM pass after the `uiux` FAIL on F1 (empty
+`.graph-emphasized`) and F2 (keyboard opt-out of map nodes). `tech_lead` still
+has a round-2 artifact at `2fd63b5`; their high/medium findings are debated
+below. Same-HEAD-as-round-2 artifacts from `spec_reviewer` (PASS) and
+`user_advocate` (PASS, UA-1 closed live) are not re-scored; round 3 did not
+change the node set.
 
 ## Evidence I ran myself
 
 | Command / check | Result |
 | --- | --- |
-| `git rev-parse HEAD` | `2fd63b5e1ad7877b7876f25d106aac3186ae280a` |
-| `npm test` | **39 pass / 0 fail / 0 skipped / 0 todo** (1246 ms) |
-| `npm run typecheck` (`tsc --noEmit`) | exit 0, no output |
-| `programMapCodes` / `visibleGraphDistances("program", …)` on published `data/catalog.json` | **114 nodes · 80 links**; `missingFromMap: []` |
-| `listedProgramCodes` from `parseProgramRequirements(data/raw/mscs-sea-program.html)` vs `data/catalog.json` requirements | **96 ≡ 96**; `listedNotProgram: []` |
+| `git rev-parse HEAD` | `6caccf16eea121ad721bf38a0df6fcdd8e61c0a3` |
+| `git merge-base --is-ancestor 6273251 HEAD` | yes |
+| `git diff --numstat 2fd63b5..6273251` | `app/globals.css` 1/1; `components/course-graph.tsx` 10/6; **tests untouched** |
+| `npm test` | **39 pass / 0 fail / 0 skipped / 0 todo** (1248 ms) |
+| `npm run typecheck` (`tsc --noEmit`) | exit 0 |
+| `programMapCodes` / `visibleGraphDistances("program", …)` on published `data/catalog.json` | **114 nodes · 80 links**; `listedNotMap: []` |
+| `listedProgramCodes` from `parseProgramRequirements(data/raw/mscs-sea-program.html)` vs `data/catalog.json` | **96 ≡ 96**; both set-differences empty |
 | Spot codes | `CS 5800` ✓ `CS 5100` ✓ `CS 5004` ✓ `CS 1800` absent from snapshot |
 | `neighborhoodDistances("CS 5500", …, 1)` | exactly `["CS 5004","CS 5010","CS 5500","CS 6510"]` |
-| `programGridDimensions(114, 164, 64)` | **8 cols × 15 rows = 1312 × 960 px** |
-| Default viewport occupancy at `zoom: 1`, `x: 28, y: 20` | ~4–5 of 8 columns × ~9 of 15 rows ≈ **45/114** nodes in a 695×580 pane (1366×768); ~72/114 at 1004×760 |
-| Unpadded `Fit to view` upper bound | `min(695/1312, 580/960) = 0.530` at 1366×768 |
-| Compact code text | `.graph-compact .graph-node-main strong` = `0.95rem` ≈ **15.2 px at zoom 1** (`html` has no font-size; rem is 16px) vs body `14.5px` (`app/globals.css:40`) |
-| `CS 6140` published expression | two `minimumGrade: "C-"` course items (`data/catalog.json:1516-1528`) |
-| Grade-floor tally on snapshot | `{C-:62, D-:28, C:23, D-:28, D:2, B-:2, C+:1}` — no hyphen-only unknown token |
+| `programGridDimensions(114, 164, 64)` | **8 cols × 15 rows** (unchanged) |
+| Grade-floor tally on snapshot | `{C-:62, D-:28, C:23, B-:2, D:2, C+:1}`; hyphen-unknown `0` |
 | Dangling chips on default map | still 4 external rows: `CS 5004`, `CS 3650`, `CY 2550`, `DADS 7275` |
-| Explorer keyword spill after `app/courses/page.tsx:38` | `data` → 9 externals, `systems` → 3, `course` → 33, `external` → 27 |
-| `TODO`/`FIXME`/`HACK` in changed `.ts`/`.tsx` | none |
-| Tests diff `9ecd96e..HEAD -- tests/` | **+8 / −0** (addition, not a relaxation) |
-| Live `/map` render | **not done** — `browser_navigate` returned "No browser tab available" |
+| Explorer keyword spill (`app/courses/page.tsx:38`) | `data` 9, `systems` 3, `course` 33, `external` 27; `CS 5004` 2; `CS 1800` 0 |
+| `.graph-emphasized` | **non-empty**: `border-color: #4b6cb3; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.28)` (`app/globals.css:376`) |
+| Main node button `tabIndex` | **removed** (`components/course-graph.tsx:40`); Details still `tabIndex={-1}` (`:47`); `nodesFocusable={false}` remains (`:193`) |
+| `TODO`/`FIXME`/`HACK` in `lib/` `components/` `scraper/` `.ts`/`.tsx` | none |
+| Tests diff `2fd63b5..6273251 -- tests/` | **empty** (no deletion, no addition) |
+| Live `/map` keyboard/visual pass | **not done** |
 
 ## Per-criterion map
 
 | # | Acceptance criterion | Status | Evidence |
 | --- | --- | --- | --- |
-| 1 | `/map` with untouched filters shows every core/breadth/elective course on the official page as a node, incl. `CS 5800` and `CS 5100` | **met** | Default scope is `"program"` (`components/course-graph.tsx:86`) → `visibleGraphDistances` (`:94-97`) → `programMapCodes` (`lib/graph.ts:15-26`) seeded from `listedProgramCodes` (`:5-12`). Recomputed: 114 nodes, all 96 HTML-parsed listed codes present, isolated cores in the first row of the sort (`CS 5010`, `CS 5011`, `CS 5800`, `CS 5100`). Locked by `tests/graph.test.ts:30-41`. Round 2 did not change the node **set**. Read **PM-6**: "as a node" is the map contents, not the first viewport. |
-| 2 | Direct externals such as `CS 5004` stay visible; `CS 1800` is not in the published snapshot | **met** | `CS 5004` is a default-map node; `CS 1800` is absent from `data/catalog.json` (grep: no match). Closure at `scraper/parser.ts:492-513`; asserted `tests/scraper.test.ts:128-131` and `tests/graph.test.ts:39-40`. Explorer now also finds `CS 5004` (`app/courses/page.tsx:38`) — extra vs the written AC; see **PM-8**. |
-| 3 | `Show` still offers Immediate neighborhood and `CS 5500`'s view stays local | **met** | All four options remain (`components/course-graph.tsx:164-169`). Depth-1 of `CS 5500` recomputed to exactly 4 nodes; `CS 5800` stays out of that set and in program scope (`tests/graph.test.ts:44-53`). `fitView` is scoped to `depth !== "program"` (`:178`), so neighborhood views keep auto-fit. |
-| 4 | `C-` parses as `minimumGrade C-`; `npm test` and `npm run typecheck` pass | **met** | Parser at `scraper/parser.ts:63-67`; published `CS 6140` is two `C-` items; new pin `tests/scraper.test.ts:84-91`. This reviewer ran both gates on `2fd63b5`: 39/39 and clean `tsc`. |
+| 1 | `/map` with untouched filters shows every core/breadth/elective course on the official page as a node, incl. `CS 5800` and `CS 5100` | **met** | Default scope is `"program"` (`components/course-graph.tsx:87`) → `visibleGraphDistances` (`:95-98`) → `programMapCodes` (`lib/graph.ts:15-26`) seeded from `listedProgramCodes` (`:5-12`). Recomputed on published snapshot: 114 nodes, all 96 HTML-parsed listed codes present. Locked by `tests/graph.test.ts:30-41`. Round 3 did not change membership, packing, or default zoom. Read **PM-6**: "as a node" is the map contents, not the first viewport. |
+| 2 | Direct externals such as `CS 5004` stay visible; `CS 1800` is not in the published snapshot | **met** | `CS 5004` is a default-map node; `"code": "CS 1800"` has no match in `data/catalog.json`. Closure at `scraper/parser.ts:492-513`; asserted `tests/scraper.test.ts:128-131` and `tests/graph.test.ts:39-40`. Explorer still finds `CS 5004` (`app/courses/page.tsx:38`) — extra vs the written AC; see **PM-8**. |
+| 3 | `Show` still offers Immediate neighborhood and `CS 5500`'s view stays local | **met** | All four options remain (`components/course-graph.tsx:167-173`). Depth-1 of `CS 5500` recomputed to exactly 4 nodes; `CS 5800` stays out of that set (`tests/graph.test.ts:44-53`). `fitView` is still scoped to `depth !== "program"` (`:182`). |
+| 4 | `C-` parses as `minimumGrade C-`; `npm test` and `npm run typecheck` pass | **met** | Parser at `scraper/parser.ts:63-67`; published `CS 6140` is two `C-` items (`data/catalog.json:1516-1528`). This reviewer ran both gates on `6caccf1`: 39/39 and clean `tsc`. |
 
 ## Design alignment
 
-Round 2 stays inside the round-1 shape: one listed-set traversal (`lib/graph.ts`), program scope as default, neighborhood as a separate `Show` value. Layout math moved next to that traversal (`programGridDimensions`, `:108-118`) and is unit-tested (`tests/graph.test.ts:56-61`). `fitView` was narrowed, not deleted. No new dependency, schema, or parallel course list. The explorer filter change (`6b0961c`) is outside the ticket's four criteria (spec_reviewer medium #1); it is a same-complaint fix for UA-4, not a fork of the graph design.
+Round 3 stays inside the listed-set + program-default + neighborhood-`Show` shape. The diff only fills the emphasis CSS hook, restores the in-node Select control to the tab order, announces selection in the live region, moves search focus onto the inspector, and adds a legend swatch. No new dependency, schema, traversal, or parallel course list. No design.md / implementation-plan.md / prd.md exists under the goal directory.
 
 ## Goal alignment
 
-Correct target. Round 1 already put every official listed course on the default map (96 ≡ 96, independently reproduced here). Round 2 spends the diff on making that completeness *perceivable* after UA-1, which is the goal's actual promise ("must show every course"), plus a one-page-over reachability fix for `CS 5004` in Course Explorer. Cheaper alternatives exist and were partly taken: the Table view remains the complete legible overview; packing + fixed zoom is ~tens of lines. Not a side-quest.
+Correct target. Completeness of the official listed set was already landed in round 1 and made perceivable in round 2. Round 3 spends the last fix loop on the two `uiux` highs that made the primary surface's advertised chain-emphasis and keyboard selection false. That is the goal's remaining user-facing honesty, not a side-quest. Cheaper alternatives (leave F1/F2 as named deferrals) were not taken; the chosen patch is two files.
 
 ## Scope honesty
 
-- No test deleted, skipped, or weakened. No mock standing in for graph behavior. No TODO in the product diff.
-- Commit messages match the diffs (`51ffb41` packing/zoom/minimap; `6b0961c` explorer search). They do **not** mention `nodesFocusable={false}` or the empty `.graph-emphasized` rule.
-- `"checkpoints": {}` — no deferral is named in harness state. UA-7, UA-8, TL-1, and TL-4 live only in committed review artifacts.
-- `docs/acceptance-checklist.md:17` still says "Verify zoom, **keyboard access** and long titles" on the map — the instruction round 2 invalidated (PM-7).
-- `README.md:12` still advertises "upstream/downstream emphasis" while the default compact canvas has no working emphasis channel (PM-11).
+- No test deleted, skipped, or weakened. Round 3 also added **no** test for the CSS ring or the restored tab stop (**PM-12**).
+- No mock standing in for graph behavior. No TODO in the product diff.
+- Commit `6273251` matches the diff (emphasis + keyboard). It does **not** mention that `nodesFocusable={false}` and `onlyRenderVisibleElements` remain, or that Details stays `tabIndex={-1}`.
+- `"checkpoints": {}` — no deferral is named in harness state. Remaining items live only in review artifacts (this file included).
+- `docs/acceptance-checklist.md:17` still asks a verifier to check "keyboard access **and long titles**"; compact mode still `display:none`s `.graph-node-title` (`app/globals.css:367-368`).
 
 ## Findings
 
-### PM-6 (medium) — criterion 1 is met as "on the map", not "on the first screen"; no view is a legible whole-program map at 13″
+### PM-6 (medium, carried) — criterion 1 is met as "on the map", not "on the first screen"
 
-Default viewport is a hard-coded `zoom: 1` at `{x:28,y:20}` (`components/course-graph.tsx:180-184`). The packed grid is 1312 × 960 px (`lib/graph.ts:108-118` with `PROGRAM_COL=164`, `PROGRAM_ROW=64`). At a 695 × 580 pane that puts **~45 of 114** nodes in view; `onlyRenderVisibleElements` (`:192`) keeps the rest out of the DOM until pan. `Fit to view` can show the whole set at ≤0.53 scale on 1366×768, which is ~8 px code text against a 14.5 px body. The Table view remains the only fully legible complete surface. Copy discloses the trade (`:216`, `:158`). Ranked medium, not high: the written AC says "as a node", and UA-1's 1.6 px codes are gone in the committed geometry. This seat did **not** re-render pixels (see "Not done").
+Unchanged this round. Default viewport is still hard-coded `zoom: 1` at `{x:28,y:20}` (`components/course-graph.tsx:184-188`). Packed grid is still 8×15 at 164×64 (`lib/graph.ts:108-118`). `onlyRenderVisibleElements` (`:196`) still keeps off-pane nodes out of the DOM. Table / Fit-to-view remain the complete-overview surfaces. Copy still discloses the trade (`:220`). Not high: the written AC says "as a node".
 
-### PM-7 (medium) — the tab-stop fix removes keyboard operation of map nodes, and the repo checklist still asks a verifier to test it
+### PM-7 (closed this round) — map-node Select is back in the tab order
 
-`nodesFocusable={false}` (`components/course-graph.tsx:189`) plus `tabIndex={-1}` on both in-node buttons (`:40`, `:47`) eliminates UA-5's 346 extra tab stops by making every map node unreachable from the keyboard. Search (`:151`), skip link (`:154`), and Table code buttons (`:208`) remain. That is a redesign, not a dead end. It is undeclared: `docs/acceptance-checklist.md:17` still requires "keyboard access" on the map; `51ffb41` does not mention the focus change; no checkpoint records it. `uiux` F2 raises the same facts to **high** on an accessibility bar this ticket did not write into acceptance. I keep **medium**: not an unmet written AC, but hidden incompleteness of the UA-5 "fix" and a trap for the independent verifier.
+Round 2's `tabIndex={-1}` on `.graph-node-main` is gone (`components/course-graph.tsx:40`). Native `<button>` is focusable; `:focus-within` can show the tooltip (`app/globals.css:386`); `aria-label` now includes `relation` (`:40`). Search activation focuses `#graph-inspector` (`:150-152`, `:222`) and the live region names the selected code (`:162`). Residual limits are **PM-13**, not a leftover F2 high.
 
-### PM-8 (medium) — explorer admits every external placeholder on *any* non-empty search, not the code search its heading promises
+### PM-8 (medium, carried) — explorer admits every external placeholder on *any* non-empty search
 
-`app/courses/page.tsx:38` is `requirementType === "external" && !normalized`. Heading (`:63`) promises "Search a **course code** to also find cataloged prerequisites". Measured: keyword `data` → 9 external cards, `systems` → 3, `course` → 33, `external` → 27. Popular-search pills set `search` directly (`:100`). Result `role="status"` (`:83`) can count externals while the rail's eligible/locked counts exclude them (`:54-56`). A code-gated filter would have closed UA-4 without the spill. Out of ticket scope; shipped unverified (no explorer test). Same as spec_reviewer medium #1.
+Unchanged. `app/courses/page.tsx:38` is still `requirementType === "external" && !normalized`. Heading (`:63`) still promises a **course-code** search. Recomputed spill matches round 2. Out of ticket scope; still unverified (no explorer test).
 
-### PM-9 (low) — deferred: UA-7 duplicate `X OR X` text still sits on a default-map node
+### PM-9 (low, carried) — deferred: UA-7 duplicate `X OR X` text
 
-`data/catalog.json:585-593` and `:617`: `CS 5004` still ORs `CS 5001` with itself (and `CS 5002` with itself). Upstream catalog text, not caused by this branch; the branch improved the old `C` + hyphen-token parse. No checkpoint names the deferral.
+`data/catalog.json:585-593` (`CS 5004` ORs `CS 5001` with itself; same for `CS 5002`). Upstream catalog text. No checkpoint names it.
 
-### PM-10 (low) — deferred: UA-8 / TL-1 dangling chips and two closure rules are unchanged
+### PM-10 (low, carried) — deferred: UA-8 / TL-1 dangling chips and two closure rules
 
-Default map still has exactly four external rows whose printed chips have no node/edge (`CS 5004` → `CS 5001/5002/5005`; plus `CS 3650`, `CY 2550`, `DADS 7275`). `scraper/parser.ts:492-507` is **transitive**; `lib/graph.ts:19-24` is **direct**. Round 2 made the 28 transitive-only courses searchable in Explorer; the map inconsistency remains. Low because no official listed course has a dangling chip.
+Default map still has exactly four external rows whose printed chips have no node/edge. `scraper/parser.ts:492-507` is **transitive**; `lib/graph.ts:19-24` is **direct**. Low because no official listed course has a dangling chip.
 
-### PM-11 (medium) — round-2 compact default plus an empty emphasis rule makes the page's own chain-emphasis promise false
+### PM-11 (closed this round) — empty emphasis rule is filled; compact chain is a ring
 
-`emphasized: !!relation` is still computed (`components/course-graph.tsx:101-103`) and the footnote still says "Select a node to emphasize its upstream and downstream chain" (`:240`); `README.md:12` still advertises the same. The CSS hook is empty: `app/globals.css:376` → `.graph-course-node.graph-emphasized { }`. Compact mode (`:103`, default for program scope) also `display:none`s `.graph-node-bottom` (`app/globals.css:367-368`), which was the only place `relation` rendered. Edges shift `#98a2b3`/`1.2` → `#64748b`/`1.8` (`course-graph.tsx:130`) — two mid-greys. This is `uiux` F1; I do not promote it to high because chain emphasis is not a written AC and the inspector still lists prerequisites/unlocks (`:226-231`). It is a round-2 regression of a promised interaction on the surface this ticket just made primary.
+`app/globals.css:376` is no longer `{}`. Compact still hides `.graph-node-bottom` (`:368`), so the relation **word** is not on the chip; the ring, legend swatch (`components/course-graph.tsx:156`, `app/globals.css:395`), tooltip (`:51`), and inspector lists (`:230-235`) are the channels. Selected node also has `.graph-focused` (`:377`), which wins on the clicked chip (`#2563eb` / 3px vs chain `#4b6cb3` / 2px). Footnote still promises the interaction (`:244`); README.md:12 still advertises it. Residual contrast/hierarchy is uiux F4, not an empty hook.
+
+### PM-12 (medium, new) — round-3 visual/keyboard contract is untested, same class as TL-9
+
+`6273251` adds zero tests. Emptying `.graph-emphasized` again, or restoring `tabIndex={-1}` on `.graph-node-main`, would revive F1/F2 with `npm test` green. Packing test still only asserts `rows >= 8` / `columns <= 12` (`tests/graph.test.ts:56-61`). Not high: not an unmet written AC.
+
+### PM-13 (low, new) — off-canvas nodes stay search-only; Details stays pointer-only
+
+`nodesFocusable={false}` (`components/course-graph.tsx:193`) still disables React Flow's own Tab/Enter node cycle (JSDoc: tab between nodes + Enter to select). Combined with `onlyRenderVisibleElements` (`:196`), nodes not in the current pane are not in the DOM and cannot be tabbed to. Details remains `tabIndex={-1}` (`:47`) and is hidden in compact mode anyway. Search, skip link (`:159`), Table (`:212`), and inspector "Full course details" (`:239`) remain. Named so the last-round keyboard claim is not over-read as "all 114 chips are tab stops".
 
 ## Trade-offs and deferrals (explicit for the finish report)
 
-1. Legible partial default view instead of a complete illegible one (PM-6). Disclosed in-product (`:216`).
-2. Map nodes are mouse-only; search / table / skip-link are the keyboard paths (PM-7). **Not disclosed; contradicts `docs/acceptance-checklist.md:17`.**
+1. Legible partial default view instead of a complete illegible one (PM-6). Disclosed in-product (`:220`).
+2. Keyboard Select on **rendered** nodes; off-canvas chips and in-node Details are not tab stops (PM-13). Search / inspector / Table are the jump paths. **Partially disclosed** by the React Flow `aria-label` (`:199`); checklist `:17` still also asks for long titles, which compact hides.
 3. UA-7 duplicate OR text (PM-9) — upstream data, no fix.
 4. UA-8 / TL-1 dangling external chips and two closure rules (PM-10) — no fix.
 5. TL-4 (nothing caps snapshot size; a refresh can re-inflate with tests green), TL-5 (grade regex boundary), TL-7 (`topologicalRanks` on cycles) — carried; recorded only in the committed tech_lead artifact.
 6. Round-1 PM-2 (fresh `/map` Immediate neighborhood is `CS 5010`, not `CS 5500`) and PM-3 (`Full connected component` ⊅ `Entire program`) — carried as intended semantics.
-7. Chain emphasis on the compact canvas (PM-11) — copy claims it; CSS does not.
+7. Explorer keyword spill (PM-8) — extra vs AC; still ships.
+8. Chain emphasis is a compact ring + tooltip + legend, not on-chip relation text (PM-11 closed as empty-CSS; remaining encoding is uiux F4/F5/F7).
+9. Viewport, emphasis, and keyboard contracts are untested (TL-9 / PM-12).
+10. No harness `verify run` and empty `checkpoints` — process, not product.
 
 ## Risk surface
 
-- **Hint vs viewport (low).** "The map starts at a readable zoom around the selected course" (`:216`) is true only because `CS 5010` sorts to grid index 0. `centerNode` (`:24-35`) runs on search-focus, not on load. Change the default selection or the sort (`:107`) and the sentence is false with no test.
-- **Layout heuristic is data-dependent (low).** The committed packing test only asserts `rows >= 8` and `columns <= 12` for n=114 (`tests/graph.test.ts:56-61`).
+- **Hint vs viewport (low).** Unchanged: the "readable zoom around the selected course" sentence (`:220`) is true because `CS 5010` sorts to grid index 0. `centerNode` on load is still not called.
+- **Regression of F1/F2 with tests green (medium process).** PM-12.
 - **No harness verify yet (process).** Gates I ran are implementer-independent but are *this reviewer's* runs, not a recorded `verify run`.
 
 ## User impact
 
-Visible value, not plumbing: default codes go from ~2 px to body-adjacent size; a minimap and an honest count exist; graph search no longer fails silently; `/courses` can find `CS 5004`. Cost: "whole program at a glance" lives in Table / Fit-to-view; map nodes are pointer-only; selecting a node does not visually mark its chain on the default canvas.
+Visible value: selecting a course now paints a ring on its chain on the compact default map, and a keyboard user can Select a node that is actually in the pane (and hear which course is selected after search). Cost unchanged from round 2: whole-program glance lives in Table / Fit-to-view; explorer search still over-admits externals.
 
-## Debate round 2 — response to tech_lead
+## Debate round 3 — response to tech_lead
 
-`artifacts/review-tech_lead-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f.md` is still the round-1 review of `9ecd96e`. No high findings then; none now. Per their medium/high items:
+`artifacts/review-tech_lead-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f.md` is still the round-2 review of `2fd63b5`. No high findings then. Per their medium items against `6273251`:
 
-- **TL-1 (medium, two closures / dangling chips):** concede, still open. Restated as **PM-10**. Round 2 did not touch `scraper/parser.ts:492-507` or `lib/graph.ts:19-24`. Explorer search is a reachability patch, not a closure unification.
-- **TL-2 (medium, Focus map here gated on depth 1):** **rebut — fixed.** Gate is now `depth !== "program" && focusCode !== selectedCode` (`components/course-graph.tsx:225`). Depth 2 and `full` regain refocus without forcing neighborhood.
-- **TL-3 (low, search selects a course with no node):** **rebut — fixed.** `focus()` branches on `visible.has(code)` and switches to neighborhood when off-map (`:139-148`); the result row discloses it (`:151`).
-- **TL-4 (medium, unbounded snapshot):** concede, still open. Guards remain `CS 1800 === false` and a **lower** bound (`tests/graph.test.ts:39-41`). No size cap. Named in the deferral list.
-- **TL-5 / TL-6 / TL-7:** agree as written; none are ticket ACs. TL-6 (tracked harness ledgers) is unchanged process debt.
+- **TL-1 (medium, two closures / dangling chips):** concede, still open. Restated as **PM-10**. Round 3 did not touch `scraper/parser.ts` or `lib/graph.ts`.
+- **TL-4 (medium, unbounded snapshot):** concede, still open. Guards remain `CS 1800 === false` and a **lower** bound (`tests/graph.test.ts:39-41`). Named in the deferral list.
+- **TL-8 (medium, empty emphasis on compact default):** **rebut — fixed in product.** `app/globals.css:376` now sets border + ring; legend includes "Linked to selected" (`components/course-graph.tsx:156`); tooltip carries `relation` (`:51`). Compact still hides the relation row; that is no longer a no-op hook. Residual encoding is not TL-8.
+- **TL-9 (medium, viewport contract untested):** concede, still open, and **widened** as **PM-12** (emphasis CSS and restored tab stop are also untested).
+- **PM-6:** prior agreement stands (geometry conceded; not an AC-1 miss).
+- **PM-7:** prior concession is **stale**. Inner Select is focusable. I do not put a new high on the remaining `nodesFocusable={false}` wrapper flag.
+- **PM-8:** concede, still open.
 
-No unrebutted **high** finding from tech_lead. I can PASS with them.
+No unrebutted **high** finding from tech_lead's last written artifact. I can PASS with them. If a round-3 tech_lead artifact lands later with new highs, this seat has not seen it.
 
-Disposition of parallel same-HEAD seats (not a score of their work): spec_reviewer 4/4 met matches my table. `uiux` F1 maps to PM-11 (medium here). `uiux` F2 maps to PM-7 (medium here). I do not adopt their high bar because those defects are not written acceptance criteria and do not hide an unmet official-page node. `user_advocate` has **not** re-rendered `2fd63b5`; this PASS does not close UA-1.
+Disposition of parallel seats (not a score of their work): spec_reviewer 4/4 met still matches my table (node set unchanged). `uiux` F1 maps to closed PM-11. `uiux` F2 maps to closed PM-7 plus residual PM-13. I do not adopt a leftover high: the written ACs are met, and the two review-blocking interaction lies from round 2 are contradicted by committed CSS/DOM. `user_advocate` closed UA-1 live at `2fd63b5`; round 3 did not change zoom.
 
 ## Not done by this review
 
-- **No live page.** Browser tools returned "No browser tab available". Readability numbers are layout/CSS arithmetic, not screenshots. UA-1 remains for the `user_advocate` seat to re-check at 1366×768.
+- **No live page.** No keyboard Tab pass, no screenshot of the emphasis ring, no screen reader. F1/F2 closure is source-level (non-empty CSS, restored button tabIndex, `:focus-within` now reachable). `uiux` should re-score pixels if they require a live pass.
 - No live fetch of the official catalog; fidelity is only as fresh as `data/raw/mscs-sea-program.html`.
 - I did not exercise `Full connected component`, minimap drag, or a mobile viewport.
-- No screen reader was run; PM-7 / PM-11 are DOM/CSS reasoning.
+- Did not run `ycm-harness review *`; no harness review JSON written.
