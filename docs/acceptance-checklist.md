@@ -7,6 +7,7 @@ This is the independent verification checklist, not a claim of completion.
 - Compare at least five course records against official bulk HTML, including no prerequisites, OR alternatives, grouped AND/OR, reciprocal corequisites, and variable credits.
 - Unknown expressions remain unknown. Missing course pages never become "no prerequisites". Relationship edges contain only extracted codes.
 - Initial app loads normalized local JSON without fetching Northeastern. Refresh is explicit, bounded, same-origin, unauthorized without a local refresh token outside `next dev`, and retains the previous snapshot on failure.
+- The catalog service can poll registry sources independently of the web app. Adding a program requires a source JSON file and, if the HTML differs, a new adapter. Live crawls of a second university are disabled until that source is inspected and enabled.
 - Cache records catalog edition, update timestamp and source URLs. Frontend cannot mutate scrape URLs or filesystem paths.
 
 ## Student flow

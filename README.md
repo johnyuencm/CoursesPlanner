@@ -34,48 +34,64 @@ The inspected degree rules are 32 semester hours, three named core courses (incl
 ## Architecture
 
 ```text
-Official Northeastern catalog
+Official catalog pages (HTTPS allowlist per source)
         |
-        | explicit refresh only
+        | catalog-service (poll + explicit refresh)
         v
-scraper/refresh.ts ----> data/raw/*.html
+catalog-service/sources/*.json ----> adapter (parser)
         |
         v
-scraper/parser.ts -----> data/courses.json
-        |                data/requirements.json
-        |                data/catalog.json
+data/catalogs/<id>/*.json
+data/catalog.json  (default program snapshot)
+        ^
+        | GET reads disk only
+app/api/catalog ---- POST prefers catalog-service, else in-process refresh
         v
-app/api/catalog --------> AppProvider --------> pages and dialogs
-                              |
-                              v
-                       LocalStorage plan
-                              |
-                              v
-                       lib/validation.ts
+AppProvider --------> pages and dialogs
+                          |
+                          v
+                   LocalStorage plan
+                          |
+                          v
+                   lib/validation.ts
 ```
+
+The crawler is an independent Node service. It does not import Next.js. The web app never scrapes on page load. `GET /api/catalog` reads the validated snapshot from disk. `POST /api/catalog` asks the catalog service to refresh, and falls back to the same refresh library in-process if the service is not running.
+
+### Adding another program or university
+
+1. Inspect the official catalog the same way Northeastern was inspected. Do not invent requirements, and do not crawl `robots.txt` disallowed paths.
+2. Copy `catalog-service/sources/.example.json` to `catalog-service/sources/<id>.json`.
+3. Fill in HTTPS program and bulk-subject URLs, allowlisted origins, and poll settings. Leave `"enabled": false` until the parser output is validated.
+4. Reuse `northeastern-acalog` only when the HTML matches Acalog course blocks and program tables. Otherwise add an adapter in `catalog-service/adapters.ts` and point the source JSON at it.
+5. Refresh one source with `npm run catalog:refresh -- --id=<id> --force`, then enable polling.
+
+The service does not fetch a second live university until that source file exists and is enabled.
 
 ### Main directories
 
 | Path | Purpose |
 | --- | --- |
+| `catalog-service/` | Independent crawler, source registry, scheduler, and localhost HTTP API |
+| `catalog-service/sources/` | One JSON file per program; copy `.example.json` to add another |
 | `app/` | Next.js App Router pages and catalog API route |
 | `components/` | Shared shell, dialogs, course cards, graph, and planner UI |
 | `scraper/parser.ts` | HTML parsing and prerequisite expression parsing |
-| `scraper/refresh.ts` | Fixed-source fetch, cache, validation, and atomic output replacement |
+| `scraper/refresh.ts` | Compatibility re-export of the catalog-service refresh library |
 | `lib/types.ts` | Catalog, course, requirement, plan, pathway, and validation models |
 | `lib/catalog.ts` | Normalized catalog trust-boundary validation and disk loading |
 | `lib/plan.ts` | LocalStorage plan validation and corruption recovery |
 | `lib/validation.ts` | Eligibility, dependency closure, and degree-progress validation |
 | `config/pathways.json` | Default recommendation-only pathway groups |
 | `data/raw/` | Cached official HTML and research fixtures |
-| `tests/` | Parser, validation, and persistence tests |
+| `tests/` | Parser, catalog-service, validation, and persistence tests |
 | `docs/` | Source inspection and acceptance checklist |
 
 ## Catalog cache and refresh behavior
 
-Page loads never scrape Northeastern. `GET /api/catalog` reads only `data/catalog.json` and returns `503` if no valid normalized cache exists.
+Page loads never scrape remote catalogs. `GET /api/catalog` reads `data/catalogs/<id>/catalog.json` when present, otherwise `data/catalog.json`, and returns `503` if no valid normalized cache exists.
 
-Refresh uses an allowlist of fixed HTTPS sources on `catalog.northeastern.edu`:
+The default source is Northeastern MSCS Seattle (`neu-mscs-seattle`). Refresh uses that source's HTTPS allowlist:
 
 - Seattle MSCS program page
 - CS bulk course descriptions
@@ -83,27 +99,36 @@ Refresh uses an allowlist of fixed HTTPS sources on `catalog.northeastern.edu`:
 - DS bulk course descriptions when referenced
 - DADS bulk course descriptions when referenced
 
+Run the catalog service for continuous checks. It ticks once a minute and refreshes a source only when its poll interval has elapsed (six hours by default). Checks use conditional GET (`If-None-Match` / `If-Modified-Since`). A `304` keeps the current snapshot.
+
+```bash
+npm run catalog:serve
+```
+
+The service binds `127.0.0.1:8787` with `GET /health`, `GET /catalogs`, `GET /catalogs/:id`, and `POST /catalogs/:id/refresh`. Keep it running in a second terminal next to `npm run dev` if you want background updates. The Next.js app still works without it: Refresh Catalog falls back to in-process refresh.
+
 The refresh pipeline:
 
 1. Reads cached raw HTML and cache metadata.
 2. Reuses raw sources for seven days unless refresh is forced.
-3. Fetches only allowlisted official URLs, with a 15-second timeout, a 5 MB response limit, manual redirect checks, and a delay between requests.
+3. Fetches only allowlisted official URLs, with robots.txt checks, a 15-second timeout, a 5 MB response limit, manual redirect checks, and a delay between requests.
 4. Parses requirements and bulk course blocks.
 5. Preserves unsupported prerequisite prose as explicit `unknown` expressions.
 6. Validates the complete normalized catalog.
 7. Atomically replaces raw network responses and normalized JSON only after parsing and validation succeed.
 8. Falls back to an existing stale raw source when a refresh request fails. Missing optional department sources produce warnings and explicit placeholders; missing required sources still fail.
 
-The UI's **Refresh Catalog** button calls same-origin `POST /api/catalog`. That route is for local demos: it is open only in `NODE_ENV=development` (typical `next dev`, loopback) unless `CATALOG_REFRESH_TOKEN` is set. When the token is set, POST requires the matching `x-catalog-refresh-token` header. Cross-site browser requests and request bodies are rejected, concurrent refreshes are deduplicated, and a 30-second cooldown applies. Production/`next start` refreshes should use `npm run catalog:refresh` rather than an unauthenticated POST. If refresh fails after the app has already loaded a catalog, the browser keeps the last loaded catalog and reports the error.
+The UI's **Refresh Catalog** button calls same-origin `POST /api/catalog`. That route is for local demos: it is open only in `NODE_ENV=development` (typical `next dev`, loopback) unless `CATALOG_REFRESH_TOKEN` is set. When the token is set, POST requires the matching `x-catalog-refresh-token` header. If the catalog service is listening, the route forwards the refresh there; otherwise it runs the refresh library itself. Cross-site browser requests and request bodies are rejected, concurrent refreshes are deduplicated, and a 30-second cooldown applies. Production/`next start` refreshes should use `npm run catalog:refresh` rather than an unauthenticated POST. If refresh fails after the app has already loaded a catalog, the browser keeps the last loaded catalog and reports the error.
 
 `data/raw/cs5800-search.html`, `data/raw/cs6140-search.html`, and similarly named search files are research fixtures. Normal ingestion uses bulk subject pages instead.
 
 ### Generated files
 
-- `data/catalog.json`: complete validated payload used by the application.
+- `data/catalog.json`: complete validated payload used by the application for the default program.
+- `data/catalogs/<id>/`: per-program snapshots written by the catalog service.
 - `data/courses.json`: normalized courses.
 - `data/requirements.json`: normalized degree rules.
-- `data/raw/.catalog-cache.json`: source URLs and fetch timestamps.
+- `data/raw/.catalog-cache.json`: source URLs, validators, and fetch timestamps.
 
 Do not hand-edit generated prerequisite relationships. Refresh or fix the parser instead.
 
@@ -186,9 +211,10 @@ Generate or refresh normalized catalog data:
 npm run catalog:refresh
 ```
 
-Start development server:
+Start the catalog service (optional, for background updates) and the app:
 
 ```bash
+npm run catalog:serve
 npm run dev
 ```
 
@@ -226,13 +252,13 @@ Browser acceptance criteria are documented in [`docs/acceptance-checklist.md`](d
 ## Security and trust boundaries
 
 - `GET /api/catalog` only reads the local cache. `POST /api/catalog` is not an unauthenticated refresh: it requires `CATALOG_REFRESH_TOKEN` via `x-catalog-refresh-token`, or is limited to `NODE_ENV=development`.
-- Remote fetch targets are code-defined; refresh accepts no caller-supplied URL.
-- Redirects must remain HTTPS on `catalog.northeastern.edu` and may not enter blocked search/archive paths.
+- Remote fetch targets come from committed source JSON files; refresh accepts no caller-supplied URL.
+- Redirects must remain HTTPS on an allowlisted origin and may not enter blocked search/archive paths.
 - Responses and cached files are size-bounded.
 - Normalized disk JSON and LocalStorage JSON are validated before application use.
-- Official links rendered in the UI are restricted to HTTPS Northeastern catalog URLs.
+- Official links rendered in the UI are restricted to HTTPS hosts present in that catalog's `sources`.
 - Refresh writes use temporary files and rename, so a failed parse does not partially replace normalized output.
-- No credentials, login state, server database, telemetry service, or cloud persistence is used.
+- The catalog service binds loopback by default. No credentials, login state, server database, telemetry service, or cloud persistence is used.
 
 ## Known limitations
 

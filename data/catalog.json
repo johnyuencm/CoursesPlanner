@@ -1,4 +1,8 @@
 {
+  "id": "neu-mscs-seattle",
+  "university": "Northeastern University",
+  "program": "Computer Science, MSCS—Seattle",
+  "adapter": "northeastern-acalog",
   "courses": [
     {
       "code": "ARTG 2260",
