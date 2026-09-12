@@ -104,3 +104,15 @@ export function visibleGraphDistances(
   const maxDepth = scope === "full" ? relations.length + 1 : Number(scope);
   return neighborhoodDistances(focusCode, relations, maxDepth);
 }
+
+export function programGridDimensions(
+  count: number,
+  nodeWidth = 176,
+  nodeHeight = 92,
+  canvasAspect = 10 / 7,
+): { columns: number; rows: number } {
+  if (count <= 0) return { columns: 1, rows: 1 };
+  const columns = Math.max(1, Math.round(Math.sqrt(count * canvasAspect * (nodeHeight / nodeWidth))));
+  const rows = Math.max(1, Math.ceil(count / columns));
+  return { columns, rows };
+}

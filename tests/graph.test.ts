@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   catalogRelations,
   neighborhoodDistances,
+  programGridDimensions,
   programMapCodes,
   visibleGraphDistances,
 } from "../lib/graph";
@@ -50,4 +51,11 @@ test("immediate neighborhood of CS 5500 stays local while entire-program scope k
   assert.equal(program.has("CS 5800"), true);
   assert.equal(program.has("CS 5100"), true);
   assert.equal(neighborhood.has("CS 5800"), false);
+});
+
+test("program grid prefers a canvas-filling packing over a short wide strip", () => {
+  const packed = programGridDimensions(114, 164, 64);
+  assert.ok(packed.rows >= 8, `expected a tall packing, got ${packed.rows} rows`);
+  assert.ok(packed.columns <= 12, `expected fewer columns than the 6-row strip, got ${packed.columns}`);
+  assert.equal(packed.columns * packed.rows >= 114, true);
 });

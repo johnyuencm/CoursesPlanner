@@ -354,11 +354,20 @@ textarea { resize: vertical; }
 .segmented-control button { min-height: 31px; display: flex; align-items: center; gap: 0.32rem; border: 0; border-radius: 6px; padding: 0 0.6rem; background: transparent; font-size: 0.68rem; cursor: pointer; }
 .segmented-control button.selected { background: white; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 .graph-layout { display: grid; grid-template-columns: minmax(0, 1fr) var(--rail); gap: 0.85rem; }
-.graph-panel { min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.graph-panel { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.graph-skip { position: absolute; z-index: 20; left: 0.7rem; top: -4.5rem; padding: 0.45rem 0.7rem; border-radius: 8px; background: white; box-shadow: var(--shadow); }
+.graph-skip:focus { top: 0.7rem; }
 .graph-panel-heading { display: flex; justify-content: space-between; gap: 1rem; padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 0.68rem; }
 .graph-panel-heading span { display: flex; gap: 0.3rem; align-items: center; }
-.flow-canvas { height: min(72vh, 760px); min-height: 560px; background: #fbfcfd; }
+.flow-canvas { height: min(78vh, 820px); min-height: 580px; background: #fbfcfd; }
+.graph-canvas-hint { margin: 0; padding: 0.45rem 0.85rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.65rem; }
+.react-flow__minimap { border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
 .graph-course-node { position: relative; width: 196px; border: 1px solid transparent; border-radius: 10px; background: var(--purple-soft); box-shadow: var(--shadow); transition: box-shadow 140ms, border-color 140ms; }
+.graph-course-node.graph-compact { width: 152px; }
+.graph-course-node.graph-compact .graph-node-title,
+.graph-course-node.graph-compact .graph-node-bottom { display: none; }
+.graph-course-node.graph-compact .graph-node-main { padding: 0.42rem 0.55rem 0.4rem; }
+.graph-course-node.graph-compact .graph-node-main strong { margin-top: 0.18rem; font-size: 0.95rem; }
 .graph-course-node.graph-core { background: var(--red-soft); }
 .graph-course-node.graph-breadth { background: var(--blue-soft); }
 .graph-course-node.graph-elective { background: var(--purple-soft); }
