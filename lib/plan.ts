@@ -1,6 +1,7 @@
 import type { PlannedCourse, Semester, StudentPlan } from "./types";
 
 export const STORAGE_KEY = "neu-mscs-planner-plan-v1";
+export const MAX_PLAN_BACKUP_BYTES = 1_000_000;
 
 const MAX_COURSE_CODES = 256;
 const MAX_CREDIT_ENTRIES = 256;
@@ -127,6 +128,36 @@ export function parsePlan(input: unknown): StudentPlan {
   }
 
   return { version: 1, completedCourses, waivedCourses, completedCredits, semesters };
+}
+
+function backupSize(text: string): number {
+  return new TextEncoder().encode(text).byteLength;
+}
+
+export function serializePlanBackup(plan: StudentPlan): string {
+  const backup = JSON.stringify(parsePlan(plan));
+  if (backupSize(backup) > MAX_PLAN_BACKUP_BYTES) {
+    throw new Error("Plan backup is too large.");
+  }
+  return backup;
+}
+
+export function parsePlanBackup(text: string): StudentPlan {
+  if (backupSize(text) > MAX_PLAN_BACKUP_BYTES) {
+    throw new Error("Plan backup is too large.");
+  }
+  try {
+    return parsePlan(JSON.parse(text));
+  } catch (error) {
+    if (error instanceof SyntaxError) throw new Error("Plan backup must be valid JSON.");
+    throw error;
+  }
+}
+
+export function restorePlan(storage: Pick<Storage, "setItem">, candidate: unknown): StudentPlan {
+  const restored = parsePlan(candidate);
+  storage.setItem(STORAGE_KEY, JSON.stringify(restored));
+  return restored;
 }
 
 export function loadPlan(storage: Pick<Storage, "getItem">): { plan: StudentPlan; error: string | null } {
