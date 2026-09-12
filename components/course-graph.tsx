@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Background, BackgroundVariant, Controls, Handle, MarkerType, MiniMap, Position, ReactFlow, ReactFlowProvider, useReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
 import { ArrowRight, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
-import { catalogRelations, programGridDimensions, visibleGraphDistances, type GraphRelation } from "@/lib/graph";
+import { catalogRelations, PROGRAM_COL, PROGRAM_ROW, programFlowPositions, visibleGraphDistances, type GraphRelation } from "@/lib/graph";
 import { dependencyClosure, expressionLabel } from "@/lib/validation";
 import { useApp } from "./app-provider";
 import { CodeLinks, requirementBadge } from "./course-card";
@@ -17,8 +17,6 @@ type GraphData = {
   selectCourse: (code: string) => void; openCourse: (code: string) => void;
 };
 type GraphNode = Node<GraphData, "course">;
-const PROGRAM_COL = 164;
-const PROGRAM_ROW = 64;
 const READABLE_ZOOM = 1;
 
 function centerNode(
@@ -105,9 +103,10 @@ function GraphWorkspace() {
     };
     const nodes: GraphNode[] = [];
     if (depth === "program") {
-      const codes = [...visible.keys()].sort((left, right) => typeOrder(left, courseMap) - typeOrder(right, courseMap) || left.localeCompare(right, undefined, { numeric: true }));
-      const { columns } = programGridDimensions(codes.length, PROGRAM_COL, PROGRAM_ROW);
-      codes.forEach((code, index) => nodes.push(makeNode(code, (index % columns) * PROGRAM_COL, Math.floor(index / columns) * PROGRAM_ROW)));
+      const compare = (left: string, right: string) => typeOrder(left, courseMap) - typeOrder(right, courseMap) || left.localeCompare(right, undefined, { numeric: true });
+      for (const [code, point] of programFlowPositions(visible.keys(), relations, compare)) {
+        nodes.push(makeNode(code, point.x, point.y));
+      }
     } else {
       const focusUpstream = dependencyClosure(focusCode, catalog?.courses ?? [], "upstream");
       const columns = new Map<number, string[]>();
@@ -137,6 +136,14 @@ function GraphWorkspace() {
   const matches = search.trim() ? catalog.courses.filter((course) => `${course.code} ${course.title}`.toLowerCase().replace(/\s/g, "").includes(needle)).sort((left, right) => Number(visible.has(right.code)) - Number(visible.has(left.code)) || left.code.localeCompare(right.code, undefined, { numeric: true })).slice(0, 8) : [];
   const selected = courseMap.get(selectedCode);
   const badge = selected ? requirementBadge(selected.requirementType) : null;
+  const panTo = (code: string) => {
+    if (getNode(code)) {
+      centerNode(getNode, setCenter, code);
+      return;
+    }
+    const laid = graph.nodes.find((node) => node.id === code);
+    if (laid) void setCenter(laid.position.x + (PROGRAM_COL - 12) / 2, laid.position.y + (PROGRAM_ROW - 8) / 2, { zoom: READABLE_ZOOM, duration: 180 });
+  };
   const focus = (code: string) => {
     const onMap = visible.has(code);
     setFocusCode(code);
@@ -145,7 +152,7 @@ function GraphWorkspace() {
     if (!onMap) {
       setDepth("1");
     } else {
-      centerNode(getNode, setCenter, code);
+      panTo(code);
     }
     requestAnimationFrame(() => {
       document.getElementById("graph-inspector")?.focus({ preventScroll: true });
@@ -184,7 +191,7 @@ function GraphWorkspace() {
             defaultViewport={{ x: 28, y: 20, zoom: READABLE_ZOOM }}
             onInit={(instance) => {
               if (depth !== "program") return;
-              void instance.setViewport({ x: 28, y: 20, zoom: READABLE_ZOOM });
+              centerNode((id) => instance.getNode(id), instance.setCenter, selectedCode, READABLE_ZOOM);
             }}
             minZoom={0.15}
             maxZoom={1.8}
@@ -217,7 +224,7 @@ function GraphWorkspace() {
             })}</tbody>
           </table>
         </div>}
-        {view === "graph" && depth === "program" && <p className="graph-canvas-hint">The map starts at a readable zoom around the selected course. All {graph.nodes.length} official and direct-prerequisite courses are on this map — use the minimap or Fit to view to see them at once.</p>}
+        {view === "graph" && depth === "program" && <p className="graph-canvas-hint">Prerequisite chains run left to right. Courses with no arrows sit below. All {graph.nodes.length} official and direct-prerequisite courses are on this map — click an inspector chip to jump, or use the minimap / Fit to view.</p>}
       </section>
       <aside className="graph-inspector" id="graph-inspector" tabIndex={-1}>
         {badge && <span className={badge.className}>{badge.label}</span>}
@@ -230,9 +237,9 @@ function GraphWorkspace() {
         <div className="inspector-relationships">
           <h3>Prerequisites <span>{selected?.prerequisiteCodes.length ?? 0}</span></h3>
           <p>{selected ? expressionLabel(selected.prerequisites) : "Unknown"}</p>
-          {selected?.prerequisiteCodes.length ? <div className="detail-code-links"><CodeLinks codes={selected.prerequisiteCodes} limit={1000} /></div> : <span className="muted small-text">No parsed prerequisites.</span>}
+          {selected?.prerequisiteCodes.length ? <div className="detail-code-links"><CodeLinks codes={selected.prerequisiteCodes} limit={1000} onSelect={focus} /></div> : <span className="muted small-text">No parsed prerequisites.</span>}
           <h3>Unlocks <span>{selected?.unlocks.length ?? downstream.size}</span></h3>
-          {selected?.unlocks.length ? <div className="detail-code-links"><CodeLinks codes={selected.unlocks} limit={1000} /></div> : <span className="muted small-text">No linked downstream courses in this catalog.</span>}
+          {selected?.unlocks.length ? <div className="detail-code-links"><CodeLinks codes={selected.unlocks} limit={1000} onSelect={focus} /></div> : <span className="muted small-text">No linked downstream courses in this catalog.</span>}
         </div>
         <div className="inspector-actions">
           {!recorded.has(selectedCode) && selected && selected.requirementType !== "external" && <button className="button button-primary" onClick={() => openPicker(undefined, selectedCode)}><Plus size={15} /> Add to Plan</button>}
