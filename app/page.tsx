@@ -73,7 +73,7 @@ export default function OverviewPage() {
           <div className="rail-tip"><p>Tip: Prerequisites are checked from catalog rules and your local plan. Term offerings are unknown.</p></div>
         </section>
         <section className="rail-card">
-          <OfficialLink href={requirements.officialUrl}>Official program requirements</OfficialLink>
+          <OfficialLink href={requirements.officialUrl} sources={catalog.sources}>Official program requirements</OfficialLink>
           {catalogNotes.length > 0 && <details className="catalog-notes"><summary>Catalog data notes ({catalogNotes.length})</summary><ul>{catalogNotes.map((note) => <li key={note}>{note}</li>)}</ul></details>}
         </section>
       </aside>

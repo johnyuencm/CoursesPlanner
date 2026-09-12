@@ -1,14 +1,17 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
-import { readCatalog } from "@/lib/catalog";
+import { readCatalog, validateCatalog } from "@/lib/catalog";
 import { refreshCatalog } from "@/scraper/refresh";
+import type { Catalog } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-let activeRefresh: Promise<ReturnType<typeof readCatalog>> | null = null;
+let activeRefresh: Promise<Catalog> | null = null;
 let lastRefreshStartedAt = 0;
 const REFRESH_COOLDOWN_MS = 30_000;
+const SERVICE_URL = process.env.CATALOG_SERVICE_URL ?? "http://127.0.0.1:8787";
+const CATALOG_ID = process.env.CATALOG_ID ?? "neu-mscs-seattle";
 
 function errorResponse(error: unknown, status = 500) {
   const message =
@@ -42,6 +45,42 @@ function isRefreshAuthorized(request: NextRequest): boolean {
   return process.env.NODE_ENV === "development";
 }
 
+function isServiceUnreachable(error: unknown): boolean {
+  if (error instanceof TypeError) return true;
+  if (error instanceof Error && error.name === "AbortError") return false;
+  if (typeof error === "object" && error !== null && "cause" in error) {
+    const cause = (error as { cause?: { code?: string } }).cause;
+    return cause?.code === "ECONNREFUSED" || cause?.code === "ECONNRESET" || cause?.code === "ENOTFOUND" || cause?.code === "EHOSTUNREACH";
+  }
+  return false;
+}
+
+async function refreshViaService(): Promise<Catalog> {
+  const response = await fetch(`${SERVICE_URL}/catalogs/${encodeURIComponent(CATALOG_ID)}/refresh`, {
+    method: "POST",
+    cache: "no-store",
+  });
+  const data: unknown = await response.json();
+  if (!response.ok) {
+    const message =
+      typeof data === "object" && data !== null && "error" in data && typeof data.error === "string"
+        ? data.error
+        : `Catalog service refresh failed (${response.status})`;
+    throw new Error(message);
+  }
+  validateCatalog(data);
+  return data;
+}
+
+async function refreshCatalogSnapshot(): Promise<Catalog> {
+  try {
+    return await refreshViaService();
+  } catch (error) {
+    if (!isServiceUnreachable(error)) throw error;
+    return refreshCatalog({ force: true });
+  }
+}
+
 export async function GET() {
   try {
     return NextResponse.json(readCatalog(), {
@@ -72,7 +111,7 @@ export async function POST(request: NextRequest) {
     }
     if (!activeRefresh) {
       lastRefreshStartedAt = now;
-      activeRefresh = refreshCatalog({ force: true }).finally(() => {
+      activeRefresh = refreshCatalogSnapshot().finally(() => {
         activeRefresh = null;
       });
     }
