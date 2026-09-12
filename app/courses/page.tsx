@@ -35,7 +35,7 @@ function Explorer() {
     if (!catalog) return [];
     const normalized = search.toLowerCase().replace(/\s/g, "");
     return catalog.courses.filter((course) => {
-      if (course.requirementType === "external") return false;
+      if (course.requirementType === "external" && !normalized) return false;
       const haystack = `${course.code} ${course.title} ${course.topics.join(" ")} ${course.description}`.toLowerCase().replace(/\s/g, "");
       if (normalized && !haystack.includes(normalized)) return false;
       if (type === "core" && course.requirementType !== "core") return false;
@@ -56,8 +56,11 @@ function Explorer() {
   const lockedCount = catalogCourses.length - eligibleCount;
   const filterCount = Number(type !== "all") + Number(category !== "all") + Number(credits !== "all") + Number(noPrereq) + Number(eligible) + Number(topic !== "all") + Number(!!search);
   const reset = () => { setSearch(""); setType("all"); setCategory("all"); setCredits("all"); setNoPrereq(false); setEligible(false); setTopic("all"); setLimit(18); };
+  const codeNeedle = search.trim().toUpperCase().replace(/\s+/g, "");
+  const looksLikeCode = /^[A-Z]{2,}\d{3,4}[A-Z]?$/.test(codeNeedle);
+  const knownCode = catalog.courses.some((course) => course.code.replace(/\s/g, "") === codeNeedle);
   return <>
-    <PageHeading title="Course Explorer" description="Discover courses, filter by your interests, and find the right fit for your academic journey." />
+    <PageHeading title="Course Explorer" description="Official MSCS Seattle courses from the program requirements page. Search a course code to also find cataloged prerequisites those courses name." />
     <div className="page-with-rail">
       <div className="page-main">
         <section className="explorer-toolbar" aria-label="Course filters">
@@ -79,7 +82,7 @@ function Explorer() {
         </section>
         <div className="results-heading"><p role="status"><strong>{courses.length}</strong> {courses.length === 1 ? "course" : "courses"}{type === "elective" && <span className="muted"> · Breadth counts here only when not used for breadth requirements.</span>}</p></div>
         {eligible && <p className="eligibility-caption">Prerequisite eligible — offerings not verified. Planned courses do not count as completed history in this filter; use “What can I take next?” for semester-aware eligibility.</p>}
-        {courses.length ? <><div className="course-grid">{courses.slice(0, limit).map((course) => <CourseCard key={course.code} course={course} />)}</div>{courses.length > limit && <div className="load-more"><button className="button button-secondary" onClick={() => setLimit((current) => current + 18)}>Show more courses ({courses.length - limit} remaining)</button></div>}</> : <EmptyState icon={<Filter size={27} />} title="A different search might open a door." action={<button className="button button-secondary" onClick={reset}>Reset all filters</button>}>No courses match these filters. Try a broader interest, a different code, or fewer filters.</EmptyState>}
+        {courses.length ? <><div className="course-grid">{courses.slice(0, limit).map((course) => <CourseCard key={course.code} course={course} />)}</div>{courses.length > limit && <div className="load-more"><button className="button button-secondary" onClick={() => setLimit((current) => current + 18)}>Show more courses ({courses.length - limit} remaining)</button></div>}</> : <EmptyState icon={<Filter size={27} />} title={looksLikeCode && !knownCode ? `${search.trim().toUpperCase()} is not in this catalog.` : "A different search might open a door."} action={<button className="button button-secondary" onClick={reset}>Reset all filters</button>}>{looksLikeCode && !knownCode ? "This planner publishes official MSCS Seattle program courses plus the cataloged prerequisites they name. Undergraduate or other-campus listings are omitted." : "No courses match these filters. Try a broader interest, a different code, or fewer filters."}</EmptyState>}
         <p className="page-footnote">Prerequisite links are navigation aids, not a flattened checklist. Open course details for exact AND/OR rules, grade floors, corequisites, and uncertainties.</p>
       </div>
       <aside className="page-rail">
