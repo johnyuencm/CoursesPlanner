@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "sources": {
+    "program": {
+      "url": "https://catalog.northeastern.edu/graduate/computer-information-science/computer-science/computer-science-mscs-sea/#programrequirementstext",
+      "fetchedAt": "2026-09-12T01:09:37.140Z"
+    },
+    "CS": {
+      "url": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "fetchedAt": "2026-09-12T01:09:38.300Z"
+    },
+    "CY": {
+      "url": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "fetchedAt": "2026-09-12T01:09:38.528Z"
+    },
+    "DADS": {
+      "url": "https://catalog.northeastern.edu/course-descriptions/dads/",
+      "fetchedAt": "2026-09-12T01:09:39.351Z"
+    },
+    "DS": {
+      "url": "https://catalog.northeastern.edu/course-descriptions/ds/",
+      "fetchedAt": "2026-09-12T01:09:40.378Z"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+[
+  {
+    "id": "robotics-software-engineer",
+    "name": "Robotics Software Engineer",
+    "description": "Blend robotics, perception, learning, and production software skills.",
+    "groups": [
+      { "label": "High relevance", "courses": ["CS 5335", "CS 5500"] },
+      { "label": "Medium / high relevance", "courses": ["CS 5180", "CS 5330", "CS 5100"] },
+      { "label": "Alternative AI courses", "courses": ["CS 6120", "CS 6220"] }
+    ]
+  },
+  {
+    "id": "machine-learning",
+    "name": "Machine Learning",
+    "description": "Build foundations in AI, statistical learning, and data-driven systems.",
+    "groups": [
+      { "label": "Foundation", "courses": ["CS 5100", "CS 5800"] },
+      { "label": "Deepen", "courses": ["CS 6140", "CS 5180", "CS 5330"] },
+      { "label": "Explore", "courses": ["CS 6120", "CS 6220"] }
+    ]
+  },
+  {
+    "id": "systems",
+    "name": "Systems",
+    "description": "Explore operating systems, distributed computing, networking, and performance.",
+    "groups": [
+      { "label": "Foundation", "courses": ["CS 5600", "CS 5700"] },
+      { "label": "Deepen", "courses": ["CS 6650", "CS 7680", "CS 7610"] }
+    ]
+  },
+  {
+    "id": "general-software-engineer",
+    "name": "General Software Engineer",
+    "description": "Pair strong software design with databases, systems, and collaborative delivery.",
+    "groups": [
+      { "label": "Foundation", "courses": ["CS 5010", "CS 5500", "CS 5200"] },
+      { "label": "Broaden", "courses": ["CS 5600", "CS 5700", "CS 6510"] }
+    ]
+  },
+  {
+    "id": "data-engineering",
+    "name": "Data Engineering",
+    "description": "Connect database systems, scalable processing, mining, and data platforms.",
+    "groups": [
+      { "label": "Foundation", "courses": ["CS 5200", "CS 5800"] },
+      { "label": "Deepen", "courses": ["CS 6220", "CS 6240", "CS 7280"] }
+    ]
+  }
+]
