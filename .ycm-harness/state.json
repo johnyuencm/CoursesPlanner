@@ -1,0 +1,60 @@
+{
+  "version": 3,
+  "created_at": "2026-09-12T06:05:27.067Z",
+  "updated_at": "2026-09-12T06:06:14.554Z",
+  "active_goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+  "goals": {
+    "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
+      "id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "title": "Complete MSCS Seattle prerequisite graph",
+      "description": "The Prerequisite Graph must show every course listed on the official MSCS Seattle program requirements page, including courses with no parsed prerequisites, plus only the cataloged external prerequisites those courses actually reference.",
+      "status": "active",
+      "assurance": "standard",
+      "backend": {
+        "kind": "local"
+      },
+      "active_ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "worktree_status": "pending",
+      "stop_enforcement": false,
+      "created_at": "2026-09-12T06:05:27.486Z",
+      "updated_at": "2026-09-12T06:06:14.554Z"
+    }
+  },
+  "local_tickets": {
+    "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f": {
+      "id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "title": "Show the full MSCS Seattle prerequisite graph",
+      "brief": "Default Prerequisite Graph must render every official MSCS Seattle program course from the catalog page, including isolated courses with no prerequisites. Keep neighborhood zoom. Do not invent offerings. Restrict the published catalog graph to program courses plus their requirement closure so undergraduate bulk listings stop hiding the program.",
+      "acceptance": [
+        "Opening /map without changing filters shows every core, breadth, and elective course listed on the official MSCS Seattle program requirements page as a node, including CS 5800 and CS 5100 which have no parsed prerequisites.",
+        "Direct external prerequisites of those program courses, such as CS 5004 for CS 5500, remain visible. Unrelated undergraduate CS listings such as CS 1800 are not in the published catalog snapshot.",
+        "The Show control still offers Immediate neighborhood and that view of CS 5500 stays a local neighborhood rather than replacing the entire-program default.",
+        "Grade floors such as C- parse as minimumGrade C- rather than an unknown hyphen token; npm test and npm run typecheck pass."
+      ],
+      "blocked_by": [],
+      "status": "in_progress",
+      "code_changed": true,
+      "order": 0,
+      "created_at": "2026-09-12T06:05:54.100Z",
+      "updated_at": "2026-09-12T06:06:14.552Z"
+    }
+  },
+  "checkpoints": {},
+  "evidence": {},
+  "wiki": {
+    "initialized": false,
+    "sources": {},
+    "pages": {},
+    "log": []
+  },
+  "tracker_cache": {},
+  "legacy_archive": {
+    "version": 2,
+    "state_path": ".ycm-harness/legacy/v2/state.json",
+    "sha256": "4bf67923f697b49bdaeb6f71f5fab8bdcf3aa374fd6aee2579b9e666fc5cd84c",
+    "manifest_path": ".ycm-harness/legacy/v2/manifest.json",
+    "archived_at": "2026-09-12T06:05:27.401Z"
+  },
+  "session_claims": {}
+}
