@@ -1,179 +1,91 @@
 # tech_lead review — ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f
 
-Verdict: **PASS** (no high findings)
+Verdict: **PASS** (round 2; no high findings)
 
-Goal: Complete MSCS Seattle prerequisite graph.
-Reviewed state: branch `fix/complete-prereq-graph` vs `master` (`git diff master...HEAD`),
-commits `c2adbe1`, `7e1a9b8`, `bf4e78e`, `b523ef0`, `9ecd96e`.
-Reviewer is not the implementer. No product file was modified by this review; the only
-file written is this artifact.
+Goal: Complete MSCS Seattle prerequisite graph vs the official catalog.
+Reviewed state: branch `fix/complete-prereq-graph` @ `2fd63b5` (`git diff cc7993e...HEAD`).
+Round-2 product diff additionally inspected: `git diff 9ecd96e..HEAD` (`51ffb41` readable map, `6b0961c` explorer search, plus harness/artifact commits).
+Reviewer is not the implementer. No product file was modified by this review; the only file written is this artifact.
 
-## Evidence I ran myself
+This round is the fix loop after the `user_advocate` FAIL on UA-1 (unreadable default map). Round-1 findings are retained and re-checked; TL-8 and TL-9 are new. I did **not** live-render `/map`; UA-1 remains UA's re-score.
+
+## Evidence I ran myself (round 2)
 
 | Command / check | Result |
 | --- | --- |
-| `npm test` | 38 pass / 0 fail / 0 skipped / 0 todo |
-| `npm run typecheck` (`tsc --noEmit`) | clean, no output |
-| Recompute default scope `programMapCodes(catalog.courses, requirements)` on published `data/catalog.json` | 114 nodes; `listedMissing: []` over all 96 listed codes; `CS 5800` ✓ `CS 5100` ✓ `CS 5004` ✓ `CS 1800` ✗ |
+| `npm test` on `2fd63b5` | **39 pass / 0 fail / 0 skipped / 0 todo** (1313 ms) |
+| `npm run typecheck` (`tsc --noEmit`) | clean, exit 0 |
+| Recompute `programMapCodes` / `visibleGraphDistances("program", …)` on published `data/catalog.json` | **114 nodes · 80 edges**; listed set **96 ≡ 96**; `listedMissing: []` |
+| Spot codes | `CS 5800` ✓ `CS 5100` ✓ `CS 5004` ✓ `CS 1800` ✗ (absent from 142-course snapshot) |
 | `visibleGraphDistances("1", "CS 5500", …)` | exactly `["CS 5004","CS 5010","CS 5500","CS 6510"]` |
-| `data/raw/mscs-sea-program.html` course links vs `data/requirements.json` | 96 links, 96 listed, both set differences empty |
-| Snapshot audit `data/catalog.json` | 142 courses (96 program + 46 external), 0 dangling relation endpoints; `officialUrl` is the MSCS-SEA program-requirements URL |
-| Grade-floor tally, master vs HEAD | master `{D:257, C:130, B:2, S:6}` → HEAD `{D-:28, C-:62, B-:2, D:2, C:23, C+:1}`; unknown-prereq courses 163 → 33; **newly unknown in HEAD: none** |
+| `programGridDimensions(114, 164, 64)` | **8 × 15**; default sort index 0 is `CS 5010` |
+| Default-viewport occupancy at `zoom: 1`, `x: 28, y: 20` | 45/114 at 695×580 (1366), 72/114 at 1004×760, 84/114 at 1134×760 |
+| Grade-floor tally on published snapshot | `{D-:28, C-:62, B-:2, D:2, C:23, C+:1}`; **hyphen-unknown tokens: 0** |
+| Explorer filter `app/courses/page.tsx:38` vs keyword haystack | externals admitted: `data` 9, `systems` 3, `course` 33, `external` 27; `CS 5004` findable; `CS 1800` 0 |
+| `git diff cc7993e...HEAD --numstat -- tests/` | `61/0` + `29/0`; **zero deletions**; no `.skip` / `todo` |
+| Parser this round | `git diff --numstat 9ecd96e..HEAD` has no `scraper/parser.ts` |
 
 ## Acceptance criteria
 
-1. **met.** Default scope is `program` (`components/course-graph.tsx:54`) →
-   `visibleGraphDistances` → `programMapCodes` (`lib/graph.ts:94-105`, `lib/graph.ts:15-26`).
-   All 96 courses linked on the cached official page render as nodes, including the
-   prerequisite-less `CS 5800` and `CS 5100`. Locked by `tests/graph.test.ts:31-40`.
-2. **met.** `CS 5004` is in the default map; `CS 1800` is absent from the snapshot
-   (`scraper/parser.ts:492-513`, `tests/scraper.test.ts:128-137`). See TL-1 and TL-4 for how
-   fragile the second half of this is.
-3. **met.** `option value="1"` survives (`components/course-graph.tsx:104`) and depth-1 of
-   `CS 5500` is 4 local nodes while `program` scope independently keeps the isolated cores
-   (`tests/graph.test.ts:43-52`). See TL-2 for a control that regressed inside this feature.
-4. **met.** `scraper/parser.ts:63-67` accepts and normalizes a trailing ASCII/Unicode minus;
-   the published `CS 6140` expression is two `minimumGrade: "C-"` course items, and the
-   master→HEAD tally above shows the bare-letter mis-parse is gone with no new unknowns.
-   Both gates pass on the submitted state. See TL-5.
+1. **met (node set).** Default scope is still `program` (`components/course-graph.tsx:86`) → `visibleGraphDistances` → `programMapCodes` (`lib/graph.ts:94-105`, `:15-26`). All 96 listed codes are nodes, including isolated `CS 5800` / `CS 5100`. Locked by `tests/graph.test.ts:31-40`. Round 2 did not change membership; it changed packing, zoom, chrome, and DOM culling (`onlyRenderVisibleElements` at `:192`). See debate on PM-6: first paint is a subset.
+2. **met.** `CS 5004` is a default-map node; `CS 1800` is absent (`scraper/parser.ts:492-513`, `tests/scraper.test.ts:128-137`). Explorer now finds `CS 5004`; that fix overshoots (PM-8 / debate).
+3. **met.** All four Show options remain (`components/course-graph.tsx:164-169`). Depth-1 of `CS 5500` is the local 4-node set; program scope independently keeps isolated cores (`tests/graph.test.ts:43-52`). `fitView` is scoped to `depth !== "program"` (`:178`), so neighborhood views keep the old fit behavior.
+4. **met.** No parser change this round; `scraper/parser.ts:63-67` still accepts a trailing minus and publishes `C-`. Gates: 39/39 and clean `tsc`. New packing test is an addition, not a relaxation (`tests/graph.test.ts:56-61`).
 
-## Findings
+## Disposition of round-1 tech_lead findings
 
-### TL-1 (medium) — two competing definitions of "program closure"; the default map still shows nodes whose own prerequisites are missing
+- **TL-1 (medium) — open.** Direct vs transitive closure still disagrees by 28 courses. Default-map dangling chips still exactly four external rows (`CS 5004`, `CS 3650`, `CY 2550`, `DADS 7275`). Unchanged this round.
+- **TL-2 (medium) — fixed.** Refocus is now `depth !== "program" && focusCode !== selectedCode` (`components/course-graph.tsx:225`), so depth 2 and full regain "Focus map here".
+- **TL-3 (low) — fixed.** `focus()` branches on `visible.has(code)` and switches off-map hits to neighborhood (`:139-148`); the result row discloses it (`:151`).
+- **TL-4 (medium) — open.** Snapshot still has no upper bound; `CS 1800 === false` remains incidental. Unchanged.
+- **TL-5 (low) — open.** Grade regex still unanchored. Unchanged.
+- **TL-6 (low) — open.** `.ycm-harness/state.json` and `events.jsonl` remain tracked; round 2 commits more ledger noise (`2/0` events, `29/4` state).
+- **TL-7 (low) — open.** `topologicalRanks` still returns `0` on cycle revisit without memoizing (`lib/graph.ts:82`). Program scope now **ignores ranks for layout** (alphabetical grid at `components/course-graph.tsx:107-109`) and only uses the Map as a node set, so live impact on the default view is even lower. Neighborhood layout is unchanged.
 
-`scraper/parser.ts:492-507` keeps the **transitive** requirement closure of the listed set,
-while `lib/graph.ts:19-24` (`programMapCodes`) admits only **direct** dependencies. The two
-disagree by 28 of the 142 published courses (`CS 5001`, `CS 5002`, `CS 5003`, `CS 5005`,
-`CS 2000`, `CS 2500`, `MATH 3081`, `IE 6200`, …): they ship in `data/catalog.json`, are
-searchable, and can never appear in the default map.
+## Findings (round 2)
 
-The concrete consequence is the original complaint reproduced one level down. `CS 5004`
-renders as a default-map node with `prerequisiteCodes: ["CS 5001","CS 5002"]` and
-`corequisiteCodes: ["CS 5005"]`; the relationship table prints all three as chips
-(`components/course-graph.tsx:104`) while none of the three has a node, and the edge filter
-`visible.has(source) && visible.has(target)` drops their edges. A user reading the table sees
-prerequisites the map does not draw — the shape of the bug this ticket set out to fix.
-Neither closure rule is named, documented, or asserted anywhere; they are just two loops in
-modules that now share `lib/graph.ts`.
+### TL-1 (medium, carried) — two competing program closures; default-map chips without nodes
 
-### TL-2 (medium) — "Focus map here" no longer exists in two of the four Show scopes
+`scraper/parser.ts:494-507` keeps the **transitive** listed-set closure (142 published courses). `lib/graph.ts:19-24` admits only **direct** dependencies (114 default-map nodes). The 28-course gap is the same set as round 1 (`CS 5001`, `CS 5002`, `CS 5005`, `CS 2500`, `MATH 3081`, …). `CS 5004` still prints `prerequisiteCodes` / `corequisiteCodes` the edge filter drops (`visible.has(source) && visible.has(target)` at `components/course-graph.tsx:128`). Same shape as the ticket, confined to the external fringe.
 
-`components/course-graph.tsx:105` gates the refocus button on `depth === "1"`:
+### TL-4 (medium, carried) — nothing bounds the snapshot against re-inflating
 
-    {depth === "1" && focusCode !== selectedCode && <button …>Focus map here</button>}
+The `while (growing)` loop is unchanged. Guards remain `CS 1800 === false` and `visible.size >= core + 20`. A refresh that adds one edge into the undergraduate core still re-inflates with tests green.
 
-On `master` the same button was rendered whenever `focusCode !== selectedCode`, at any depth.
-So in `Two connections away` and `Full connected component` — both of which are focus-relative
-(`lib/graph.ts:104-105`) and both of which still print "Focused on **{focusCode}**" in the
-panel heading — selecting a different node now offers no way to re-center at that scope. The
-only refocus affordance left is "Show neighborhood", which force-drops the scope to `1`.
-Those two options become read-only views of whatever focus was last set from depth 1.
+### TL-8 (medium, new) — compact default mode makes advertised chain emphasis a no-op on nodes
 
-### TL-3 (low) — graph search can select a course that has no node
+Round 2 sets `compact: depth === "program"` (`components/course-graph.tsx:103`) and hides `.graph-node-title` / `.graph-node-bottom` (`app/globals.css:367-368`). `.graph-node-bottom` was the only place `relation` ("Upstream prerequisite" / "Downstream connection") rendered (`components/course-graph.tsx:46`). `.graph-course-node.graph-emphasized` is still an **empty rule** (`app/globals.css:376`); that emptiness is pre-existing, but compact newly removes the remaining node-level channel on the default surface. What remains is a 0.6px / mid-grey edge stroke (`:130`) plus a focused ring on the clicked node (`:377`). The footnote still promises "Select a node to emphasize its upstream and downstream chain" (`:240`). Inspector lists still work, so this is not data loss — it is a dead advertised interaction introduced by the UA-1 packing/compact change. Neighborhood scopes are unaffected (`compact` is false there).
 
-`components/course-graph.tsx:102` searches all 142 catalog courses and `focus()`
-(`components/course-graph.tsx:100`) never touches `depth`. From the default `program` scope,
-choosing a transitive-only external (e.g. `CS 2500`) sets `selectedCode` to a course with no
-node, so the crosshair result updates the inspector but visibly does nothing to the map.
-Same root cause as TL-1; recoverable in one extra click, hence low.
+### TL-9 (medium, new) — the UA-1 viewport contract is untested; packing test asserts the wrong layer
 
-### TL-4 (medium) — nothing bounds the snapshot against re-inflating
+The readability fix is `fitView={depth !== "program"}` plus a hard `zoom: 1` viewport (`components/course-graph.tsx:178-184`). The only new test (`tests/graph.test.ts:56-61`) calls `programGridDimensions(114, 164, 64)` and checks `rows >= 8` / `columns <= 12`. Re-enabling `fitView` on program scope, or dropping `defaultViewport` / `onInit`, would restore the UA-1 crush and every test would still pass, packing included. `onlyRenderVisibleElements` (`:192`) is also unasserted; a DOM node-count of 45–84 is now the expected first paint, not a regression, and nothing in-repo documents that for a later verifier.
 
-The unbounded `while (growing)` closure in `scraper/parser.ts:494-507` is the same mechanism
-that previously dragged in the whole undergraduate CS listing. The guardrails are
-`tests/scraper.test.ts:131` and `tests/graph.test.ts:39`, both of which only assert
-`CS 1800 === false`, and `tests/graph.test.ts:40`, which asserts a **lower** bound
-(`>= coreCourses.length + 20`). `CS 1800`'s absence is incidental, not a property of any
-stated rule: it is excluded only because no listed course currently reaches `CS 3000`, whose
-prerequisites name it. One catalog refresh that adds a single prerequisite edge into the
-undergraduate core silently re-inflates the published snapshot with every test still green.
-No assertion caps snapshot size or external-node count.
+## Areas inspected and found clean (round-2 delta)
 
-### TL-5 (low) — grade-floor regex dropped its boundary anchor
+- **Architecture.** `programGridDimensions` lives next to traversal in `lib/graph.ts:108-118`. One node-set source of truth is unchanged. `fitView` was narrowed, not removed. Explorer search is a one-line predicate change, not a second catalog. No new dependency or schema.
+- **Correctness / data integrity.** 0 dangling relation *endpoints* in the snapshot; 96 ≡ 96 listed; neighborhood locality unchanged; `C-` tally unchanged and hyphen-unknown still 0. `focus()` off-map remounts via `key={`${focusCode}-${depth}`}` (`:174`) with `fitView` on, so the skipped `centerNode` in the `!onMap` branch (`:144-146`) is not a lost camera update. On-map search keeps the `program` key and pans via `centerNode` (`:24-35`).
+- **Tests.** Additions only this round (`8/0` on `tests/graph.test.ts`). Nothing skipped, disabled, mocked, or loosened. Gaps are TL-4 / TL-9, not false greens.
+- **Operations.** Rollback is still revert + snapshot regenerate. 114 compact nodes + MiniMap is inside budget. `minZoom={0.15}` (`:185`) still lets a user crush the view on purpose; default no longer does it for them.
+- **Security.** No new network, filesystem, credential, or URL surface. Explorer now *displays* more placeholder rows; Add-to-plan on those cards is pre-existing `CourseCard` behavior (`components/course-card.tsx:46`) and the picker already warns. Credit audit still excludes externals (existing test remains green).
+- **Code health.** Grid math is unit-testable. Default nodeWidth/nodeHeight in `programGridDimensions` (`176`, `92`) do not match the call site (`164`, `64`); only one caller, so not a defect, just a footgun.
 
-`scraper/parser.ts:63` replaced `([A-Z][+-]?)\b` with `([A-Z](?:[+\u2212\u2013-])?)` under the
-`i` flag. Correct for every floor present in the fixtures (verified tally above), and the
-fix itself is right — the old `\b` was what forced `C-` to degrade to `C` plus a stray hyphen
-token. But with no trailing boundary, a future word-valued floor ("minimum grade of
-Satisfactory") captures `S` and leaves `atisfactory` to be AND-joined as an `unknown` item.
-That fails toward blocked-and-unknown rather than false-eligible, so not a blocker, and the
-new test (`tests/scraper.test.ts:84`) pins the good case; nothing pins rejection of a
-non-letter-grade floor.
+## Debate round 2 — response to project_manager
 
-### TL-6 (low) — append-only harness ledgers are now tracked product files
+Their round-2 artifact is a PASS with medium PM-6, PM-7, PM-8. I independently reproduced their occupancy (45 / 72 / 84), packing (8×15), fit scale (~0.530 at 695×580), keyword-spill counts, and gate runs (39/39, clean `tsc`). No unrebutted high from either seat.
 
-Commit `9ecd96e` tracks `.ycm-harness/state.json` and `.ycm-harness/events.jsonl`. Both are
-already dirty in the working tree at review time, so every harness action from now on dirties
-the product repo, and append-only JSONL will conflict on any branch merge. Product files are
-clean, so the diff I reviewed is the submitted diff.
+- **PM-6 (medium, first paint is a subset):** concede the geometry; **rebut as an AC-1 miss.** Criterion 1 is default-filter membership of every official core/breadth/elective as a **node**, which still holds (`listedMissing: []`, tests at `tests/graph.test.ts:31-40`). `onlyRenderVisibleElements` (`components/course-graph.tsx:192`) plus `zoom: 1` (`:180-184`) means first paint is 45–84 nodes by design; the hint at `:216` and the count live region at `:158` disclose the rest. I will not fail the ticket on viewport occupancy. I restated the durable part as **TL-9**: nothing locks the zoom/`fitView` contract, so UA-1 can return with tests green.
 
-### TL-7 (low) — `topologicalRanks` degrades quietly on cycles and deep chains
+- **PM-7 (medium, map nodes are mouse-only; checklist stale):** **concede.** `nodesFocusable={false}` (`:189`) plus `tabIndex={-1}` on both node buttons (`:40`, `:47`) removes keyboard operation of the canvas. Search (`:151`), skip link (`:155`), and Table (`:208`) remain. `docs/acceptance-checklist.md:17` still says "Verify zoom, keyboard access and long titles" and compact mode additionally hides long titles (`app/globals.css:367`). I do **not** elevate to high: this is not data loss, a security hole, or a false-green test. UIUX F2 is the a11y-bar high; this seat's high bar is not met.
 
-`lib/graph.ts:69-91` computes longest-path depth by recursion with
-`Math.max(...dependencies.map(rankOf))`. A node revisited while `visiting` returns `0`
-**without** memoizing, so a cycle's layout depends on `Set` insertion order, and the
-recursion is unbounded by design. No live impact: `catalogRelations` emits one edge per
-corequisite pair (`lib/graph.ts:36-41`), the current data has no prerequisite cycle, and
-chains are shallow. Flagged because the failure mode is a silently wrong layout, not a throw.
+- **PM-8 (medium, any non-empty search admits externals):** **concede**, with one extra file:line. `app/courses/page.tsx:38` is `external && !normalized`, while `:63` promises a **course-code** search. Independent haystack counts match theirs (`course` → 33 externals because titles are "External course (…)"). `CourseCard` still offers Add to Plan for those rows (`components/course-card.tsx:46`) even though the graph inspector hides it (`components/course-graph.tsx:234`). No explorer test covers `looksLikeCode` / the new branch. Not high: picker already allowed externals with a warning, and degree credit still does not count them.
 
-## Areas inspected and found clean
+Round-1 agreements stand: PM-2 / PM-3 (intended semantics), PM-4 ≡ TL-5, PM-5 ≡ TL-6. UA-7 duplicate OR text and UA-8 dangling chips remain deferred (TL-1).
 
-- **Architecture.** Extracting traversal into `lib/graph.ts` and sharing it with the scraper
-  is the right direction: one definition of "listed program course"
-  (`lib/graph.ts:5-12`, `scraper/parser.ts:2`), no duplicated curated course list. The new
-  `scraper → lib` dependency stays safe because `lib/graph.ts` imports only `lib/types`, so
-  the scraper remains runnable outside Next (proven: the graph tests execute it).
-  The unresolved seam is TL-1, not the extraction.
-- **Correctness / data integrity.** 0 dangling relation endpoints; `unlocks` is recomputed
-  over the pruned set with all prerequisite codes guaranteed resident
-  (`scraper/parser.ts:524-530`); duplicate-parse guard retained (`scraper/parser.ts:488`);
-  the closure loop terminates (monotonically growing bounded set); requirement typing still
-  derives from core/breadth/elective membership (`scraper/parser.ts:535-541`).
-- **Tests.** Additions only, `53/0` and `29/0`; no test skipped, disabled, deleted, or
-  loosened; nothing mocked in place of graph behavior. The new assertions do exercise the new
-  behavior (isolated-core membership, depth-1 locality, `C-` floors) rather than restating
-  implementation. Gaps are TL-4, not false greens.
-- **Operations.** Rollback is a branch revert plus a snapshot regeneration; no migration, no
-  persisted-state change. `parsePlan` already preserves well-formed codes that are no longer
-  in the catalog, so plans referencing pruned courses degrade to unknown rather than being
-  dropped. Rendering 114 nodes / 80 edges in React Flow and 114 table rows is well inside
-  budget; the canvas height change (`app/globals.css:360`) is viewport-relative with a floor.
-- **Security.** No new network, filesystem, process, or credential surface. `catalogOrigin`
-  and its `new URL()` validation are unchanged, and the unsafe-official-link test still
-  passes. The new regex is bounded and non-backtracking-hazardous (no ReDoS). No
-  platform-specific path handling introduced.
-- **Code health.** Net effect is positive: the component shed its inline BFS, and traversal is
-  now unit-testable in isolation. TL-1 is the one place the change makes future evolution
-  harder rather than easier.
-
-## Debate round 1 — response to project_manager
-
-Their artifact reproduces the same numbers I did independently (114 nodes / 80 links, 96≡96,
-4-node `CS 5500` neighborhood, grade-floor set), and we agree on PASS with no high findings.
-
-- **PM-1 (medium, explorer does not disclose the narrowed catalog):** concede. Real, and it is
-  the same family as TL-1/TL-3 — the snapshot boundary is stated only on `/map`
-  (`components/course-graph.tsx:102`, `:106`, `README.md:11`).
-- **PM-4 / PM-5:** agree; same as my TL-5 / TL-6, same severity.
-- **PM-2, PM-3:** agree as written, and both understate one thing: the scope-switching UI lost
-  a control it had on `master`. See **TL-2** (`components/course-graph.tsx:105`) — this is new
-  evidence neither of their findings covers.
-- **Rebut their "Risk: 28 of the 142 … remain reachable in course details and the
-  neighborhood scopes":** reachability is not the whole cost. The divergence also puts nodes
-  on the default map whose printed prerequisite chips have no corresponding node or edge
-  (`CS 5004` → `CS 5001`, `CS 5002`, `CS 5005`), which is the same class of incompleteness the
-  ticket was filed against. I record it as **TL-1 (medium)** rather than a deferred risk.
-- **Rebut their "Risk: a future page change … refresh path is covered":** the uncovered
-  direction is the opposite one. A refresh that adds a prerequisite edge into the
-  undergraduate core re-inflates the snapshot with every test still green, because the only
-  guards are one incidental absence assertion and a lower bound. See **TL-4 (medium)**.
-
-No unrebutted high findings from either seat. I can PASS.
+No unrebutted high findings. I can PASS.
 
 ## Not done by this review
 
-- No live fetch of the catalog. Program-page fidelity was checked against the committed
-  fixture `data/raw/mscs-sea-program.html`, so "matches the official page" is only as fresh as
-  that snapshot.
-- No browser run of `/map`. Criteria 1–3 were verified by recomputing the component's own
-  `visible` set and edge filter from the published data, not by rendering the page.
+- No live browser of `/map`. Readability numbers are recomputed from committed layout constants and CSS (`8×15`, `zoom: 1`, `0.95rem` code). UA-1 is not closed by this seat.
+- No live catalog fetch; fidelity is the committed `data/raw/mscs-sea-program.html`.
+- No screen reader session; PM-7 / TL-8 are DOM/CSS reasoning.
+- Did not run `ycm-harness review *`; no harness review JSON written.
