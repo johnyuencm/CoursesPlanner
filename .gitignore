@@ -8,5 +8,6 @@ out/
 .DS_Store
 npm-debug.log*
 .agents-scratch.md
+data/catalogs/
 playwright-report/
 test-results/

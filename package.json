@@ -9,7 +9,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "catalog:refresh": "tsx scraper/refresh.ts"
+    "catalog:refresh": "tsx catalog-service/cli.ts",
+    "catalog:serve": "tsx catalog-service/server.ts"
   },
   "engines": {
     "node": ">=22.0.0"

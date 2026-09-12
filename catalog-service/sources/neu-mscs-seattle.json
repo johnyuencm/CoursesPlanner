@@ -1,0 +1,53 @@
+{
+  "id": "neu-mscs-seattle",
+  "university": "Northeastern University",
+  "program": "Computer Science, MSCS—Seattle",
+  "adapter": "northeastern-acalog",
+  "enabled": true,
+  "pollIntervalMs": 21600000,
+  "requestDelayMs": 750,
+  "cacheTtlMs": 604800000,
+  "requestTimeoutMs": 15000,
+  "userAgent": "CoursesPlanner-CatalogService/1.0 (local educational catalog cache)",
+  "robotsUrl": "https://catalog.northeastern.edu/robots.txt",
+  "allowedOrigins": ["https://catalog.northeastern.edu"],
+  "disallowedPathPatterns": ["^/(?:search|xsearch|course-search|archive)(?:/|$)"],
+  "programSource": {
+    "key": "program",
+    "url": "https://catalog.northeastern.edu/graduate/computer-information-science/computer-science/computer-science-mscs-sea/#programrequirementstext",
+    "fileName": "mscs-sea-program.html",
+    "required": true
+  },
+  "subjectSources": {
+    "CS": {
+      "key": "CS",
+      "url": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "fileName": "cs.html",
+      "required": true
+    },
+    "CY": {
+      "key": "CY",
+      "url": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "fileName": "cy.html",
+      "required": false
+    },
+    "DS": {
+      "key": "DS",
+      "url": "https://catalog.northeastern.edu/course-descriptions/ds/",
+      "fileName": "ds.html",
+      "required": false
+    },
+    "DADS": {
+      "key": "DADS",
+      "url": "https://catalog.northeastern.edu/course-descriptions/dads/",
+      "fileName": "dads.html",
+      "required": false
+    }
+  },
+  "storage": {
+    "rawDir": "data/raw",
+    "catalogFile": "data/catalog.json",
+    "coursesFile": "data/courses.json",
+    "requirementsFile": "data/requirements.json"
+  }
+}

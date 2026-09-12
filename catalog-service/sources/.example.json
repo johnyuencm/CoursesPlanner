@@ -1,0 +1,28 @@
+{
+  "id": "example-university-program",
+  "university": "Example University",
+  "program": "Example graduate program",
+  "adapter": "northeastern-acalog",
+  "enabled": false,
+  "pollIntervalMs": 21600000,
+  "requestDelayMs": 750,
+  "cacheTtlMs": 604800000,
+  "requestTimeoutMs": 15000,
+  "userAgent": "CoursesPlanner-CatalogService/1.0 (local educational catalog cache)",
+  "allowedOrigins": ["https://catalog.example.edu"],
+  "disallowedPathPatterns": ["^/(?:search|xsearch|course-search|archive)(?:/|$)"],
+  "programSource": {
+    "key": "program",
+    "url": "https://catalog.example.edu/program/",
+    "fileName": "program.html",
+    "required": true
+  },
+  "subjectSources": {
+    "CS": {
+      "key": "CS",
+      "url": "https://catalog.example.edu/course-descriptions/cs/",
+      "fileName": "cs.html",
+      "required": true
+    }
+  }
+}

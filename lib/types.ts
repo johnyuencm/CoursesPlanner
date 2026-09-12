@@ -52,6 +52,10 @@ export interface DegreeRequirement {
 }
 
 export interface Catalog {
+  id?: string;
+  university?: string;
+  program?: string;
+  adapter?: string;
   courses: Course[];
   requirements: DegreeRequirement;
   lastUpdated: string;

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { Catalog, RequirementExpression } from "./types";
 
@@ -12,11 +12,21 @@ const TOPICS = new Set([
 ]);
 const COURSE_CODE = /^[A-Z]{2,6} \d{2,4}[A-Z]{0,2}$/;
 
-function isOfficialUrl(value: unknown): value is string {
+export function officialHostsFromSources(sources: string[]): Set<string> {
+  const hosts = new Set<string>();
+  for (const source of sources) {
+    const url = new URL(source);
+    if (url.protocol !== "https:") throw new Error(`Unexpected catalog source: ${source}`);
+    hosts.add(url.hostname);
+  }
+  return hosts;
+}
+
+export function isOfficialUrl(value: unknown, hosts: Set<string>): value is string {
   if (typeof value !== "string") return false;
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && url.hostname === "catalog.northeastern.edu";
+    return url.protocol === "https:" && hosts.has(url.hostname);
   } catch {
     return false;
   }
@@ -66,12 +76,15 @@ export function validateCatalog(value: unknown): asserts value is Catalog {
   if (typeof value.lastUpdated !== "string" || Number.isNaN(Date.parse(value.lastUpdated))) {
     throw new Error("Catalog lastUpdated is invalid");
   }
-  for (const source of value.sources) {
-    const url = new URL(source);
-    if (url.protocol !== "https:" || url.hostname !== "catalog.northeastern.edu") {
-      throw new Error(`Unexpected catalog source: ${source}`);
+  for (const field of ["id", "university", "program", "adapter"] as const) {
+    if (value[field] !== undefined && (typeof value[field] !== "string" || value[field].length === 0)) {
+      throw new Error(`Catalog ${field} is invalid`);
     }
   }
+  if (typeof value.id === "string" && !/^[a-z0-9][a-z0-9-]{0,80}$/.test(value.id)) {
+    throw new Error("Catalog id is invalid");
+  }
+  const officialHosts = officialHostsFromSources(value.sources);
 
   const codes = new Set<string>();
   for (const rawCourse of value.courses) {
@@ -105,7 +118,7 @@ export function validateCatalog(value: unknown): asserts value is Catalog {
       !isStringArray(rawCourse.uncertainties) ||
       typeof rawCourse.electiveEligible !== "boolean" ||
       !["core", "breadth", "elective", "external"].includes(String(rawCourse.requirementType)) ||
-      !isOfficialUrl(rawCourse.officialUrl)
+      !isOfficialUrl(rawCourse.officialUrl, officialHosts)
     ) {
       throw new Error(`Invalid course record: ${code}`);
     }
@@ -154,7 +167,7 @@ export function validateCatalog(value: unknown): asserts value is Catalog {
     !Number.isFinite(requirements.electiveCredits) ||
     requirements.electiveCredits <= 0 ||
     !isStringArray(requirements.eligibleElectives) ||
-    !isOfficialUrl(requirements.officialUrl) ||
+    !isOfficialUrl(requirements.officialUrl, officialHosts) ||
     !isStringArray(requirements.rawRules) ||
     !isStringArray(requirements.uncertainties) ||
     typeof requirements.lastUpdated !== "string" ||
@@ -204,9 +217,15 @@ export function validateCatalog(value: unknown): asserts value is Catalog {
   }
 }
 
-export function readCatalog(
-  filePath = process.env.CATALOG_DATA_PATH ?? path.join(process.cwd(), "data", "catalog.json"),
-): Catalog {
+export function defaultCatalogFilePath(): string {
+  if (process.env.CATALOG_DATA_PATH) return process.env.CATALOG_DATA_PATH;
+  const id = process.env.CATALOG_ID ?? "neu-mscs-seattle";
+  const perId = path.join(process.cwd(), "data", "catalogs", id, "catalog.json");
+  if (existsSync(perId)) return perId;
+  return path.join(process.cwd(), "data", "catalog.json");
+}
+
+export function readCatalog(filePath = defaultCatalogFilePath()): Catalog {
   const value: unknown = JSON.parse(readFileSync(filePath, "utf8"));
   validateCatalog(value);
   return value;

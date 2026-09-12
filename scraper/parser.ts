@@ -453,7 +453,11 @@ export function parseProgramRequirements(
   };
 }
 
-function externalPlaceholder(code: string): Course {
+function catalogOrigin(officialUrl: string): string {
+  return new URL(officialUrl).origin;
+}
+
+function externalPlaceholder(code: string, origin: string): Course {
   const unavailable = `Course details for ${code} are unavailable in the cached department sources.`;
   return {
     code,
@@ -471,12 +475,13 @@ function externalPlaceholder(code: string): Course {
     requirementType: "external",
     electiveEligible: false,
     topics: [],
-    officialUrl: "https://catalog.northeastern.edu/course-descriptions/",
+    officialUrl: `${origin}/course-descriptions/`,
     uncertainties: [unavailable, "Credits are unknown; zero is a placeholder and must not be counted."],
   };
 }
 
 export function buildCourseGraph(courses: Course[], requirements: DegreeRequirement): Course[] {
+  const origin = catalogOrigin(requirements.officialUrl);
   const byCode = new Map<string, Course>();
   for (const course of courses) {
     if (byCode.has(course.code)) throw new Error(`Duplicate parsed course: ${course.code}`);
@@ -489,12 +494,12 @@ export function buildCourseGraph(courses: Course[], requirements: DegreeRequirem
     ...requirements.breadthRequirements.categories.flatMap((category) => category.courses),
   ]);
   for (const code of listedCodes) {
-    if (!byCode.has(code)) byCode.set(code, externalPlaceholder(code));
+    if (!byCode.has(code)) byCode.set(code, externalPlaceholder(code, origin));
   }
 
   for (const course of [...byCode.values()]) {
     for (const dependency of [...course.prerequisiteCodes, ...course.corequisiteCodes]) {
-      if (!byCode.has(dependency)) byCode.set(dependency, externalPlaceholder(dependency));
+      if (!byCode.has(dependency)) byCode.set(dependency, externalPlaceholder(dependency, origin));
     }
   }
 
