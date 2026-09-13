@@ -5,14 +5,11 @@ import test from "node:test";
 
 import {
   catalogRelations,
-  classifyUnlinkedProgramCodes,
   compactGraphStatusLabel,
   layoutProgramFlow,
   mapFind,
   mapScene,
-  neighborhoodDistances,
   PROGRAM_ROW,
-  programGridDimensions,
   programMapCodes,
   unlockArrowView,
   visibleGraphDistances,
@@ -20,6 +17,24 @@ import {
 import { PROGRAM_URL, buildCourseGraph, parseCourses, parseProgramRequirements } from "../scraper/parser";
 
 const fixture = (name: string) => readFileSync(path.join(process.cwd(), "data", "raw", name), "utf8");
+
+function bandCourses(
+  layout: { positions: Map<string, { x: number; y: number }>; bands: { id: string; y: number }[] },
+  codes: Iterable<string>,
+  id: string,
+): string[] {
+  const band = layout.bands.find((item) => item.id === id);
+  if (!band) return [];
+  const next = layout.bands.filter((item) => item.y > band.y).sort((left, right) => left.y - right.y)[0];
+  const result: string[] = [];
+  for (const code of codes) {
+    const y = layout.positions.get(code)?.y;
+    if (y === undefined || y <= band.y) continue;
+    if (next && y >= next.y) continue;
+    result.push(code);
+  }
+  return result;
+}
 
 function seattleGraph() {
   const requirements = parseProgramRequirements(
@@ -51,7 +66,7 @@ test("entire-program map includes isolated official MSCS Seattle courses and the
 test("immediate neighborhood of CS 5500 stays local while entire-program scope keeps isolated cores", () => {
   const { courses, requirements } = seattleGraph();
   const relations = catalogRelations(courses);
-  const neighborhood = neighborhoodDistances("CS 5500", relations, 1);
+  const neighborhood = visibleGraphDistances("1", "CS 5500", courses, requirements, relations);
   const program = visibleGraphDistances("program", "CS 5500", courses, requirements, relations);
 
   assert.deepEqual([...neighborhood.keys()].sort(), ["CS 5004", "CS 5010", "CS 5500", "CS 6510"]);
@@ -61,10 +76,16 @@ test("immediate neighborhood of CS 5500 stays local while entire-program scope k
 });
 
 test("program grid prefers a canvas-filling packing over a short wide strip", () => {
-  const packed = programGridDimensions(114, 164, 64);
-  assert.ok(packed.rows >= 8, `expected a tall packing, got ${packed.rows} rows`);
-  assert.ok(packed.columns <= 12, `expected fewer columns than the 6-row strip, got ${packed.columns}`);
-  assert.equal(packed.columns * packed.rows >= 114, true);
+  const none = { type: "none" as const };
+  const codes = Array.from({ length: 114 }, (_, index) => `E ${String(index).padStart(3, "0")}`);
+  const courses = codes.map((code) => ({ code, requirementType: "elective" as const, prerequisites: none }));
+  const layout = layoutProgramFlow(codes, [], courses, undefined, 164, 64);
+  const points = codes.map((code) => layout.positions.get(code)!);
+  const columns = new Set(points.map((point) => point.x)).size;
+  const rows = new Set(points.map((point) => point.y)).size;
+  assert.ok(rows >= 8, `expected a tall packing, got ${rows} rows`);
+  assert.ok(columns <= 12, `expected fewer columns than the 6-row strip, got ${columns}`);
+  assert.equal(columns * rows >= 114, true);
 });
 
 test("program flow puts prerequisites to the left of the courses they unlock", () => {
@@ -144,20 +165,22 @@ test("unlock arrows keep unselected on-map prerequisites muted", () => {
 test("unlinked codes with no parsed prerequisite sit in the no-prereq band, not the connected roots", () => {
   const { courses, requirements } = seattleGraph();
   const codes = programMapCodes(courses, requirements);
-  const classified = classifyUnlinkedProgramCodes(codes, catalogRelations(courses), courses);
+  const layout = layoutProgramFlow(codes, catalogRelations(courses), courses);
+  const noPrerequisite = bandCourses(layout, codes, "no-prerequisite");
+  const unlinked = bandCourses(layout, codes, "unlinked");
 
-  assert.equal(classified.noPrerequisite.includes("CS 5150"), true);
-  assert.equal(classified.noPrerequisite.includes("CS 5010"), false);
-  assert.equal(classified.unlinked.includes("CS 5010"), false);
-  assert.equal(classified.noPrerequisite.includes("PHYS 5116"), false);
+  assert.equal(noPrerequisite.includes("CS 5150"), true);
+  assert.equal(noPrerequisite.includes("CS 5010"), false);
+  assert.equal(unlinked.includes("CS 5010"), false);
+  assert.equal(noPrerequisite.includes("PHYS 5116"), false);
 });
 
 test("a corequisite partner is linked even when it has no prerequisite of its own", () => {
   const { courses, requirements } = seattleGraph();
-  const classified = classifyUnlinkedProgramCodes(programMapCodes(courses, requirements), catalogRelations(courses), courses);
-
-  assert.equal(classified.noPrerequisite.includes("CS 5011"), false);
-  assert.equal(classified.unlinked.includes("CS 5011"), false);
+  const codes = programMapCodes(courses, requirements);
+  const layout = layoutProgramFlow(codes, catalogRelations(courses), courses);
+  assert.equal(bandCourses(layout, codes, "no-prerequisite").includes("CS 5011"), false);
+  assert.equal(bandCourses(layout, codes, "unlinked").includes("CS 5011"), false);
 });
 
 test("layout keeps CS 5011 in the skill tree beside CS 5010 instead of the no-prereq band", () => {
@@ -190,9 +213,9 @@ test("an exclusive coreq pair with no outgoing unlocks occupies consecutive rows
 });
 
 test("CS 5500 neighborhood lays out left to right through the skill tree", () => {
-  const { courses } = seattleGraph();
+  const { courses, requirements } = seattleGraph();
   const relations = catalogRelations(courses);
-  const neighborhood = neighborhoodDistances("CS 5500", relations, 1);
+  const neighborhood = visibleGraphDistances("1", "CS 5500", courses, requirements, relations);
   assert.deepEqual([...neighborhood.keys()].sort(), ["CS 5004", "CS 5010", "CS 5500", "CS 6510"]);
   const positions = layoutProgramFlow(neighborhood.keys(), relations, courses).positions;
   const x = (code: string) => positions.get(code)!.x;
@@ -223,13 +246,13 @@ test("corequisite partners share the earlier prerequisite rank", () => {
 test("layout stacks the no-prereq band below the connected flow and unlinked courses below that", () => {
   const { courses, requirements } = seattleGraph();
   const codes = programMapCodes(courses, requirements);
-  const relations = catalogRelations(courses);
-  const classified = classifyUnlinkedProgramCodes(codes, relations, courses);
-  const layout = layoutProgramFlow(codes, relations, courses);
+  const layout = layoutProgramFlow(codes, catalogRelations(courses), courses);
+  const noPrerequisite = bandCourses(layout, codes, "no-prerequisite");
+  const unlinked = bandCourses(layout, codes, "unlinked");
 
   assert.ok(layout.positions.get("CS 5150")!.y > layout.positions.get("CS 5500")!.y);
-  const noPrereqYs = classified.noPrerequisite.map((code) => layout.positions.get(code)!.y);
-  const unlinkedYs = classified.unlinked.map((code) => layout.positions.get(code)!.y);
+  const noPrereqYs = noPrerequisite.map((code) => layout.positions.get(code)!.y);
+  const unlinkedYs = unlinked.map((code) => layout.positions.get(code)!.y);
   const firstNoPrereqY = Math.min(...noPrereqYs);
   const lastNoPrereqY = Math.max(...noPrereqYs);
   const firstUnlinkedY = Math.min(...unlinkedYs);

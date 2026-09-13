@@ -45,7 +45,7 @@ export function catalogRelations(courses: Course[]): GraphRelation[] {
   return result;
 }
 
-export function neighborhoodDistances(
+function neighborhoodDistances(
   focusCode: string,
   relations: GraphRelation[],
   maxDepth: number,
@@ -68,7 +68,7 @@ export function neighborhoodDistances(
   return distances;
 }
 
-export function topologicalRanks(codes: Iterable<string>, relations: GraphRelation[]): Map<string, number> {
+function topologicalRanks(codes: Iterable<string>, relations: GraphRelation[]): Map<string, number> {
   const keep = new Set(codes);
   const incoming = new Map<string, string[]>();
   for (const code of keep) incoming.set(code, []);
@@ -159,7 +159,7 @@ export function unlockArrowView(
   });
 }
 
-export function classifyUnlinkedProgramCodes(
+function classifyUnlinkedProgramCodes(
   codes: Iterable<string>,
   relations: readonly GraphRelation[],
   courses: Iterable<ClassifiableCourse>,
@@ -189,7 +189,7 @@ export function classifyUnlinkedProgramCodes(
   return { noPrerequisite, unlinked };
 }
 
-export function programGridDimensions(
+function programGridDimensions(
   count: number,
   nodeWidth = 176,
   nodeHeight = 92,
