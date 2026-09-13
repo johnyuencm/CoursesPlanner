@@ -218,7 +218,7 @@ npm run catalog:serve
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Run only one `next dev` at a time: if you are working in `.worktrees/<slug>/`, start Next there and do not also run it at the repo root. Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. For a production server on a shared network, bind loopback if you expose refresh at all:
+Open [http://localhost:3000](http://localhost:3000). Run only one `next dev` at a time: if you are working in `.worktrees/<slug>/`, start Next there and do not also run it at the repo root. Restart `next dev` if a session has been running for many hours; Turbopack memory eviction does not replace a process recycle. Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. For a production server on a shared network, bind loopback if you expose refresh at all:
 
 ```bash
 npx next start --hostname 127.0.0.1
