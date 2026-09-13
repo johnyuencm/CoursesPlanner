@@ -387,6 +387,21 @@ export function isGraphFindSkipTarget(target: EventTarget | null): boolean {
   return Boolean(element.closest("dialog, [role='dialog']"));
 }
 
+function tagNameOf(target: EventTarget | null): string {
+  if (target === null || typeof target !== "object") return "";
+  const tag = (target as { tagName?: unknown }).tagName;
+  return typeof tag === "string" ? tag.toLowerCase() : "";
+}
+
+function isGraphFindEscapeScope(target: EventTarget | null): boolean {
+  const element = elementWithClosest(target);
+  if (!element) return true;
+  if (element.closest(".graph-search-wrap, #graph-find, .flow-canvas")) return true;
+  const tag = tagNameOf(target);
+  if (tag === "input" || tag === "select" || tag === "textarea" || tag === "option") return false;
+  return Boolean(element.closest(".graph-panel"));
+}
+
 export function shouldClearGraphFindOnEscape(
   key: string,
   findQuery: string,
@@ -394,7 +409,8 @@ export function shouldClearGraphFindOnEscape(
 ): boolean {
   if (key !== "Escape") return false;
   if (!findQuery.trim()) return false;
-  return !isGraphFindSkipTarget(target);
+  if (isGraphFindSkipTarget(target)) return false;
+  return isGraphFindEscapeScope(target);
 }
 
 export function compactGraphStatusLabel(fullLabel: string): string {

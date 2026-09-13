@@ -301,7 +301,10 @@ class FakeElement {
   matchesSelector(selector: string): boolean {
     if (selector === "dialog") return this.tagName === "dialog";
     const role = /^\[role=['"](.+)['"]\]$/.exec(selector);
-    return Boolean(role && this.attrs.role === role[1]);
+    if (role) return this.attrs.role === role[1];
+    if (selector.startsWith(".")) return (this.attrs.class ?? "").split(/\s+/).includes(selector.slice(1));
+    if (selector.startsWith("#")) return this.attrs.id === selector.slice(1);
+    return false;
   }
 }
 
@@ -321,15 +324,34 @@ test("graph find skips a role=dialog ancestor used by the course-details modal",
 });
 
 test("Escape clears map find when it has text and the canvas is focused", () => {
-  const canvas = new FakeElement("div", { class: "react-flow" });
+  const canvas = new FakeElement("div", { class: "react-flow" }, new FakeElement("div", { class: "flow-canvas" }));
   assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(canvas)), true);
   assert.equal(shouldClearGraphFindOnEscape("Escape", "  ", asTarget(canvas)), false);
   assert.equal(shouldClearGraphFindOnEscape("f", "cs55", asTarget(canvas)), false);
+  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", null), true);
 });
 
 test("Escape does not steal dialog close when map find has text", () => {
   const insideDialog = new FakeElement("input", {}, new FakeElement("dialog"));
   assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(insideDialog)), false);
+});
+
+test("Escape does not clear map find from the header catalog search", () => {
+  const headerSearch = new FakeElement("input", { type: "search" });
+  assert.equal(isGraphFindSkipTarget(asTarget(headerSearch)), false);
+  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(headerSearch)), false);
+});
+
+test("Escape does not clear map find from the Show depth select", () => {
+  const depth = new FakeElement("select", {}, new FakeElement("label", { class: "graph-depth-label" }, new FakeElement("div", { class: "graph-panel" })));
+  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(depth)), false);
+});
+
+test("Escape still clears map find from graph find UI and the map panel", () => {
+  const findInput = new FakeElement("input", { id: "graph-find" }, new FakeElement("div", { class: "graph-search-wrap" }));
+  const panelNode = new FakeElement("button", {}, new FakeElement("div", { class: "graph-panel" }));
+  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(findInput)), true);
+  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(panelNode)), true);
 });
 
 test("compact graph cards shorten Prerequisite eligible without clipping other statuses", () => {
