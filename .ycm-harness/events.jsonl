@@ -25,3 +25,4 @@
 {"id":"evt_8b968464","kind":"wiki.page.created","at":"2026-09-13T05:54:57.616Z","payload":{"page_id":"work-lite-2026-09-13-skill-tree-map","trigger":"decision"}}
 {"id":"evt_f7cfcc81","kind":"ticket.created","at":"2026-09-13T06:08:44.677Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd"}
 {"id":"evt_23a5294b","kind":"ticket.started","at":"2026-09-13T06:08:54.993Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd"}
+{"id":"evt_ccf070de","kind":"ticket.submitted","at":"2026-09-13T07:00:35.677Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd"}

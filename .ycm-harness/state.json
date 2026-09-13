@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-13T06:08:54.982Z",
+  "updated_at": "2026-09-13T07:00:35.668Z",
   "active_goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -104,11 +104,11 @@
         "npm test and npm run typecheck both exit 0."
       ],
       "blocked_by": [],
-      "status": "in_progress",
+      "status": "in_review",
       "code_changed": true,
       "order": 4,
       "created_at": "2026-09-13T06:08:44.664Z",
-      "updated_at": "2026-09-13T06:08:54.981Z"
+      "updated_at": "2026-09-13T07:00:35.666Z"
     }
   },
   "checkpoints": {
@@ -359,6 +359,18 @@
         "submitted_at": "2026-09-13T04:11:16.478Z"
       },
       "recorded_at": "2026-09-13T04:11:16.480Z"
+    },
+    "submission-ticket-seat-coreq-partners-beside-their-course-and-reuse-skill-6b3b09cd-51c727": {
+      "id": "submission-ticket-seat-coreq-partners-beside-their-course-and-reuse-skill-6b3b09cd-51c727",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "kind": "other",
+      "submission_digest": "395a6a1a3644c3229ca5dd7e97d3ac0e5aa382676f82465aec000630525e5c9b",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T07:00:35.668Z"
+      },
+      "recorded_at": "2026-09-13T07:00:35.668Z"
     }
   },
   "wiki": {
