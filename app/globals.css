@@ -382,7 +382,7 @@ textarea { resize: vertical; }
 .graph-node-main { width: 100%; display: flex; flex-direction: column; padding: 0.55rem 0.62rem 0.5rem; border: 0; background: none; text-align: left; cursor: pointer; }
 .graph-node-meta { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.28rem; }
 .graph-node-meta .badge { flex: 0 1 auto; }
-.graph-node-meta .status-pill { flex: 0 0 auto; max-width: 58%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.graph-node-meta .status-pill { flex: 0 0 auto; white-space: nowrap; }
 .graph-node-main .course-code { margin-top: 0.35rem; color: var(--ink); font-size: 0.82rem; }
 .graph-node-title { min-height: 2.1em; margin-top: 0.12rem; font-size: 0.7rem; line-height: 1.25; color: var(--ink-soft); }
 .graph-course-node .credits { margin-top: 0.28rem; }

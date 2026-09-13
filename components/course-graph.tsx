@@ -5,12 +5,15 @@ import { Background, BackgroundVariant, Controls, Handle, MarkerType, Position, 
 import { ArrowRight, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
 import {
   catalogRelations,
+  compactGraphStatusLabel,
   findCourses,
+  isGraphFindSkipTarget,
   layoutProgramFlow,
   PROGRAM_COL,
   PROGRAM_ROW,
   programMapCodes,
   shouldAutoLocateFind,
+  shouldClearGraphFindOnEscape,
   unlockArrowView,
   visibleGraphDistances,
   wrapFindIndex,
@@ -68,7 +71,7 @@ function CourseNode({ data }: NodeProps<GraphNode>) {
     <button type="button" className="graph-node-main nodrag" onClick={() => data.selectCourse(data.code)} aria-label={`Select ${data.code}, ${data.title}. ${data.badgeLabel}. ${data.statusLabel}.`}>
       <span className="graph-node-meta">
         <span className={data.badgeClass}>{data.badgeLabel}</span>
-        <span className={`status-pill ${data.statusClass}`}>{data.statusLabel}</span>
+        <span className={`status-pill ${data.statusClass}`}>{data.compact ? compactGraphStatusLabel(data.statusLabel) : data.statusLabel}</span>
       </span>
       <strong className="course-code">{data.code}</strong>
       <span className="graph-node-title">{data.title}</span>
@@ -122,6 +125,8 @@ function GraphWorkspace() {
   const [depth, setDepth] = useState<GraphScope>("program");
   const [view, setView] = useState<"graph" | "table">("graph");
   const findInputRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef(search);
+  searchRef.current = search;
   const locateRef = useRef<(code: string, keepFind?: boolean) => void>(() => {});
   const cycleRef = useRef<(step: number) => void>(() => {});
   const matchesRef = useRef<{ code: string; title: string }[]>([]);
@@ -242,13 +247,19 @@ function GraphWorkspace() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target;
-      if (target instanceof Element && target.closest("[role='dialog']")) return;
+      if (isGraphFindSkipTarget(target)) return;
       const modifier = event.ctrlKey || event.metaKey;
       if ((event.key === "f" || event.key === "F") && modifier && !event.altKey) {
         event.preventDefault();
         const input = findInputRef.current;
         input?.focus();
         input?.select();
+        return;
+      }
+      if (shouldClearGraphFindOnEscape(event.key, searchRef.current, target)) {
+        event.preventDefault();
+        setSearch("");
+        setFindIndex(-1);
         return;
       }
       const findNext = event.key === "F3" || ((event.key === "g" || event.key === "G") && modifier);
