@@ -5,17 +5,15 @@ import { Background, BackgroundVariant, Controls, Handle, MarkerType, Position, 
 import { ArrowRight, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
 import {
   catalogRelations,
-  directedPrerequisiteRelations,
   findCourses,
   layoutProgramFlow,
   PROGRAM_COL,
   PROGRAM_ROW,
   programMapCodes,
-  selectedChainRelations,
   shouldAutoLocateFind,
+  unlockArrowView,
   visibleGraphDistances,
   wrapFindIndex,
-  type GraphRelation,
 } from "@/lib/graph";
 import type { Course } from "@/lib/types";
 import { dependencyClosure, expressionLabel } from "@/lib/validation";
@@ -143,11 +141,12 @@ function GraphWorkspace() {
   }, [catalog, depth, focusCode, relations]);
   const graph = useMemo(() => {
     const highlighted = new Set([selectedCode, ...upstream, ...downstream]);
-    const scoped = directedPrerequisiteRelations(relations.filter((edge: GraphRelation) => visible.has(edge.source) && visible.has(edge.target)));
-    const chain = selectedChainRelations(scoped, highlighted);
-    const chainKeys = new Set(chain.map((edge) => `${edge.source}->${edge.target}`));
-    const incoming = new Set(scoped.map((edge) => edge.target));
-    const outgoing = new Set(scoped.map((edge) => edge.source));
+    const arrows = unlockArrowView(
+      relations.filter((edge) => visible.has(edge.source) && visible.has(edge.target)),
+      highlighted,
+    );
+    const incoming = new Set(arrows.map((edge) => edge.target));
+    const outgoing = new Set(arrows.map((edge) => edge.source));
     const makeNode = (code: string, x: number, y: number): GraphNode => {
       const course = courseMap.get(code);
       const emphasized = highlighted.has(code);
@@ -219,17 +218,16 @@ function GraphWorkspace() {
         columnX += width;
       }
     }
-    const edges: Edge[] = scoped.map((edge, index) => {
-      const active = chainKeys.has(`${edge.source}->${edge.target}`);
-      const stroke = active ? "#3d4a5c" : "#d0d5de";
+    const edges: Edge[] = arrows.map((edge, index) => {
+      const stroke = edge.stroke;
       return {
         id: `${edge.source}-${edge.target}-${index}`,
         source: edge.source,
         target: edge.target,
         type: "smoothstep",
         markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: stroke },
-        style: { stroke, strokeWidth: active ? 2.2 : 1.15 },
-        zIndex: active ? 4 : 0,
+        style: { stroke, strokeWidth: edge.emphasized ? 2.2 : 1.15 },
+        zIndex: edge.emphasized ? 4 : 0,
         ariaLabel: `${edge.source} unlocks ${edge.target}`,
         focusable: false,
       };

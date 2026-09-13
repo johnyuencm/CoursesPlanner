@@ -127,6 +127,29 @@ export function directedPrerequisiteRelations(relations: readonly GraphRelation[
   return relations.filter((edge) => !edge.corequisite);
 }
 
+export type UnlockArrow = {
+  source: string;
+  target: string;
+  emphasized: boolean;
+  stroke: string;
+};
+
+export function unlockArrowView(relations: readonly GraphRelation[], chainCodes: Iterable<string>): UnlockArrow[] {
+  const directed = directedPrerequisiteRelations(relations);
+  const chainKeys = new Set(
+    selectedChainRelations(directed, chainCodes).map((edge) => `${edge.source}->${edge.target}`),
+  );
+  return directed.map((edge) => {
+    const emphasized = chainKeys.has(`${edge.source}->${edge.target}`);
+    return {
+      source: edge.source,
+      target: edge.target,
+      emphasized,
+      stroke: emphasized ? "#3d4a5c" : "#d0d5de",
+    };
+  });
+}
+
 export function classifyUnlinkedProgramCodes(
   codes: Iterable<string>,
   relations: readonly GraphRelation[],

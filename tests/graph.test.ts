@@ -13,6 +13,7 @@ import {
   programMapCodes,
   selectedChainRelations,
   shouldAutoLocateFind,
+  unlockArrowView,
   visibleGraphDistances,
   wrapFindIndex,
 } from "../lib/graph";
@@ -111,6 +112,25 @@ test("selected-chain arrows omit relationships that do not touch the selected co
   ];
   const shown = selectedChainRelations(relations, ["PHYS 5116", "CS 7332"]);
   assert.deepEqual(shown, [{ source: "PHYS 5116", target: "CS 7332", corequisite: false }]);
+});
+
+test("unlock arrows omit corequisites and emphasize only the selected chain", () => {
+  const arrows = unlockArrowView(
+    [
+      { source: "CS 5004", target: "CS 5500", corequisite: false },
+      { source: "PHYS 5116", target: "CS 7332", corequisite: false },
+      { source: "CS 5011", target: "CS 5010", corequisite: true },
+    ],
+    ["PHYS 5116", "CS 7332"],
+  );
+
+  assert.deepEqual(
+    arrows.map((arrow) => ({ source: arrow.source, target: arrow.target, emphasized: arrow.emphasized })),
+    [
+      { source: "CS 5004", target: "CS 5500", emphasized: false },
+      { source: "PHYS 5116", target: "CS 7332", emphasized: true },
+    ],
+  );
 });
 
 test("unlinked codes with no parsed prerequisite sit in the no-prereq band, not the connected roots", () => {
