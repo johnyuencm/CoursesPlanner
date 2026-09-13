@@ -31,3 +31,5 @@
 {"id":"evt_5627ec95","kind":"wiki.page.created","at":"2026-09-13T07:04:27.855Z","payload":{"page_id":"work-2026-09-13-coreq-adjacency","trigger":"decision"}}
 {"id":"evt_6698af91","kind":"ticket.created","at":"2026-09-13T07:14:41.183Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6"}
 {"id":"evt_f642586e","kind":"ticket.started","at":"2026-09-13T07:14:51.085Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6"}
+{"id":"evt_dda4b79c","kind":"ticket.submitted","at":"2026-09-13T07:44:17.468Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6"}
+{"id":"evt_1077436b","kind":"ticket.done","at":"2026-09-13T07:45:15.316Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6"}
