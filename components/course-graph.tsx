@@ -41,7 +41,6 @@ type GraphData = {
   hasIncoming: boolean;
   hasOutgoing: boolean;
   selectCourse: (code: string) => void;
-  openCourse: (code: string) => void;
 };
 type BandData = { label: string };
 type GraphNode = Node<GraphData, "course">;
@@ -177,7 +176,6 @@ function GraphWorkspace() {
           hasIncoming: incoming.has(code),
           hasOutgoing: outgoing.has(code),
           selectCourse: setSelectedCode,
-          openCourse,
         },
         ariaLabel: `${code}: ${course?.title ?? "External reference"}`,
       };
@@ -234,7 +232,7 @@ function GraphWorkspace() {
     });
     const courseNodes = nodes.filter((node): node is GraphNode => node.type === "course");
     return { nodes, edges, courseNodes };
-  }, [visible, depth, focusCode, selectedCode, upstream, downstream, catalog, courseMap, relations, openCourse, history, completed, waived, planned]);
+  }, [visible, depth, focusCode, selectedCode, upstream, downstream, catalog, courseMap, relations, history, completed, waived, planned]);
   const programCodes = useMemo(
     () => (catalog ? programMapCodes(catalog.courses, catalog.requirements) : new Set<string>()),
     [catalog],
