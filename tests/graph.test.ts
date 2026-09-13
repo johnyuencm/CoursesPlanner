@@ -5,12 +5,15 @@ import test from "node:test";
 
 import {
   catalogRelations,
+  findCourses,
   neighborhoodDistances,
   programFlowPositions,
   programGridDimensions,
   programMapCodes,
   selectedChainRelations,
+  shouldAutoLocateFind,
   visibleGraphDistances,
+  wrapFindIndex,
 } from "../lib/graph";
 import { PROGRAM_URL, buildCourseGraph, parseCourses, parseProgramRequirements } from "../scraper/parser";
 
@@ -101,4 +104,41 @@ test("selected-chain arrows omit relationships that do not touch the selected co
   ];
   const shown = selectedChainRelations(relations, ["PHYS 5116", "CS 7332"]);
   assert.deepEqual(shown, [{ source: "PHYS 5116", target: "CS 7332", corequisite: false }]);
+});
+
+test("findCourses matches compacted codes and titles and prefers courses on the map", () => {
+  const courses = [
+    { code: "CS 1800", title: "Discrete Structures" },
+    { code: "CS 5500", title: "Foundations of Software Engineering" },
+    { code: "CS 5800", title: "Algorithms" },
+    { code: "PHYS 5116", title: "Electromagnetic Materials" },
+  ];
+
+  assert.deepEqual(findCourses(courses, "  "), []);
+  assert.equal(findCourses(courses, "cs5500")[0]?.code, "CS 5500");
+  assert.equal(findCourses(courses, "PHYS 5116")[0]?.code, "PHYS 5116");
+  assert.equal(findCourses(courses, "discrete")[0]?.code, "CS 1800");
+  assert.equal(findCourses(courses, "800", ["CS 5800"])[0]?.code, "CS 5800");
+  assert.ok(findCourses(courses, "cs").length > 2);
+});
+
+test("findCourses on the MSCS snapshot locates CS 5500 and PHYS 5116", () => {
+  const { courses, requirements } = seattleGraph();
+  const onMap = programMapCodes(courses, requirements);
+  assert.equal(findCourses(courses, "cs5500", onMap)[0]?.code, "CS 5500");
+  assert.equal(findCourses(courses, "5500", onMap)[0]?.code, "CS 5500");
+  assert.equal(findCourses(courses, "PHYS 5116", onMap)[0]?.code, "PHYS 5116");
+});
+
+test("wrapFindIndex and auto-locate match Ctrl+F next/previous behavior", () => {
+  assert.equal(wrapFindIndex(-1, 5, 1), 0);
+  assert.equal(wrapFindIndex(-1, 5, -1), 4);
+  assert.equal(wrapFindIndex(0, 5, 1), 1);
+  assert.equal(wrapFindIndex(4, 5, 1), 0);
+  assert.equal(wrapFindIndex(0, 5, -1), 4);
+  assert.equal(wrapFindIndex(0, 0, 1), -1);
+  assert.equal(shouldAutoLocateFind("c", 12), false);
+  assert.equal(shouldAutoLocateFind("cs55", 4), true);
+  assert.equal(shouldAutoLocateFind("xy", 1), true);
+  assert.equal(shouldAutoLocateFind("cs55", 0), false);
 });

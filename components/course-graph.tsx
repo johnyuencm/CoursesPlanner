@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Background, BackgroundVariant, Controls, Handle, MarkerType, MiniMap, Position, ReactFlow, ReactFlowProvider, useReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
-import { ArrowRight, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
-import { catalogRelations, PROGRAM_COL, PROGRAM_ROW, programFlowPositions, selectedChainRelations, visibleGraphDistances, type GraphRelation } from "@/lib/graph";
+import { ArrowRight, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
+import { catalogRelations, findCourses, PROGRAM_COL, PROGRAM_ROW, programFlowPositions, programMapCodes, selectedChainRelations, shouldAutoLocateFind, visibleGraphDistances, wrapFindIndex, type GraphRelation } from "@/lib/graph";
 import { dependencyClosure, expressionLabel } from "@/lib/validation";
 import { useApp } from "./app-provider";
 import { CodeLinks, requirementBadge } from "./course-card";
@@ -18,6 +18,7 @@ type GraphData = {
 };
 type GraphNode = Node<GraphData, "course">;
 const READABLE_ZOOM = 1;
+const tableRowId = (code: string) => `graph-row-${code.replaceAll(" ", "-")}`;
 
 function centerNode(
   getNode: (id: string) => { position: { x: number; y: number }; measured?: { width?: number; height?: number } } | undefined,
@@ -92,8 +93,13 @@ function GraphWorkspace() {
   const [focusCode, setFocusCode] = useState("CS 5010");
   const [selectedCode, setSelectedCode] = useState("CS 5010");
   const [search, setSearch] = useState("");
+  const [findIndex, setFindIndex] = useState(-1);
   const [depth, setDepth] = useState<GraphScope>("program");
   const [view, setView] = useState<"graph" | "table">("graph");
+  const findInputRef = useRef<HTMLInputElement>(null);
+  const locateRef = useRef<(code: string, keepFind?: boolean) => void>(() => {});
+  const cycleRef = useRef<(step: number) => void>(() => {});
+  const matchesRef = useRef<{ code: string; title: string }[]>([]);
   const courseMap = useMemo(() => new Map(catalog?.courses.map((course) => [course.code, course]) ?? []), [catalog]);
   const history = useMemo(() => new Set([...plan.completedCourses, ...plan.waivedCourses]), [plan.completedCourses, plan.waivedCourses]);
   const recorded = useMemo(() => new Set([...history, ...plan.semesters.flatMap((semester) => semester.courses.map((course) => course.code))]), [history, plan.semesters]);
@@ -145,11 +151,49 @@ function GraphWorkspace() {
     });
     return { nodes, edges };
   }, [visible, depth, focusCode, selectedCode, upstream, downstream, catalog, courseMap, relations, openCourse, history]);
-  if (!catalog) return <CatalogState />;
-  const needle = search.toLowerCase().replace(/\s/g, "");
-  const matches = search.trim() ? catalog.courses.filter((course) => `${course.code} ${course.title}`.toLowerCase().replace(/\s/g, "").includes(needle)).sort((left, right) => Number(visible.has(right.code)) - Number(visible.has(left.code)) || left.code.localeCompare(right.code, undefined, { numeric: true })).slice(0, 8) : [];
-  const selected = courseMap.get(selectedCode);
-  const badge = selected ? requirementBadge(selected.requirementType) : null;
+  const programCodes = useMemo(
+    () => (catalog ? programMapCodes(catalog.courses, catalog.requirements) : new Set<string>()),
+    [catalog],
+  );
+  const matches = useMemo(
+    () => findCourses(catalog?.courses ?? [], search, programCodes),
+    [catalog, search, programCodes],
+  );
+  matchesRef.current = matches;
+  useEffect(() => {
+    if (!matches.length) {
+      setFindIndex(-1);
+      return;
+    }
+    if (!shouldAutoLocateFind(search, matches.length)) return;
+    setFindIndex(0);
+    locateRef.current(matches[0]!.code, true);
+  }, [search, matches]);
+  useEffect(() => {
+    if (findIndex < 0) return;
+    document.getElementById(`graph-find-hit-${findIndex}`)?.scrollIntoView({ block: "nearest" });
+  }, [findIndex]);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[role='dialog']")) return;
+      const modifier = event.ctrlKey || event.metaKey;
+      if ((event.key === "f" || event.key === "F") && modifier && !event.altKey) {
+        event.preventDefault();
+        const input = findInputRef.current;
+        input?.focus();
+        input?.select();
+        return;
+      }
+      const findNext = event.key === "F3" || ((event.key === "g" || event.key === "G") && modifier);
+      if (findNext && matchesRef.current.length) {
+        event.preventDefault();
+        cycleRef.current(event.shiftKey ? -1 : 1);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
   const panTo = (code: string) => {
     if (getNode(code)) {
       centerNode(getNode, setCenter, code);
@@ -158,22 +202,102 @@ function GraphWorkspace() {
     const laid = graph.nodes.find((node) => node.id === code);
     if (laid) void setCenter(laid.position.x + (PROGRAM_COL - 12) / 2, laid.position.y + (PROGRAM_ROW - 8) / 2, { zoom: READABLE_ZOOM, duration: 180 });
   };
-  const focus = (code: string) => {
+  const locate = (code: string, keepFind = false) => {
     const onMap = visible.has(code);
     setFocusCode(code);
     setSelectedCode(code);
-    setSearch("");
     if (!onMap) {
       setDepth("1");
+    } else if (view === "table") {
+      requestAnimationFrame(() => document.getElementById(tableRowId(code))?.scrollIntoView({ block: "nearest" }));
     } else {
       panTo(code);
+      requestAnimationFrame(() => panTo(code));
     }
-    requestAnimationFrame(() => {
-      document.getElementById("graph-inspector")?.focus({ preventScroll: true });
-    });
+    if (!keepFind) {
+      setSearch("");
+      setFindIndex(-1);
+      requestAnimationFrame(() => {
+        document.getElementById("graph-inspector")?.focus({ preventScroll: true });
+      });
+      return;
+    }
+    requestAnimationFrame(() => findInputRef.current?.focus());
   };
+  const cycle = (step: number) => {
+    if (!matches.length) return;
+    const next = wrapFindIndex(findIndex, matches.length, step);
+    setFindIndex(next);
+    const course = matches[next];
+    if (course) locate(course.code, true);
+  };
+  locateRef.current = locate;
+  cycleRef.current = cycle;
+  const focus = (code: string) => locate(code, false);
+  if (!catalog) return <CatalogState />;
+  const selected = courseMap.get(selectedCode);
+  const badge = selected ? requirementBadge(selected.requirementType) : null;
+  const findStatus = !search.trim() ? "" : matches.length ? `${findIndex >= 0 ? findIndex + 1 : 0} of ${matches.length}` : "No matches";
   return <>
-    <PageHeading title="Prerequisite Graph" description="Explore every official MSCS Seattle course and the cataloged prerequisites that connect them." actions={<div className="graph-toolbar"><div className="graph-search-wrap"><div className="search-field"><Search size={16} /><input type="search" aria-label="Search courses in graph" placeholder="Search courses in graph…" value={search} onChange={(event) => setSearch(event.target.value)} /></div>{search && <div className="graph-search-results">{matches.length ? matches.map((course) => <button key={course.code} onClick={() => focus(course.code)}><strong>{course.code}</strong><span>{course.title}{visible.has(course.code) ? "" : " · not on this view — opens neighborhood"}</span><Crosshair size={14} /></button>) : <p>No matching courses. Try another code or title.</p>}</div>}</div><FitToViewButton /></div>} />
+    <PageHeading title="Prerequisite Graph" description="Explore every official MSCS Seattle course and the cataloged prerequisites that connect them. Press Ctrl+F to find a course on the map." actions={<div className="graph-toolbar">
+      <div className="graph-search-wrap">
+        <div className="search-field graph-find-field">
+          <Search size={16} />
+          <input
+            id="graph-find"
+            ref={findInputRef}
+            type="search"
+            autoComplete="off"
+            aria-label="Find a course on the map"
+            aria-keyshortcuts="Control+F Meta+F"
+            aria-controls="graph-find-results"
+            aria-describedby="graph-find-status"
+            placeholder="Find a course (Ctrl+F)"
+            value={search}
+            onChange={(event) => { setSearch(event.target.value); setFindIndex(-1); }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                cycle(event.shiftKey ? -1 : 1);
+              } else if (event.key === "Escape") {
+                event.preventDefault();
+                setSearch("");
+                setFindIndex(-1);
+                event.currentTarget.blur();
+              } else if (event.key === "ArrowDown") {
+                event.preventDefault();
+                cycle(1);
+              } else if (event.key === "ArrowUp") {
+                event.preventDefault();
+                cycle(-1);
+              }
+            }}
+          />
+          {search.trim() ? <span id="graph-find-status" className="graph-find-count" role="status">{findStatus}</span> : <kbd className="graph-find-kbd" aria-hidden="true">Ctrl+F</kbd>}
+          <div className="graph-find-nav">
+            <button type="button" aria-label="Previous match" disabled={!matches.length} onClick={() => cycle(-1)}><ChevronUp size={14} /></button>
+            <button type="button" aria-label="Next match" disabled={!matches.length} onClick={() => cycle(1)}><ChevronDown size={14} /></button>
+          </div>
+        </div>
+        {search.trim() ? <div className="graph-search-results" id="graph-find-results">
+          {matches.length ? matches.map((course, index) => (
+            <button
+              key={course.code}
+              type="button"
+              id={`graph-find-hit-${index}`}
+              aria-current={index === findIndex ? "true" : undefined}
+              className={index === findIndex ? "graph-find-current" : undefined}
+              onClick={() => { setFindIndex(index); locate(course.code, true); }}
+            >
+              <strong>{course.code}</strong>
+              <span>{course.title}{visible.has(course.code) ? "" : " · not on this view — opens neighborhood"}</span>
+              <Crosshair size={14} />
+            </button>
+          )) : <p>No matching courses. Try another code or title.</p>}
+        </div> : null}
+      </div>
+      <FitToViewButton />
+    </div>} />
     <div className="graph-legend" aria-label="Map legend"><span><i className="legend-node core" /> Required</span><span><i className="legend-node breadth" /> Breadth</span><span><i className="legend-node elective" /> Elective</span><span><i className="legend-node completed" /> Completed</span><span><i className="legend-node external" /> Locked / external</span><span><i className="legend-node emphasis" /> Linked to selected</span><span><i className="legend-line" /> Prerequisite relationship</span></div>
     <div className="graph-layout">
       <section className="graph-panel" aria-label="Course prerequisite relationships">
@@ -217,7 +341,7 @@ function GraphWorkspace() {
             onlyRenderVisibleElements
             onNodeClick={(_, node) => setSelectedCode(node.id)}
             proOptions={{ hideAttribution: false }}
-            aria-label="Interactive prerequisite map. Search a course code to jump to it. Use zoom, pan, the minimap, or Fit to view to see the rest of the program."
+            aria-label="Interactive prerequisite map. Press Control F to find a course, then Enter or F3 for the next match. Use zoom, pan, the minimap, or Fit to view to see the rest of the program."
           >
             <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#d5d9e0" />
             <MiniMap pannable zoomable aria-label="Overview of every course currently on the map" />
@@ -229,7 +353,7 @@ function GraphWorkspace() {
             <thead><tr><th scope="col">Course</th><th scope="col">Role</th><th scope="col">Prerequisite rule</th><th scope="col">Take together</th></tr></thead>
             <tbody>{graph.nodes.map((node) => {
               const course = courseMap.get(node.id);
-              return <tr key={node.id}>
+              return <tr key={node.id} id={tableRowId(node.id)} className={node.id === selectedCode ? "graph-find-current" : undefined}>
                 <th scope="row"><button className="text-button" onClick={() => openCourse(node.id)}>{node.id}</button><span>{course?.title ?? "External reference — unknown metadata"}</span></th>
                 <td>{node.data.kind}</td>
                 <td>{node.data.prerequisites}<div className="detail-code-links"><CodeLinks codes={course?.prerequisiteCodes ?? []} limit={1000} /></div></td>

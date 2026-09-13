@@ -236,3 +236,48 @@ export function programFlowPositions(
   });
   return positions;
 }
+
+export function normalizeFindNeedle(query: string): string {
+  return query.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+export type FindableCourse = { code: string; title: string };
+
+export function findCourses<T extends FindableCourse>(
+  courses: readonly T[],
+  query: string,
+  onMap: Iterable<string> = [],
+): T[] {
+  const needle = normalizeFindNeedle(query);
+  if (!needle) return [];
+  const visible = onMap instanceof Set ? onMap : new Set(onMap);
+  const scored: { course: T; score: number }[] = [];
+  for (const course of courses) {
+    const code = normalizeFindNeedle(course.code);
+    const title = normalizeFindNeedle(course.title);
+    if (!code.includes(needle) && !title.includes(needle)) continue;
+    let score = 0;
+    if (visible.has(course.code)) score += 1000;
+    if (code === needle) score += 400;
+    else if (code.startsWith(needle)) score += 200;
+    else if (code.includes(needle)) score += 20;
+    if (title.startsWith(needle)) score += 50;
+    scored.push({ course, score });
+  }
+  scored.sort(
+    (left, right) =>
+      right.score - left.score || left.course.code.localeCompare(right.course.code, undefined, { numeric: true }),
+  );
+  return scored.map((item) => item.course);
+}
+
+export function wrapFindIndex(current: number, count: number, step: number): number {
+  if (count <= 0) return -1;
+  if (current < 0) return step < 0 ? count - 1 : 0;
+  return (current + step + count) % count;
+}
+
+export function shouldAutoLocateFind(query: string, matchCount: number): boolean {
+  if (matchCount <= 0) return false;
+  return matchCount === 1 || normalizeFindNeedle(query).length >= 4;
+}
