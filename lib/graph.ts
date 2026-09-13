@@ -110,6 +110,13 @@ export function visibleGraphDistances(
 export const PROGRAM_COL = 188;
 export const PROGRAM_ROW = 104;
 export const PROGRAM_ISOLATE_GAP = 80;
+export const PROGRAM_BAND_LABEL_ROW = 40;
+export const PROGRAM_BAND_COPY = {
+  "no-prerequisite": "No prerequisite required",
+  unlinked: "Unlinked in this catalog",
+} as const;
+export type ProgramBandId = keyof typeof PROGRAM_BAND_COPY;
+export type ProgramBandLabel = { id: ProgramBandId; label: string; x: number; y: number };
 
 export function selectedChainRelations(relations: GraphRelation[], chain: Iterable<string>): GraphRelation[] {
   const keep = new Set(chain);
@@ -162,36 +169,27 @@ export function programGridDimensions(
   return { columns, rows };
 }
 
-export function programFlowPositions(
+export function layoutProgramFlow(
   codes: Iterable<string>,
   relations: GraphRelation[],
+  courses: Iterable<ClassifiableCourse> = [],
   compare: (left: string, right: string) => number = (left, right) => left.localeCompare(right, undefined, { numeric: true }),
   nodeWidth = PROGRAM_COL,
   nodeHeight = PROGRAM_ROW,
   isolateGap = PROGRAM_ISOLATE_GAP,
-): Map<string, { x: number; y: number }> {
+): { positions: Map<string, { x: number; y: number }>; bands: ProgramBandLabel[] } {
   const keep = new Set(codes);
   const scoped = relations.filter((edge) => keep.has(edge.source) && keep.has(edge.target));
-  const prereqEdges = scoped.filter((edge) => !edge.corequisite);
+  const prereqEdges = directedPrerequisiteRelations(scoped);
   const ranks = topologicalRanks(keep, prereqEdges);
-  for (const edge of scoped) {
-    if (!edge.corequisite) continue;
-    const shared = Math.min(ranks.get(edge.source) ?? 0, ranks.get(edge.target) ?? 0);
-    ranks.set(edge.source, shared);
-    ranks.set(edge.target, shared);
-  }
   const linked = new Set<string>();
-  for (const edge of scoped) {
+  for (const edge of prereqEdges) {
     linked.add(edge.source);
     linked.add(edge.target);
   }
   const connectedByRank = new Map<number, string[]>();
-  const isolates: string[] = [];
   for (const code of keep) {
-    if (!linked.has(code)) {
-      isolates.push(code);
-      continue;
-    }
+    if (!linked.has(code)) continue;
     const rank = ranks.get(code) ?? 0;
     const group = connectedByRank.get(rank) ?? [];
     group.push(code);
@@ -262,15 +260,34 @@ export function programFlowPositions(
       y += nodeHeight;
     }
   }
-  const isolateStartY = positions.size ? flowBottom + isolateGap : 0;
-  const { columns } = programGridDimensions(isolates.length, nodeWidth, nodeHeight);
-  isolates.sort(compare).forEach((code, index) => {
-    positions.set(code, {
-      x: (index % columns) * nodeWidth,
-      y: isolateStartY + Math.floor(index / columns) * nodeHeight,
+  const classified = classifyUnlinkedProgramCodes(keep, relations, courses);
+  const bands: ProgramBandLabel[] = [];
+  let cursor = positions.size ? flowBottom + isolateGap : 0;
+  const packBand = (id: ProgramBandId, bandCodes: string[]) => {
+    if (!bandCodes.length) return;
+    bands.push({ id, label: PROGRAM_BAND_COPY[id], x: 0, y: cursor });
+    cursor += PROGRAM_BAND_LABEL_ROW;
+    const { columns } = programGridDimensions(bandCodes.length, nodeWidth, nodeHeight);
+    [...bandCodes].sort(compare).forEach((code, index) => {
+      const y = cursor + Math.floor(index / columns) * nodeHeight;
+      positions.set(code, { x: (index % columns) * nodeWidth, y });
     });
-  });
-  return positions;
+    cursor += Math.ceil(bandCodes.length / columns) * nodeHeight + isolateGap;
+  };
+  packBand("no-prerequisite", classified.noPrerequisite);
+  packBand("unlinked", classified.unlinked);
+  return { positions, bands };
+}
+
+export function programFlowPositions(
+  codes: Iterable<string>,
+  relations: GraphRelation[],
+  compare: (left: string, right: string) => number = (left, right) => left.localeCompare(right, undefined, { numeric: true }),
+  nodeWidth = PROGRAM_COL,
+  nodeHeight = PROGRAM_ROW,
+  isolateGap = PROGRAM_ISOLATE_GAP,
+): Map<string, { x: number; y: number }> {
+  return layoutProgramFlow(codes, relations, [], compare, nodeWidth, nodeHeight, isolateGap).positions;
 }
 
 export function normalizeFindNeedle(query: string): string {

@@ -7,6 +7,7 @@ import {
   catalogRelations,
   classifyUnlinkedProgramCodes,
   findCourses,
+  layoutProgramFlow,
   neighborhoodDistances,
   programFlowPositions,
   programGridDimensions,
@@ -116,6 +117,34 @@ test("unlinked codes with no parsed prerequisite sit in the no-prereq band, not 
   assert.equal(classified.noPrerequisite.includes("CS 5010"), false);
   assert.equal(classified.unlinked.includes("CS 5010"), false);
   assert.equal(classified.noPrerequisite.includes("PHYS 5116"), false);
+});
+
+test("layout stacks the no-prereq band below the connected flow and unlinked courses below that", () => {
+  const { courses, requirements } = seattleGraph();
+  const codes = programMapCodes(courses, requirements);
+  const relations = catalogRelations(courses);
+  const classified = classifyUnlinkedProgramCodes(codes, relations, courses);
+  const layout = layoutProgramFlow(codes, relations, courses);
+
+  assert.ok(layout.positions.get("CS 5150")!.y > layout.positions.get("CS 5500")!.y);
+  const noPrereqYs = classified.noPrerequisite.map((code) => layout.positions.get(code)!.y);
+  const unlinkedYs = classified.unlinked.map((code) => layout.positions.get(code)!.y);
+  const firstNoPrereqY = Math.min(...noPrereqYs);
+  const lastNoPrereqY = Math.max(...noPrereqYs);
+  const firstUnlinkedY = Math.min(...unlinkedYs);
+  const noPrereqLabel = layout.bands.find((band) => band.id === "no-prerequisite");
+  const unlinkedLabel = layout.bands.find((band) => band.id === "unlinked");
+
+  assert.ok(noPrereqLabel, "expected a No prerequisite required label");
+  assert.ok(noPrereqLabel!.y < firstNoPrereqY);
+  assert.ok(firstUnlinkedY > lastNoPrereqY, "unlinked band should sit below no-prereq courses");
+  assert.ok(unlinkedLabel, "expected an Unlinked in this catalog label");
+  assert.ok(unlinkedLabel!.y < firstUnlinkedY);
+  assert.ok(unlinkedLabel!.y > lastNoPrereqY);
+
+  const spots = [...layout.positions.values()].map((point) => `${point.x},${point.y}`);
+  assert.equal(new Set(spots).size, spots.length, "no two courses may share a cell");
+  assert.equal(layout.positions.size, codes.size);
 });
 
 test("findCourses matches compacted codes and titles and prefers courses on the map", () => {
