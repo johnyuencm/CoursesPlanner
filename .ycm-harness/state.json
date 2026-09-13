@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-12T08:35:02.088Z",
+  "updated_at": "2026-09-13T01:04:10.299Z",
   "active_goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -13,11 +13,11 @@
       "backend": {
         "kind": "local"
       },
-      "active_ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "active_ticket_id": "ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304",
       "worktree_status": "pending",
       "stop_enforcement": false,
       "created_at": "2026-09-12T06:05:27.486Z",
-      "updated_at": "2026-09-12T08:35:02.088Z"
+      "updated_at": "2026-09-12T19:19:29.473Z"
     }
   },
   "local_tickets": {
@@ -38,6 +38,24 @@
       "order": 0,
       "created_at": "2026-09-12T06:05:54.100Z",
       "updated_at": "2026-09-12T08:35:02.087Z"
+    },
+    "ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304": {
+      "id": "ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "title": "Lay out the program map as a prerequisite flow",
+      "brief": "Default Prerequisite Graph should place cataloged prerequisites to the left of the courses they unlock, and inspector code chips should pan the camera to that course instead of only opening a dialog.",
+      "acceptance": [
+        "On the default entire-program map, CS 5004 and CS 5010 sit to the left of CS 5500, and CS 5500 sits to the left of CS 6510.",
+        "Courses with no parsed arrows remain on the map packed below the connected flow; CS 5800 and CS 5100 are still present.",
+        "Clicking a prerequisite or unlock chip in the map inspector selects that course and pans to it when it is on the current view; a chip for a course not on this view opens that course neighborhood.",
+        "Immediate neighborhood of CS 5500 stays the local four-course set; npm test and npm run typecheck pass."
+      ],
+      "blocked_by": [],
+      "status": "done",
+      "code_changed": false,
+      "order": 1,
+      "created_at": "2026-09-12T19:18:49.959Z",
+      "updated_at": "2026-09-12T19:45:33.382Z"
     }
   },
   "checkpoints": {
@@ -50,6 +68,16 @@
       "notes": "Round-3 panel PASS (tech_lead, spec_reviewer, user_advocate, uiux, project_manager) with no high findings. Default /map is the official MSCS Seattle program at readable zoom. Deferred: first-paint subset, dangling external chips, explorer keyword spill, duplicate OR text on CS 5004.",
       "decisions": [],
       "created_at": "2026-09-12T08:30:22.152Z"
+    },
+    "cp_manual_independent-review-pass_c70a": {
+      "id": "cp_manual_independent-review-pass_c70a",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304",
+      "kind": "manual",
+      "title": "independent review PASS",
+      "notes": "Round-1 panel PASS (tech_lead, spec_reviewer, user_advocate, uiux, project_manager) with no high findings after a hung background dispatch was aborted and relaunched. Default /map is a left-to-right prereq flow; inspector chips pan or open neighborhood. Deferred: inspector-pan unit tests, flow test using UI typeOrder, unlabeled isolate band, first-paint CS 5500 off-screen at zoom 1, neighborhood chip remount, MiniMap clip, completed-color-only, dangling chips, explorer keyword spill. Parent goal left active.",
+      "decisions": [],
+      "created_at": "2026-09-13T01:04:10.243Z"
     }
   },
   "evidence": {
@@ -148,6 +176,36 @@
         "submitted_at": "2026-09-12T08:33:47.018Z"
       },
       "recorded_at": "2026-09-12T08:33:47.019Z"
+    },
+    "submission-ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304-0cfc47": {
+      "id": "submission-ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304-0cfc47",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304",
+      "kind": "other",
+      "submission_digest": "3a5ea230c8e459abc8332bf11941aa0e439b1ab64258728b302ebce8d5cf75b4",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-12T19:44:43.239Z"
+      },
+      "recorded_at": "2026-09-12T19:44:43.239Z"
+    },
+    "evidence-eb328f2d": {
+      "id": "evidence-eb328f2d",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304",
+      "kind": "verification",
+      "submission_digest": "3a5ea230c8e459abc8332bf11941aa0e439b1ab64258728b302ebce8d5cf75b4",
+      "evidence_digest": "24394c64788a784a0310539e93532d0c55eb31fcd26e7971debc997d4879f428",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-eb328f2d.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "flow-impl-r1",
+        "verifier_run": "flow-ver-r1",
+        "knowledge": "none",
+        "submitted_at": "2026-09-12T19:45:33.381Z"
+      },
+      "recorded_at": "2026-09-12T19:45:33.382Z"
     }
   },
   "wiki": {
