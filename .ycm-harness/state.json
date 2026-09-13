@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-13T04:08:26.963Z",
+  "updated_at": "2026-09-13T04:11:17.587Z",
   "active_goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -17,7 +17,7 @@
       "worktree_status": "pending",
       "stop_enforcement": false,
       "created_at": "2026-09-12T06:05:27.486Z",
-      "updated_at": "2026-09-13T03:34:49.841Z"
+      "updated_at": "2026-09-13T04:11:17.587Z"
     }
   },
   "local_tickets": {
@@ -91,7 +91,7 @@
       "code_changed": true,
       "order": 3,
       "created_at": "2026-09-13T03:34:35.501Z",
-      "updated_at": "2026-09-13T03:46:02.634Z"
+      "updated_at": "2026-09-13T04:11:17.585Z"
     }
   },
   "checkpoints": {
@@ -312,6 +312,36 @@
         "submitted_at": "2026-09-13T03:46:02.632Z"
       },
       "recorded_at": "2026-09-13T03:46:02.633Z"
+    },
+    "submission-ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3-49a32b": {
+      "id": "submission-ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3-49a32b",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "kind": "other",
+      "submission_digest": "56de3d26b0886e4950d1dba904574c07805db0851f6546acb948d3a9fa3b2587",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T04:10:31.749Z"
+      },
+      "recorded_at": "2026-09-13T04:10:31.749Z"
+    },
+    "evidence-00d08e86": {
+      "id": "evidence-00d08e86",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "kind": "verification",
+      "submission_digest": "56de3d26b0886e4950d1dba904574c07805db0851f6546acb948d3a9fa3b2587",
+      "evidence_digest": "64732a02974b9b9d71475252f3faf4e2ec31e5dc787837586f1a05dc8a983563",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-00d08e86.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "find-impl-r2",
+        "verifier_run": "find-ver-r2",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T04:11:16.478Z"
+      },
+      "recorded_at": "2026-09-13T04:11:16.480Z"
     }
   },
   "wiki": {
