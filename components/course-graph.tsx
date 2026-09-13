@@ -172,7 +172,7 @@ function GraphWorkspace() {
           corequisites: nodeRequirementCopy(course, "corequisites"),
           emphasized,
           focused,
-          compact: depth === "program",
+          compact: true,
           hasIncoming: incoming.has(code),
           hasOutgoing: outgoing.has(code),
           selectCourse: setSelectedCode,
@@ -181,10 +181,10 @@ function GraphWorkspace() {
       };
     };
     const nodes: FlowNode[] = [];
+    const compare = (left: string, right: string) => typeOrder(left, courseMap) - typeOrder(right, courseMap) || left.localeCompare(right, undefined, { numeric: true });
+    const layout = layoutProgramFlow(visible.keys(), relations, catalog?.courses ?? [], compare);
+    for (const [code, point] of layout.positions) nodes.push(makeNode(code, point.x, point.y));
     if (depth === "program") {
-      const compare = (left: string, right: string) => typeOrder(left, courseMap) - typeOrder(right, courseMap) || left.localeCompare(right, undefined, { numeric: true });
-      const layout = layoutProgramFlow(visible.keys(), relations, catalog?.courses ?? [], compare);
-      for (const [code, point] of layout.positions) nodes.push(makeNode(code, point.x, point.y));
       for (const band of layout.bands) {
         nodes.push({
           id: `band:${band.id}`,
@@ -198,22 +198,6 @@ function GraphWorkspace() {
           zIndex: 0,
           style: { width: Math.max(PROGRAM_COL * 3, 420) },
         });
-      }
-    } else {
-      const focusUpstream = dependencyClosure(focusCode, catalog?.courses ?? [], "upstream");
-      const columns = new Map<number, string[]>();
-      for (const [code, distance] of visible) {
-        const rank = code === focusCode ? 0 : focusUpstream.has(code) ? -distance : distance;
-        const group = columns.get(rank) ?? [];
-        group.push(code); columns.set(rank, group);
-      }
-      const wrap = 4;
-      let columnX = 0;
-      for (const rank of Array.from(columns.keys()).sort((a, b) => a - b)) {
-        const codes = columns.get(rank)!.sort((left, right) => typeOrder(left, courseMap) - typeOrder(right, courseMap) || left.localeCompare(right, undefined, { numeric: true }));
-        const width = Math.ceil(codes.length / wrap);
-        codes.forEach((code, index) => nodes.push(makeNode(code, (columnX + Math.floor(index / wrap)) * 230, (index % wrap) * 148 + (codes.length === 1 ? 148 : 0))));
-        columnX += width;
       }
     }
     const edges: Edge[] = arrows.map((edge, index) => {
@@ -232,7 +216,7 @@ function GraphWorkspace() {
     });
     const courseNodes = nodes.filter((node): node is GraphNode => node.type === "course");
     return { nodes, edges, courseNodes };
-  }, [visible, depth, focusCode, selectedCode, upstream, downstream, catalog, courseMap, relations, history, completed, waived, planned]);
+  }, [visible, depth, selectedCode, upstream, downstream, catalog, courseMap, relations, history, completed, waived, planned]);
   const programCodes = useMemo(
     () => (catalog ? programMapCodes(catalog.courses, catalog.requirements) : new Set<string>()),
     [catalog],
