@@ -374,3 +374,15 @@ export function shouldAutoLocateFind(query: string, matchCount: number): boolean
   if (matchCount <= 0) return false;
   return matchCount === 1 || normalizeFindNeedle(query).length >= 4;
 }
+
+function elementWithClosest(target: EventTarget | null): { closest: (selector: string) => unknown } | null {
+  if (target === null || typeof target !== "object" || !("closest" in target)) return null;
+  const closest = (target as { closest: unknown }).closest;
+  return typeof closest === "function" ? (target as { closest: (selector: string) => unknown }) : null;
+}
+
+export function isGraphFindSkipTarget(target: EventTarget | null): boolean {
+  const element = elementWithClosest(target);
+  if (!element) return false;
+  return Boolean(element.closest("dialog, [role='dialog']"));
+}

@@ -7,6 +7,7 @@ import {
   catalogRelations,
   classifyUnlinkedProgramCodes,
   findCourses,
+  isGraphFindSkipTarget,
   layoutProgramFlow,
   neighborhoodDistances,
   PROGRAM_ROW,
@@ -276,4 +277,38 @@ test("wrapFindIndex and auto-locate match Ctrl+F next/previous behavior", () => 
   assert.equal(shouldAutoLocateFind("cs55", 4), true);
   assert.equal(shouldAutoLocateFind("xy", 1), true);
   assert.equal(shouldAutoLocateFind("cs55", 0), false);
+});
+
+class FakeElement {
+  constructor(
+    readonly tagName: string,
+    readonly attrs: Record<string, string> = {},
+    readonly parent: FakeElement | null = null,
+  ) {}
+
+  closest(selector: string): FakeElement | null {
+    const parts = selector.split(",").map((part) => part.trim());
+    let node: FakeElement | null = this;
+    while (node) {
+      if (parts.some((part) => node!.matchesSelector(part))) return node;
+      node = node.parent;
+    }
+    return null;
+  }
+
+  matchesSelector(selector: string): boolean {
+    if (selector === "dialog") return this.tagName === "dialog";
+    const role = /^\[role=['"](.+)['"]\]$/.exec(selector);
+    return Boolean(role && this.attrs.role === role[1]);
+  }
+}
+
+const asTarget = (element: FakeElement) => element as unknown as EventTarget;
+
+test("graph find skips a native dialog even when it has no role attribute", () => {
+  const insideDialog = new FakeElement("input", {}, new FakeElement("dialog"));
+  const onCanvas = new FakeElement("div");
+  assert.equal(isGraphFindSkipTarget(asTarget(insideDialog)), true);
+  assert.equal(isGraphFindSkipTarget(asTarget(onCanvas)), false);
+  assert.equal(isGraphFindSkipTarget(null), false);
 });
