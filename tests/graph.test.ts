@@ -166,6 +166,34 @@ test("layout keeps CS 5011 in the skill tree beside CS 5010 instead of the no-pr
   assert.equal(y("CS 5011"), y("CS 5010") + PROGRAM_ROW);
 });
 
+test("an exclusive coreq pair with no outgoing unlocks occupies consecutive rows in the same column", () => {
+  const none = { type: "none" as const };
+  const layout = layoutProgramFlow(
+    ["COREQ A", "COREQ B"],
+    [{ source: "COREQ A", target: "COREQ B", corequisite: true }],
+    [
+      { code: "COREQ A", requirementType: "elective", prerequisites: none },
+      { code: "COREQ B", requirementType: "elective", prerequisites: none },
+    ],
+  );
+  const a = layout.positions.get("COREQ A")!;
+  const b = layout.positions.get("COREQ B")!;
+  assert.equal(a.x, b.x);
+  assert.equal(Math.abs(a.y - b.y), PROGRAM_ROW);
+});
+
+test("CS 5500 neighborhood lays out left to right through the skill tree", () => {
+  const { courses } = seattleGraph();
+  const relations = catalogRelations(courses);
+  const neighborhood = neighborhoodDistances("CS 5500", relations, 1);
+  assert.deepEqual([...neighborhood.keys()].sort(), ["CS 5004", "CS 5010", "CS 5500", "CS 6510"]);
+  const positions = layoutProgramFlow(neighborhood.keys(), relations, courses).positions;
+  const x = (code: string) => positions.get(code)!.x;
+  assert.ok(x("CS 5004") < x("CS 5500"), "CS 5004 should sit left of CS 5500");
+  assert.ok(x("CS 5010") < x("CS 5500"), "CS 5010 should sit left of CS 5500");
+  assert.ok(x("CS 5500") < x("CS 6510"), "CS 5500 should sit left of CS 6510");
+});
+
 test("corequisite partners share the earlier prerequisite rank", () => {
   const none = { type: "none" as const };
   const layout = layoutProgramFlow(
