@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-13T02:46:03.342Z",
+  "updated_at": "2026-09-13T03:27:41.044Z",
   "active_goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -69,11 +69,11 @@
         "Selecting PHYS 5116 shows only the arrow to CS 7332 and explains that CS 7332 named this external code; npm test and npm run typecheck pass."
       ],
       "blocked_by": [],
-      "status": "in_progress",
+      "status": "done",
       "code_changed": true,
       "order": 2,
       "created_at": "2026-09-13T02:45:49.516Z",
-      "updated_at": "2026-09-13T02:46:03.341Z"
+      "updated_at": "2026-09-13T03:27:41.044Z"
     }
   },
   "checkpoints": {
@@ -224,6 +224,36 @@
         "submitted_at": "2026-09-12T19:45:33.381Z"
       },
       "recorded_at": "2026-09-12T19:45:33.382Z"
+    },
+    "submission-ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df-b963d9": {
+      "id": "submission-ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df-b963d9",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df",
+      "kind": "other",
+      "submission_digest": "75920cf1d923dc18f82949dc98f00e95634b401a0652cc8c0a2e0e402ccfcebe",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T03:27:19.380Z"
+      },
+      "recorded_at": "2026-09-13T03:27:19.380Z"
+    },
+    "evidence-c469f9ba": {
+      "id": "evidence-c469f9ba",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df",
+      "kind": "verification",
+      "submission_digest": "75920cf1d923dc18f82949dc98f00e95634b401a0652cc8c0a2e0e402ccfcebe",
+      "evidence_digest": "e476c8f5f503c47d75da95eb1962eebc5eaf5edd6f19113e411b64f4c7eb4082",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-c469f9ba.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "titles-impl-r1",
+        "verifier_run": "titles-ver-r1",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T03:27:41.042Z"
+      },
+      "recorded_at": "2026-09-13T03:27:41.043Z"
     }
   },
   "wiki": {
