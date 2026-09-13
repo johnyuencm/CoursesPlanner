@@ -29,3 +29,5 @@
 {"id":"evt_356afeca","kind":"ticket.submitted","at":"2026-09-13T07:02:52.101Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd"}
 {"id":"evt_a976f70a","kind":"ticket.done","at":"2026-09-13T07:03:50.997Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd"}
 {"id":"evt_5627ec95","kind":"wiki.page.created","at":"2026-09-13T07:04:27.855Z","payload":{"page_id":"work-2026-09-13-coreq-adjacency","trigger":"decision"}}
+{"id":"evt_6698af91","kind":"ticket.created","at":"2026-09-13T07:14:41.183Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6"}
+{"id":"evt_f642586e","kind":"ticket.started","at":"2026-09-13T07:14:51.085Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6"}

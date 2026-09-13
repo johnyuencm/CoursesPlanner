@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-13T07:04:27.856Z",
+  "updated_at": "2026-09-13T07:14:51.074Z",
   "active_goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -13,11 +13,11 @@
       "backend": {
         "kind": "local"
       },
-      "active_ticket_id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "active_ticket_id": "ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6",
       "worktree_status": "pending",
       "stop_enforcement": false,
       "created_at": "2026-09-12T06:05:27.486Z",
-      "updated_at": "2026-09-13T07:03:50.987Z"
+      "updated_at": "2026-09-13T07:14:51.074Z"
     }
   },
   "local_tickets": {
@@ -109,6 +109,24 @@
       "order": 4,
       "created_at": "2026-09-13T06:08:44.664Z",
       "updated_at": "2026-09-13T07:03:50.986Z"
+    },
+    "ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6": {
+      "id": "ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "title": "Clear remaining map leftovers before closing the MSCS graph goal",
+      "brief": "Batch-fix named leftover debt: compact eligible pill clipping, course-details dialog stealing Ctrl+F, and Escape not clearing map find after a canvas click.",
+      "acceptance": [
+        "Compact graph course cards show the eligible status in full with no CSS ellipsis clipping; the inspector may keep the long Prerequisite eligible wording.",
+        "Map Ctrl+F is skipped while a native course-details dialog is open (closest dialog or role=dialog). The Modal dialog is discoverable as a dialog to that skip.",
+        "Escape clears the graph find field when it has text even if the React Flow canvas is focused; Escape inside an open dialog does not get stolen by map find.",
+        "npm test and npm run typecheck both exit 0."
+      ],
+      "blocked_by": [],
+      "status": "in_progress",
+      "code_changed": true,
+      "order": 5,
+      "created_at": "2026-09-13T07:14:41.168Z",
+      "updated_at": "2026-09-13T07:14:51.073Z"
     }
   },
   "checkpoints": {
