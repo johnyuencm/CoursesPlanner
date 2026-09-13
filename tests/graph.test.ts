@@ -9,7 +9,6 @@ import {
   findCourses,
   layoutProgramFlow,
   neighborhoodDistances,
-  programFlowPositions,
   programGridDimensions,
   programMapCodes,
   selectedChainRelations,
@@ -70,7 +69,7 @@ test("program grid prefers a canvas-filling packing over a short wide strip", ()
 test("program flow puts prerequisites to the left of the courses they unlock", () => {
   const { courses, requirements } = seattleGraph();
   const codes = programMapCodes(courses, requirements);
-  const positions = programFlowPositions(codes, catalogRelations(courses));
+  const positions = layoutProgramFlow(codes, catalogRelations(courses), courses).positions;
   const x = (code: string) => positions.get(code)!.x;
   const y = (code: string) => positions.get(code)!.y;
 
@@ -90,10 +89,16 @@ test("program flow puts prerequisites to the left of the courses they unlock", (
 });
 
 test("a sole prerequisite sits on the same row immediately left of the course that names it", () => {
-  const positions = programFlowPositions(
+  const none = { type: "none" as const };
+  const positions = layoutProgramFlow(
     ["PHYS 5116", "CS 7332", "CS 5150"],
     [{ source: "PHYS 5116", target: "CS 7332", corequisite: false }],
-  );
+    [
+      { code: "PHYS 5116", requirementType: "external", prerequisites: none },
+      { code: "CS 7332", requirementType: "elective", prerequisites: { type: "course", code: "PHYS 5116" } },
+      { code: "CS 5150", requirementType: "elective", prerequisites: none },
+    ],
+  ).positions;
   assert.ok(positions.get("PHYS 5116")!.x < positions.get("CS 7332")!.x);
   assert.equal(positions.get("PHYS 5116")!.y, positions.get("CS 7332")!.y);
   assert.ok(positions.get("CS 5150")!.y > positions.get("CS 7332")!.y);

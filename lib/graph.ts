@@ -172,7 +172,7 @@ export function programGridDimensions(
 export function layoutProgramFlow(
   codes: Iterable<string>,
   relations: GraphRelation[],
-  courses: Iterable<ClassifiableCourse> = [],
+  courses: Iterable<ClassifiableCourse>,
   compare: (left: string, right: string) => number = (left, right) => left.localeCompare(right, undefined, { numeric: true }),
   nodeWidth = PROGRAM_COL,
   nodeHeight = PROGRAM_ROW,
@@ -283,17 +283,6 @@ export function layoutProgramFlow(
   packBand("no-prerequisite", classified.noPrerequisite);
   packBand("unlinked", classified.unlinked);
   return { positions, bands };
-}
-
-export function programFlowPositions(
-  codes: Iterable<string>,
-  relations: GraphRelation[],
-  compare: (left: string, right: string) => number = (left, right) => left.localeCompare(right, undefined, { numeric: true }),
-  nodeWidth = PROGRAM_COL,
-  nodeHeight = PROGRAM_ROW,
-  isolateGap = PROGRAM_ISOLATE_GAP,
-): Map<string, { x: number; y: number }> {
-  return layoutProgramFlow(codes, relations, [], compare, nodeWidth, nodeHeight, isolateGap).positions;
 }
 
 export function normalizeFindNeedle(query: string): string {
