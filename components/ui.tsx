@@ -17,7 +17,7 @@ export function Modal({ title, eyebrow, children, onClose, drawer = false }: { t
     dialog?.showModal();
     return () => { dialog?.close(); if (previous?.isConnected) previous.focus({ preventScroll: true }); };
   }, []);
-  return <dialog ref={ref} aria-labelledby={titleId} className={drawer ? "modal drawer" : "modal"} onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className="modal-inner"><header className="modal-header"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h2 id={titleId}>{title}</h2></div><button className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={20} /></button></header>{children}</div></dialog>;
+  return <dialog ref={ref} role="dialog" aria-labelledby={titleId} className={drawer ? "modal drawer" : "modal"} onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className="modal-inner"><header className="modal-header"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h2 id={titleId}>{title}</h2></div><button className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={20} /></button></header>{children}</div></dialog>;
 }
 
 export function Meter({ value, max, label, detail }: { value: number; max: number; label: string; detail?: string }) {

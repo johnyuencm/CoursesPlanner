@@ -69,9 +69,26 @@ test("parses reciprocal corequisites and grouped prerequisites from cached bulk 
   assert.equal(cs6140.prerequisites.type, "any");
   assert.deepEqual(cs6140.prerequisiteCodes, ["CS 5800", "CS 7800"]);
   assert.match(cs6140.prerequisiteText, /minimum grade of C-/i);
+  assert.deepEqual(cs6140.prerequisites, {
+    type: "any",
+    items: [
+      { type: "course", code: "CS 5800", minimumGrade: "C-" },
+      { type: "course", code: "CS 7800", minimumGrade: "C-" },
+    ],
+  });
   assert.equal(containsType(cs6510.prerequisites, "all"), true);
   assert.equal(containsType(cs6510.prerequisites, "any"), true);
   assert.ok(cs6510.prerequisiteCodes.length >= 3);
+});
+
+test("parses letter-grade floors that include a trailing minus", () => {
+  assert.deepEqual(parseRequirement("CS 5800 with a minimum grade of C- or CS 7800 with a minimum grade of C-"), {
+    type: "any",
+    items: [
+      { type: "course", code: "CS 5800", minimumGrade: "C-" },
+      { type: "course", code: "CS 7800", minimumGrade: "C-" },
+    ],
+  });
 });
 
 test("keeps unsupported or malformed requirement clauses explicitly unknown", () => {
@@ -107,6 +124,18 @@ test("builds downstream prerequisite unlocks without adding corequisite unlocks"
   assert.ok(
     cs5010.unlocks.some((code) => byCode.get(code)?.prerequisiteCodes.includes("CS 5010")),
     "at least one parsed prerequisite should produce a downstream unlock",
+  );
+  assert.ok(byCode.has("CS 5100"), "isolated breadth courses remain in the program graph");
+  assert.ok(byCode.has("CS 5800"), "core courses with no prerequisites remain in the program graph");
+  assert.ok(byCode.has("CS 5004"), "direct external prerequisites of program courses remain");
+  assert.equal(byCode.has("CS 1800"), false, "unrelated undergraduate bulk listings stay out of the published catalog");
+  assert.equal(
+    graph.filter((course) => course.requirementType !== "external").length,
+    new Set([
+      ...requirements.coreCourses,
+      ...requirements.eligibleElectives,
+      ...requirements.breadthRequirements.categories.flatMap((category) => category.courses),
+    ]).size,
   );
 });
 

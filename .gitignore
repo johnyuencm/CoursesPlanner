@@ -9,5 +9,7 @@ out/
 npm-debug.log*
 .agents-scratch.md
 data/catalogs/
+.ycm-harness/.migration-v3.tmp/
+.ycm-harness/legacy/
 playwright-report/
 test-results/

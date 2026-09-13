@@ -1,0 +1,59 @@
+# smoke log evidence-e45b7550
+# exit=0
+# sha256=7abaaac1c75c3f01c41b4e55bcc29847c58b71c24096acf4c02d30d8012c23a0
+
+
+> neu-mscs-course-planner@1.0.0 test
+> tsx --test tests/*.test.ts
+
+✔ GET /api/catalog returns the cached catalog without a refresh token (12.5702ms)
+✔ unauthenticated POST /api/catalog without a refresh token is 401 (2.7724ms)
+✔ POST /api/catalog without a configured token is 401 outside development (0.852ms)
+✔ cross-site POST /api/catalog is still 403 (0.581ms)
+✔ registry loads the enabled Northeastern source and ignores example templates (8.1709ms)
+✔ crawler refuses robots-disallowed catalog search paths (3.0505ms)
+✔ conditional GET 304 keeps the cached body (3.1407ms)
+✔ scheduler refreshes a due source once per poll interval (20.8189ms)
+✔ 304 catalog check keeps lastUpdated and records If-None-Match (290.8963ms)
+✔ two registered sources refresh independently from the same fixtures (338.897ms)
+✔ catalog service HTTP handlers list sources and reject unsafe refresh bodies (2.9264ms)
+✔ entire-program map includes isolated official MSCS Seattle courses and their direct prerequisites (115.6028ms)
+✔ immediate neighborhood of CS 5500 stays local while entire-program scope keeps isolated cores (48.7105ms)
+✔ program grid prefers a canvas-filling packing over a short wide strip (0.2997ms)
+✔ emptyPlan starts in Fall 2026 with five fresh terms and one co-op (1.4351ms)
+✔ parsePlan accepts valid version-1 data and preserves well-formed unknown catalog codes (0.5656ms)
+✔ parsePlan rejects malformed versions, course codes, credit values, and semester fields (0.6837ms)
+✔ parsePlan bounds arrays and requires unique semester IDs (0.2799ms)
+✔ loadPlan returns parsed storage without writing or replacing it (0.2911ms)
+✔ loadPlan safely recovers from absent, corrupt, and unavailable storage (0.3568ms)
+✔ parses official MSCS Seattle program requirements from cached HTML (44.102ms)
+✔ parses reciprocal corequisites and grouped prerequisites from cached bulk CS HTML (47.2442ms)
+✔ parses letter-grade floors that include a trailing minus (0.1643ms)
+✔ keeps unsupported or malformed requirement clauses explicitly unknown (0.1367ms)
+✔ builds downstream prerequisite unlocks without adding corequisite unlocks (41.3381ms)
+✔ catalog validation rejects unsafe official links and mismatched relationship indexes (31.5421ms)
+✔ forced refresh retains usable cached sources when the catalog is offline (215.6902ms)
+✔ OR alternatives, AND grouping, grade labels, and unknown propagation (1.6739ms)
+✔ ordinary prerequisites reject same-term courses but concurrency metadata permits them (0.1384ms)
+✔ getEligibility audits prerequisites only and communicates a separate corequisite note (0.1892ms)
+✔ dependency closures are cycle safe in both directions (0.2508ms)
+✔ plan ordering enforces earlier prerequisites and accepts same-term corequisites (1.2287ms)
+✔ breadth allocation uses three unique courses across category ids and leaves extra breadth for electives (11.3382ms)
+✔ breadth diversity cannot count one course twice (0.4277ms)
+✔ waived core grants no credit while zero-credit recitation remains satisfied (0.5482ms)
+✔ duplicate completed/planned courses count once and fixed overrides cannot inflate credits (0.4589ms)
+✔ known external and unknown completed prerequisites unlock without earning degree credit (0.5452ms)
+✔ variable credits require explicit bounded selections for completed and planned courses (0.3632ms)
+✔ unknown requirement syntax remains an audit blocker (0.5734ms)
+ℹ tests 39
+ℹ suites 0
+ℹ pass 39
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1202.0067
+
+> neu-mscs-course-planner@1.0.0 typecheck
+> tsc --noEmit
+

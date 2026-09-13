@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { Catalog, RequirementExpression } from "./types";
 
@@ -225,8 +225,15 @@ export function defaultCatalogFilePath(): string {
   return path.join(process.cwd(), "data", "catalog.json");
 }
 
+let catalogDiskCache: { filePath: string; mtimeMs: number; catalog: Catalog } | null = null;
+
 export function readCatalog(filePath = defaultCatalogFilePath()): Catalog {
+  const details = statSync(filePath);
+  if (catalogDiskCache && catalogDiskCache.filePath === filePath && catalogDiskCache.mtimeMs === details.mtimeMs) {
+    return catalogDiskCache.catalog;
+  }
   const value: unknown = JSON.parse(readFileSync(filePath, "utf8"));
   validateCatalog(value);
+  catalogDiskCache = { filePath, mtimeMs: details.mtimeMs, catalog: value };
   return value;
 }

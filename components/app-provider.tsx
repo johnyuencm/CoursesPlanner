@@ -39,6 +39,50 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 const CAREER_TARGET_KEY = "neu-mscs-career-target-v1";
 
+let sessionCatalog: Catalog | null = null;
+let catalogGetInflight: Promise<Catalog> | null = null;
+
+function isCatalogPayload(data: unknown): data is Catalog {
+  if (!data || typeof data !== "object") return false;
+  const value = data as Catalog;
+  return (
+    Array.isArray(value.courses) &&
+    Boolean(value.requirements) &&
+    Array.isArray(value.requirements.coreCourses) &&
+    Array.isArray(value.requirements.breadthRequirements?.categories) &&
+    typeof value.requirements.totalCredits === "number"
+  );
+}
+
+async function loadCatalogFromNetwork(refresh: boolean): Promise<{ catalog: Catalog; refreshStatus: string | null }> {
+  const response = await fetch("/api/catalog", { method: refresh ? "POST" : "GET", cache: "no-store" });
+  const refreshStatus = response.headers.get("x-catalog-refresh");
+  const data: unknown = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      typeof data === "object" && data !== null && "error" in data && typeof data.error === "string"
+        ? data.error
+        : "The catalog could not be loaded.",
+    );
+  }
+  if (!isCatalogPayload(data)) throw new Error("The catalog response is incomplete. Your previous catalog has been retained.");
+  sessionCatalog = data;
+  return { catalog: data, refreshStatus };
+}
+
+async function requestCatalog(refresh: boolean): Promise<{ catalog: Catalog; refreshStatus: string | null }> {
+  if (!refresh && sessionCatalog) return { catalog: sessionCatalog, refreshStatus: null };
+  if (!refresh) {
+    if (!catalogGetInflight) {
+      catalogGetInflight = loadCatalogFromNetwork(false).then((result) => result.catalog).finally(() => {
+        catalogGetInflight = null;
+      });
+    }
+    return { catalog: await catalogGetInflight, refreshStatus: null };
+  }
+  return loadCatalogFromNetwork(true);
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogBusy, setCatalogBusy] = useState(true);
@@ -59,12 +103,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCatalogError(null);
     setCatalogMessage(null);
     try {
-      const response = await fetch("/api/catalog", { method: refresh ? "POST" : "GET", cache: "no-store" });
-      const refreshStatus = response.headers.get("x-catalog-refresh");
-      const data = await response.json();
-      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "The catalog could not be loaded.");
-      if (!data || !Array.isArray(data.courses) || !data.requirements || !Array.isArray(data.requirements.coreCourses) || !Array.isArray(data.requirements.breadthRequirements?.categories) || typeof data.requirements.totalCredits !== "number") throw new Error("The catalog response is incomplete. Your previous catalog has been retained.");
-      setCatalog(data as Catalog);
+      if (refresh) sessionCatalog = null;
+      const { catalog: nextCatalog, refreshStatus } = await requestCatalog(refresh);
+      setCatalog(nextCatalog);
       if (refresh) {
         setCatalogMessage(refreshStatus === "cooldown"
           ? "Refresh cooldown active. The current validated catalog remains loaded."

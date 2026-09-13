@@ -6,9 +6,9 @@ import { getEligibility } from "@/lib/validation";
 import { useApp } from "./app-provider";
 import { creditLabel } from "./ui";
 
-export function CodeLinks({ codes, limit = 3 }: { codes: string[]; limit?: number }) {
+export function CodeLinks({ codes, limit = 3, onSelect }: { codes: string[]; limit?: number; onSelect?: (code: string) => void }) {
   const { openCourse } = useApp();
-  return <>{codes.slice(0, limit).map((code) => <button key={code} className="code-chip" onClick={() => openCourse(code)}>{code}</button>)}</>;
+  return <>{codes.slice(0, limit).map((code) => <button key={code} className="code-chip" type="button" onClick={() => (onSelect ?? openCourse)(code)}>{code}</button>)}</>;
 }
 
 export function requirementBadge(type: Course["requirementType"]) {
