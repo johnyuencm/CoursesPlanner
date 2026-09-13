@@ -107,8 +107,8 @@ export function visibleGraphDistances(
   return neighborhoodDistances(focusCode, relations, maxDepth);
 }
 
-export const PROGRAM_COL = 188;
-export const PROGRAM_ROW = 104;
+export const PROGRAM_COL = 208;
+export const PROGRAM_ROW = 128;
 export const PROGRAM_ISOLATE_GAP = 80;
 export const PROGRAM_BAND_LABEL_ROW = 40;
 export const PROGRAM_BAND_COPY = {

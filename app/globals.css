@@ -368,43 +368,40 @@ textarea { resize: vertical; }
 .graph-panel-heading span { display: flex; gap: 0.3rem; align-items: center; }
 .flow-canvas { height: min(78vh, 820px); min-height: 580px; background: #fbfcfd; }
 .graph-canvas-hint { margin: 0; padding: 0.45rem 0.85rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.65rem; }
-.react-flow__minimap { border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
-.graph-course-node { position: relative; width: 196px; border: 1px solid transparent; border-radius: 10px; background: var(--purple-soft); box-shadow: var(--shadow); transition: box-shadow 140ms, border-color 140ms; }
-.graph-course-node.graph-compact { width: 176px; }
-.graph-course-node.graph-compact .graph-node-bottom { display: none; }
-.graph-course-node.graph-compact .graph-node-main { padding: 0.42rem 0.55rem 0.45rem; }
-.graph-course-node.graph-compact .graph-node-main strong { margin-top: 0.12rem; font-size: 0.82rem; }
-.graph-course-node.graph-compact .graph-node-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 0; margin-top: 0.12rem; font-size: 0.62rem; }
-.graph-course-node.graph-core { background: var(--red-soft); }
-.graph-course-node.graph-breadth { background: var(--blue-soft); }
-.graph-course-node.graph-elective { background: var(--purple-soft); }
-.graph-course-node.graph-completed { background: var(--green-soft); }
-.graph-course-node.graph-external { border-style: dashed; background: #eef0f3; }
-.graph-course-node.graph-emphasized { border-color: #4b6cb3; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.28); }
+.flow-canvas .react-flow__node:hover { z-index: 20 !important; }
+.graph-course-node { position: relative; width: 218px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); transition: box-shadow 140ms, border-color 140ms; }
+.graph-course-node.core-course { border-top: 2px solid var(--red); }
+.graph-course-node.graph-compact { width: 196px; }
+.graph-course-node.graph-compact .graph-node-main { padding: 0.42rem 0.5rem 0.4rem; }
+.graph-course-node.graph-compact .course-code { margin-top: 0.28rem; font-size: 0.78rem; }
+.graph-course-node.graph-compact .graph-node-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 0; margin-top: 0.1rem; font-size: 0.62rem; }
+.graph-course-node.graph-locked { background: #f4f5f7; }
+.graph-course-node.graph-locked .course-code, .graph-course-node.graph-locked .graph-node-title, .graph-course-node.graph-locked .credits { color: var(--muted); }
+.graph-course-node.graph-emphasized { border-color: #4b6cb3; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.22); }
 .graph-course-node.graph-focused { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22); }
-.graph-node-main { width: 100%; display: flex; flex-direction: column; padding: 0.62rem 0.7rem 0.5rem; border: 0; background: none; text-align: left; cursor: pointer; }
-.graph-node-meta { display: flex; justify-content: space-between; color: var(--ink-soft); font-size: 0.53rem; text-transform: uppercase; letter-spacing: 0.05em; }
-.graph-node-main strong { margin-top: 0.35rem; color: var(--ink); font-size: 0.78rem; }
-.graph-node-title { min-height: 2.1em; font-size: 0.7rem; line-height: 1.25; color: var(--ink-soft); }
-.graph-node-bottom { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.38rem 0.7rem; border-top: 1px solid rgba(27, 36, 51, 0.08); color: var(--muted); font-size: 0.55rem; }
-.graph-node-bottom button { display: flex; align-items: center; gap: 0.2rem; border: 0; background: none; color: var(--red-dark); cursor: pointer; }
-.graph-node-tooltip { display: none; position: absolute; z-index: 30; left: 50%; bottom: calc(100% + 8px); width: 260px; transform: translateX(-50%); padding: 0.65rem; border-radius: 8px; background: #202120; color: white; font-size: 0.62rem; box-shadow: var(--shadow); }
-.graph-node-tooltip span { display: block; margin-top: 0.25rem; color: #c8c9c5; }
-.graph-course-node:hover .graph-node-tooltip, .graph-course-node:focus-within .graph-node-tooltip { display: block; }
+.graph-node-main { width: 100%; display: flex; flex-direction: column; padding: 0.55rem 0.62rem 0.5rem; border: 0; background: none; text-align: left; cursor: pointer; }
+.graph-node-meta { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.28rem; }
+.graph-node-meta .badge { flex: 0 1 auto; }
+.graph-node-meta .status-pill { flex: 0 0 auto; max-width: 58%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.graph-node-main .course-code { margin-top: 0.35rem; color: var(--ink); font-size: 0.82rem; }
+.graph-node-title { min-height: 2.1em; margin-top: 0.12rem; font-size: 0.7rem; line-height: 1.25; color: var(--ink-soft); }
+.graph-course-node .credits { margin-top: 0.28rem; }
+.graph-band-label { padding: 0.15rem 0 0.1rem; color: var(--ink-soft); font-size: 0.68rem; font-weight: 780; letter-spacing: 0.08em; text-transform: uppercase; }
 .graph-legend { display: flex; flex-wrap: wrap; gap: 0.75rem 1.05rem; padding: 0.15rem 0 0.75rem; color: var(--ink-soft); font-size: 0.68rem; }
 .graph-legend span { display: flex; align-items: center; gap: 0.32rem; }
-.legend-node { width: 16px; height: 10px; border-radius: 3px; background: var(--purple-soft); }
-.legend-node.core { background: var(--red-soft); }
-.legend-node.breadth { background: var(--blue-soft); }
-.legend-node.elective { background: var(--purple-soft); }
-.legend-node.completed { background: var(--green-soft); }
-.legend-node.external { background: #eef0f3; border: 1px dashed #c5cad3; }
-.legend-node.emphasis { box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35); }
+.legend-node { width: 16px; height: 12px; border-radius: 3px; border: 1px solid var(--line); background: var(--surface); }
+.legend-node.core { border-top: 2px solid var(--red); }
+.legend-node.breadth { border-top: 2px solid #93b4e8; }
+.legend-node.elective { border-top: 2px solid #c4b0e6; }
 .react-flow__handle.graph-handle-hidden { opacity: 0; pointer-events: none; }
-.legend-line.dashed { background: repeating-linear-gradient(90deg, #98a2b3 0 4px, transparent 4px 7px); }
+.legend-arrow { width: 22px; height: 0; border-top: 2px solid #3d4a5c; position: relative; }
+.legend-arrow::after { content: ""; position: absolute; right: -1px; top: -5px; border: 4px solid transparent; border-left: 7px solid #3d4a5c; border-right: 0; }
+.legend-band { font-size: 0.58rem; font-weight: 780; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-soft); }
 .graph-inspector { padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); align-self: start; box-shadow: var(--shadow); }
 .graph-inspector h2 { margin: 0.45rem 0 0.15rem; color: var(--ink); font-size: 1.2rem; }
+.inspector-heading-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .inspector-course-title { color: var(--ink-soft); font-size: 0.8rem; }
+.inspector-description { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; line-clamp: 4; overflow: hidden; margin: 0.55rem 0 0; color: var(--ink-soft); font-size: 0.78rem; line-height: 1.4; }
 .inspector-focus { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.45rem; }
 .inspector-relationships { margin-top: 1.2rem; padding-top: 0.9rem; border-top: 1px solid var(--line); }
 .inspector-relationships h3 { display: flex; justify-content: space-between; margin: 0.9rem 0 0.15rem; font-size: 0.82rem; }
@@ -615,7 +612,7 @@ textarea { resize: vertical; }
   .suggestion-strip { grid-template-columns: 1fr; }
   .graph-layout { grid-template-columns: minmax(0, 1fr); }
   .graph-inspector { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
-  .graph-inspector > .section-kicker, .graph-inspector > h2, .graph-inspector > .inspector-course-title { grid-column: 1; }
+  .graph-inspector > .inspector-heading-meta, .graph-inspector > h2, .graph-inspector > .inspector-course-title, .graph-inspector > .inspector-description { grid-column: 1; }
   .inspector-relationships { grid-column: 2; grid-row: 1 / 7; margin-top: 0; padding: 0 0 0 1rem; border: 0; border-left: 1px solid var(--line); }
   .inspector-tip, .inspector-actions { grid-column: 1; }
 }

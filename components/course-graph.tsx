@@ -1,22 +1,54 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Background, BackgroundVariant, Controls, Handle, MarkerType, MiniMap, Position, ReactFlow, ReactFlowProvider, useReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
+import { Background, BackgroundVariant, Controls, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
 import { ArrowRight, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
-import { catalogRelations, findCourses, PROGRAM_COL, PROGRAM_ROW, programFlowPositions, programMapCodes, selectedChainRelations, shouldAutoLocateFind, visibleGraphDistances, wrapFindIndex, type GraphRelation } from "@/lib/graph";
+import {
+  catalogRelations,
+  directedPrerequisiteRelations,
+  findCourses,
+  layoutProgramFlow,
+  PROGRAM_COL,
+  PROGRAM_ROW,
+  programMapCodes,
+  selectedChainRelations,
+  shouldAutoLocateFind,
+  visibleGraphDistances,
+  wrapFindIndex,
+  type GraphRelation,
+} from "@/lib/graph";
+import type { Course } from "@/lib/types";
 import { dependencyClosure, expressionLabel } from "@/lib/validation";
 import { useApp } from "./app-provider";
-import { CodeLinks, requirementBadge } from "./course-card";
+import { CodeLinks, courseStatus, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
 import { PageHeading, creditLabel } from "./ui";
 
 type GraphScope = "program" | "1" | "2" | "full";
 type GraphData = {
-  code: string; title: string; kind: string; nodeClass: string; credits: string; prerequisites: string; corequisites: string;
-  relation: string; emphasized: boolean; focused: boolean; compact: boolean; hasIncoming: boolean; hasOutgoing: boolean;
-  selectCourse: (code: string) => void; openCourse: (code: string) => void;
+  code: string;
+  title: string;
+  badgeLabel: string;
+  badgeClass: string;
+  statusLabel: string;
+  statusClass: string;
+  credits: string;
+  prerequisites: string;
+  corequisites: string;
+  core: boolean;
+  locked: boolean;
+  emphasized: boolean;
+  focused: boolean;
+  compact: boolean;
+  hasIncoming: boolean;
+  hasOutgoing: boolean;
+  selectCourse: (code: string) => void;
+  openCourse: (code: string) => void;
 };
+type BandData = { label: string };
 type GraphNode = Node<GraphData, "course">;
+type BandNode = Node<BandData, "band">;
+type FlowNode = GraphNode | BandNode;
 const READABLE_ZOOM = 1;
 const tableRowId = (code: string) => `graph-row-${code.replaceAll(" ", "-")}`;
 
@@ -34,39 +66,30 @@ function centerNode(
 }
 
 function CourseNode({ data }: NodeProps<GraphNode>) {
-  return <div className={`graph-course-node ${data.nodeClass} ${data.emphasized ? "graph-emphasized" : ""} ${data.focused ? "graph-focused" : ""} ${data.compact ? "graph-compact" : ""}`}>
+  return <div className={`graph-course-node ${data.core ? "core-course" : ""} ${data.locked ? "graph-locked" : ""} ${data.emphasized ? "graph-emphasized" : ""} ${data.focused ? "graph-focused" : ""} ${data.compact ? "graph-compact" : ""}`}>
     <Handle type="target" position={Position.Left} className={data.hasIncoming ? undefined : "graph-handle-hidden"} />
-    <button type="button" className="graph-node-main nodrag" onClick={() => data.selectCourse(data.code)} aria-label={`Select ${data.code}, ${data.title}. ${data.kind}.${data.relation ? ` ${data.relation}.` : ""}`}>
-      <span className="graph-node-meta"><span>{data.kind}</span><span>{data.credits}</span></span>
-      <strong>{data.code}</strong>
+    <button type="button" className="graph-node-main nodrag" onClick={() => data.selectCourse(data.code)} aria-label={`Select ${data.code}, ${data.title}. ${data.badgeLabel}. ${data.statusLabel}.`}>
+      <span className="graph-node-meta">
+        <span className={data.badgeClass}>{data.badgeLabel}</span>
+        <span className={`status-pill ${data.statusClass}`}>{data.statusLabel}</span>
+      </span>
+      <strong className="course-code">{data.code}</strong>
       <span className="graph-node-title">{data.title}</span>
+      <span className="credits">{data.credits}</span>
     </button>
-    <div className="graph-node-bottom">
-      <span>{data.relation || "Catalog course"}</span>
-      <button type="button" tabIndex={-1} className="nodrag" onClick={() => data.openCourse(data.code)} aria-label={`Course details for ${data.code}`}>Details <ArrowRight size={10} /></button>
-    </div>
-    <div className="graph-node-tooltip" role="tooltip">
-      <strong>{data.code} · {data.credits}</strong>
-      {data.relation ? <span>{data.relation}</span> : null}
-      <span>Prerequisites: {data.prerequisites}</span>
-      <span>Corequisites: {data.corequisites}</span>
-    </div>
     <Handle type="source" position={Position.Right} className={data.hasOutgoing ? undefined : "graph-handle-hidden"} />
   </div>;
 }
-const nodeTypes = { course: CourseNode };
+
+function BandLabelNode({ data }: NodeProps<BandNode>) {
+  return <div className="graph-band-label">{data.label}</div>;
+}
+
+const nodeTypes = { course: CourseNode, band: BandLabelNode };
 
 function FitToViewButton() {
   const { fitView } = useReactFlow();
   return <button className="button button-secondary button-small" type="button" onClick={() => { void fitView({ padding: 0.12 }); }}><Maximize2 size={14} /> Fit to view</button>;
-}
-
-function nodeClassFor(kind: string, completed: boolean) {
-  if (completed) return "graph-completed";
-  if (kind === "Required") return "graph-core";
-  if (kind === "Breadth") return "graph-breadth";
-  if (kind === "Elective") return "graph-elective";
-  return "graph-external";
 }
 
 function typeOrder(code: string, courseMap: Map<string, { requirementType: string }>) {
@@ -87,6 +110,11 @@ function nodeRequirementCopy(course: { requirementType: string; unlocks: string[
   return expressionLabel(kind === "prerequisites" ? course.prerequisites : course.corequisites);
 }
 
+function graphStatus(course: Course | undefined, code: string, completed: Set<string>, waived: Set<string>, planned: Set<string>, prior: Set<string>) {
+  if (!course) return { label: "Locked", className: "locked" };
+  return courseStatus(course, completed.has(code), waived.has(code), planned.has(code), prior);
+}
+
 function GraphWorkspace() {
   const { catalog, openCourse, openPicker, plan } = useApp();
   const { getNode, setCenter } = useReactFlow();
@@ -102,7 +130,10 @@ function GraphWorkspace() {
   const matchesRef = useRef<{ code: string; title: string }[]>([]);
   const courseMap = useMemo(() => new Map(catalog?.courses.map((course) => [course.code, course]) ?? []), [catalog]);
   const history = useMemo(() => new Set([...plan.completedCourses, ...plan.waivedCourses]), [plan.completedCourses, plan.waivedCourses]);
-  const recorded = useMemo(() => new Set([...history, ...plan.semesters.flatMap((semester) => semester.courses.map((course) => course.code))]), [history, plan.semesters]);
+  const completed = useMemo(() => new Set(plan.completedCourses), [plan.completedCourses]);
+  const waived = useMemo(() => new Set(plan.waivedCourses), [plan.waivedCourses]);
+  const planned = useMemo(() => new Set(plan.semesters.flatMap((semester) => semester.courses.map((course) => course.code))), [plan.semesters]);
+  const recorded = useMemo(() => new Set([...history, ...planned]), [history, planned]);
   const relations = useMemo(() => catalogRelations(catalog?.courses ?? []), [catalog]);
   const upstream = useMemo(() => dependencyClosure(selectedCode, catalog?.courses ?? [], "upstream"), [catalog, selectedCode]);
   const downstream = useMemo(() => dependencyClosure(selectedCode, catalog?.courses ?? [], "downstream"), [catalog, selectedCode]);
@@ -112,21 +143,64 @@ function GraphWorkspace() {
   }, [catalog, depth, focusCode, relations]);
   const graph = useMemo(() => {
     const highlighted = new Set([selectedCode, ...upstream, ...downstream]);
-    const scoped = relations.filter((edge: GraphRelation) => visible.has(edge.source) && visible.has(edge.target));
-    const drawn = depth === "program" ? selectedChainRelations(scoped, highlighted) : scoped;
-    const incoming = new Set(drawn.map((edge) => edge.target));
-    const outgoing = new Set(drawn.map((edge) => edge.source));
+    const scoped = directedPrerequisiteRelations(relations.filter((edge: GraphRelation) => visible.has(edge.source) && visible.has(edge.target)));
+    const chain = selectedChainRelations(scoped, highlighted);
+    const chainKeys = new Set(chain.map((edge) => `${edge.source}->${edge.target}`));
+    const incoming = new Set(scoped.map((edge) => edge.target));
+    const outgoing = new Set(scoped.map((edge) => edge.source));
     const makeNode = (code: string, x: number, y: number): GraphNode => {
       const course = courseMap.get(code);
-      const relation = code === selectedCode ? "Selected course" : upstream.has(code) ? "Upstream prerequisite" : downstream.has(code) ? "Downstream connection" : "";
-      const kind = !course || course.requirementType === "external" ? "Locked / external" : course.requirementType === "core" ? "Required" : course.requirementType === "breadth" ? "Breadth" : "Elective";
-      return { id: code, type: "course", position: { x, y }, data: { code, title: course?.title ?? "Metadata not in this catalog", kind, nodeClass: nodeClassFor(kind === "Locked / external" ? "external" : kind, history.has(code)), credits: course ? `${creditLabel(course)} cr` : "Unknown credits", prerequisites: nodeRequirementCopy(course, "prerequisites"), corequisites: nodeRequirementCopy(course, "corequisites"), relation, emphasized: !!relation, focused: code === selectedCode, compact: depth === "program", hasIncoming: incoming.has(code), hasOutgoing: outgoing.has(code), selectCourse: setSelectedCode, openCourse }, ariaLabel: `${code}: ${course?.title ?? "External reference"}` };
+      const emphasized = highlighted.has(code);
+      const focused = code === selectedCode;
+      const badge = requirementBadge(course?.requirementType ?? "external");
+      const status = graphStatus(course, code, completed, waived, planned, history);
+      const locked = status.className === "locked";
+      return {
+        id: code,
+        type: "course",
+        position: { x, y },
+        zIndex: focused ? 12 : emphasized ? 6 : 1,
+        data: {
+          code,
+          title: course?.title ?? "Metadata not in this catalog",
+          badgeLabel: badge.label,
+          badgeClass: badge.className,
+          statusLabel: status.label,
+          statusClass: status.className,
+          core: course?.requirementType === "core",
+          locked,
+          credits: course ? `${creditLabel(course)} cr` : "Unknown credits",
+          prerequisites: nodeRequirementCopy(course, "prerequisites"),
+          corequisites: nodeRequirementCopy(course, "corequisites"),
+          emphasized,
+          focused,
+          compact: depth === "program",
+          hasIncoming: incoming.has(code),
+          hasOutgoing: outgoing.has(code),
+          selectCourse: setSelectedCode,
+          openCourse,
+        },
+        ariaLabel: `${code}: ${course?.title ?? "External reference"}`,
+      };
     };
-    const nodes: GraphNode[] = [];
+    const nodes: FlowNode[] = [];
     if (depth === "program") {
       const compare = (left: string, right: string) => typeOrder(left, courseMap) - typeOrder(right, courseMap) || left.localeCompare(right, undefined, { numeric: true });
-      for (const [code, point] of programFlowPositions(visible.keys(), relations, compare)) {
-        nodes.push(makeNode(code, point.x, point.y));
+      const layout = layoutProgramFlow(visible.keys(), relations, catalog?.courses ?? [], compare);
+      for (const [code, point] of layout.positions) nodes.push(makeNode(code, point.x, point.y));
+      for (const band of layout.bands) {
+        nodes.push({
+          id: `band:${band.id}`,
+          type: "band",
+          position: { x: band.x, y: band.y },
+          data: { label: band.label },
+          selectable: false,
+          draggable: false,
+          connectable: false,
+          focusable: false,
+          zIndex: 0,
+          style: { width: Math.max(PROGRAM_COL * 3, 420) },
+        });
       }
     } else {
       const focusUpstream = dependencyClosure(focusCode, catalog?.courses ?? [], "upstream");
@@ -145,12 +219,24 @@ function GraphWorkspace() {
         columnX += width;
       }
     }
-    const edges: Edge[] = drawn.map((edge, index) => {
-      const active = highlighted.has(edge.source) && highlighted.has(edge.target);
-      return { id: `${edge.source}-${edge.target}-${index}`, source: edge.source, target: edge.target, type: "smoothstep", markerEnd: edge.corequisite ? undefined : { type: MarkerType.ArrowClosed, width: 18, height: 18, color: active ? "#64748b" : "#98a2b3" }, style: { stroke: active ? "#64748b" : "#98a2b3", strokeWidth: active ? 1.8 : 1.2, strokeDasharray: edge.corequisite ? "5 4" : undefined }, ariaLabel: `${edge.source} ${edge.corequisite ? "is a corequisite of" : "is a prerequisite of"} ${edge.target}`, focusable: false };
+    const edges: Edge[] = scoped.map((edge, index) => {
+      const active = chainKeys.has(`${edge.source}->${edge.target}`);
+      const stroke = active ? "#3d4a5c" : "#d0d5de";
+      return {
+        id: `${edge.source}-${edge.target}-${index}`,
+        source: edge.source,
+        target: edge.target,
+        type: "smoothstep",
+        markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: stroke },
+        style: { stroke, strokeWidth: active ? 2.2 : 1.15 },
+        zIndex: active ? 4 : 0,
+        ariaLabel: `${edge.source} unlocks ${edge.target}`,
+        focusable: false,
+      };
     });
-    return { nodes, edges };
-  }, [visible, depth, focusCode, selectedCode, upstream, downstream, catalog, courseMap, relations, openCourse, history]);
+    const courseNodes = nodes.filter((node): node is GraphNode => node.type === "course");
+    return { nodes, edges, courseNodes };
+  }, [visible, depth, focusCode, selectedCode, upstream, downstream, catalog, courseMap, relations, openCourse, history, completed, waived, planned]);
   const programCodes = useMemo(
     () => (catalog ? programMapCodes(catalog.courses, catalog.requirements) : new Set<string>()),
     [catalog],
@@ -199,7 +285,7 @@ function GraphWorkspace() {
       centerNode(getNode, setCenter, code);
       return;
     }
-    const laid = graph.nodes.find((node) => node.id === code);
+    const laid = graph.courseNodes.find((node) => node.id === code);
     if (laid) void setCenter(laid.position.x + (PROGRAM_COL - 12) / 2, laid.position.y + (PROGRAM_ROW - 8) / 2, { zoom: READABLE_ZOOM, duration: 180 });
   };
   const locate = (code: string, keepFind = false) => {
@@ -236,8 +322,10 @@ function GraphWorkspace() {
   const focus = (code: string) => locate(code, false);
   if (!catalog) return <CatalogState />;
   const selected = courseMap.get(selectedCode);
-  const badge = selected ? requirementBadge(selected.requirementType) : null;
+  const badge = selected ? requirementBadge(selected.requirementType) : requirementBadge("external");
+  const selectedStatus = graphStatus(selected, selectedCode, completed, waived, planned, history);
   const findStatus = !search.trim() ? "" : matches.length ? `${findIndex >= 0 ? findIndex + 1 : 0} of ${matches.length}` : "No matches";
+  const showCorequisites = Boolean(selected?.corequisiteCodes.length);
   return <>
     <PageHeading title="Prerequisite Graph" description="Explore every official MSCS Seattle course and the cataloged prerequisites that connect them. Press Ctrl+F to find a course on the map." actions={<div className="graph-toolbar">
       <div className="graph-search-wrap">
@@ -298,13 +386,23 @@ function GraphWorkspace() {
       </div>
       <FitToViewButton />
     </div>} />
-    <div className="graph-legend" aria-label="Map legend"><span><i className="legend-node core" /> Required</span><span><i className="legend-node breadth" /> Breadth</span><span><i className="legend-node elective" /> Elective</span><span><i className="legend-node completed" /> Completed</span><span><i className="legend-node external" /> Locked / external</span><span><i className="legend-node emphasis" /> Linked to selected</span><span><i className="legend-line" /> Prerequisite relationship</span></div>
+    <div className="graph-legend" aria-label="Map legend">
+      <span><i className="legend-node core" /> Core</span>
+      <span><i className="legend-node breadth" /> Breadth</span>
+      <span><i className="legend-node elective" /> Elective</span>
+      <span><span className="status-pill completed">Completed</span></span>
+      <span><span className="status-pill eligible">Prerequisite eligible</span></span>
+      <span><span className="status-pill planned">Planned</span></span>
+      <span><span className="status-pill locked">Locked</span></span>
+      <span><i className="legend-arrow" aria-hidden="true" /> Unlocks after this course</span>
+      <span><span className="legend-band">No prerequisite required</span> Startable, unlinked</span>
+    </div>
     <div className="graph-layout">
       <section className="graph-panel" aria-label="Course prerequisite relationships">
         <a className="graph-skip" href="#graph-inspector">Skip map to selected course</a>
         <div className="graph-panel-heading">
           <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : <><Crosshair size={15} /> Focused on <strong>{focusCode}</strong></>}</span>
-          <span role="status">{graph.nodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "arrow" : "arrows"} for {selectedCode}{depth === "program" ? "" : ` · focused on ${focusCode}`}.</span>
+          <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode}{depth === "program" ? "" : ` · focused on ${focusCode}`}.</span>
           <div className="segmented-control" aria-label="Map display">
             <button type="button" aria-pressed={view === "graph"} className={view === "graph" ? "selected" : ""} onClick={() => setView("graph")}><Network size={15} /> Map</button>
             <button type="button" aria-pressed={view === "table"} className={view === "table" ? "selected" : ""} onClick={() => setView("table")}><List size={15} /> Table</button>
@@ -339,36 +437,39 @@ function GraphWorkspace() {
             edgesFocusable={false}
             elementsSelectable
             onlyRenderVisibleElements
-            onNodeClick={(_, node) => setSelectedCode(node.id)}
+            onNodeClick={(_, node) => { if (node.type === "course") setSelectedCode(node.id); }}
             proOptions={{ hideAttribution: false }}
-            aria-label="Interactive prerequisite map. Press Control F to find a course, then Enter or F3 for the next match. Use zoom, pan, the minimap, or Fit to view to see the rest of the program."
+            aria-label="Interactive prerequisite map. Press Control F to find a course, then Enter or F3 for the next match. Use zoom, pan, or Fit to view to see the rest of the program."
           >
             <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#d5d9e0" />
-            <MiniMap pannable zoomable aria-label="Overview of every course currently on the map" />
             <Controls showInteractive={false} />
           </ReactFlow>
         </div> : <div className="relationship-table-wrap">
           <table className="relationship-table">
             <caption className="sr-only">All courses in the selected neighborhood and their complete prerequisite and corequisite rules</caption>
             <thead><tr><th scope="col">Course</th><th scope="col">Role</th><th scope="col">Prerequisite rule</th><th scope="col">Take together</th></tr></thead>
-            <tbody>{graph.nodes.map((node) => {
+            <tbody>{graph.courseNodes.map((node) => {
               const course = courseMap.get(node.id);
               return <tr key={node.id} id={tableRowId(node.id)} className={node.id === selectedCode ? "graph-find-current" : undefined}>
                 <th scope="row"><button className="text-button" onClick={() => openCourse(node.id)}>{node.id}</button><span>{course?.title ?? "External reference — unknown metadata"}</span></th>
-                <td>{node.data.kind}</td>
+                <td>{node.data.badgeLabel} · {node.data.statusLabel}</td>
                 <td>{node.data.prerequisites}<div className="detail-code-links"><CodeLinks codes={course?.prerequisiteCodes ?? []} limit={1000} /></div></td>
                 <td>{node.data.corequisites}<div className="detail-code-links"><CodeLinks codes={course?.corequisiteCodes ?? []} limit={1000} /></div></td>
               </tr>;
             })}</tbody>
           </table>
         </div>}
-        {view === "graph" && depth === "program" && <p className="graph-canvas-hint">Each arrow is a parsed prerequisite of the selected course, pointing at the course that lists it. Other program courses stay on the map without arrows. Courses with no cataloged links sit below.</p>}
+        {view === "graph" && depth === "program" && <p className="graph-canvas-hint">Arrows point at the course that lists the prerequisite. Locked cards need earlier courses first. The No prerequisite required band is startable electives and other courses with no parsed prerequisite and no links on this map.</p>}
       </section>
       <aside className="graph-inspector" id="graph-inspector" tabIndex={-1}>
-        {badge && <span className={badge.className}>{badge.label}</span>}
+        <div className="inspector-heading-meta">
+          <span className={badge.className}>{badge.label}</span>
+          <span className={`status-pill ${selectedStatus.className}`}>{selectedStatus.label}</span>
+        </div>
         <h2>{selectedCode}</h2>
         <p className="inspector-course-title">{selected?.title ?? "External course reference"}</p>
         <p className="muted small-text">{selected ? `${creditLabel(selected)} credits` : "Credits unknown"}</p>
+        {selected?.description ? <p className="inspector-description">{selected.description}</p> : <p className="muted small-text">No catalog description is cached for this code.</p>}
         {depth !== "program" && <button className="text-button inspector-focus" onClick={() => setDepth("program")}><Network size={14} /> Show entire program</button>}
         {depth !== "1" && <button className="text-button inspector-focus" onClick={() => { setFocusCode(selectedCode); setDepth("1"); }}><Crosshair size={14} /> Show neighborhood</button>}
         {depth !== "program" && focusCode !== selectedCode && <button className="text-button inspector-focus" onClick={() => focus(selectedCode)}><Crosshair size={14} /> Focus map here</button>}
@@ -380,15 +481,20 @@ function GraphWorkspace() {
           </>}
           <h3>Unlocks <span>{selected?.unlocks.length ?? downstream.size}</span></h3>
           {selected?.unlocks.length ? <div className="detail-code-links"><CodeLinks codes={selected.unlocks} limit={1000} onSelect={focus} /></div> : <span className="muted small-text">No linked downstream courses in this catalog.</span>}
+          {showCorequisites ? <>
+            <h3>Corequisites <span>{selected?.corequisiteCodes.length ?? 0}</span></h3>
+            <p>{nodeRequirementCopy(selected, "corequisites")}</p>
+            <div className="detail-code-links"><CodeLinks codes={selected?.corequisiteCodes ?? []} limit={1000} onSelect={focus} /></div>
+          </> : null}
         </div>
         <div className="inspector-actions">
           {!recorded.has(selectedCode) && selected && selected.requirementType !== "external" && <button className="button button-primary" onClick={() => openPicker(undefined, selectedCode)}><Plus size={15} /> Add to Plan</button>}
           <button className="button button-secondary" onClick={() => openCourse(selectedCode)}>Full course details <ArrowRight size={14} /></button>
         </div>
-        <div className="inspector-tip"><Info size={16} /><p>Each arrow is a parsed prerequisite of the selected course, not an AND rule. Locked/external codes appear because a program course named them; their department catalog is not cached here. Offerings are not listed because they are unknown.</p></div>
+        <div className="inspector-tip"><Info size={16} /><p>Arrows point at the course that lists the prerequisite. Locked cards need earlier courses first. Open Full course details for the complete catalog description. Offerings are not listed because they are unknown.</p></div>
       </aside>
     </div>
-    <p className="page-footnote">The default map is every course listed on the official MSCS Seattle requirements page, plus cataloged external prerequisites those courses name. Select a course to see only that course&apos;s arrows. A connection does not verify course availability.</p>
+    <p className="page-footnote">The default map is every course listed on the official MSCS Seattle requirements page, plus cataloged external prerequisites those courses name. All in-scope prerequisite arrows stay on the map; selecting a course emphasizes its chain. A connection does not verify course availability.</p>
   </>;
 }
 
