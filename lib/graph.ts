@@ -206,6 +206,7 @@ export type MapScene = {
   positions: Map<string, { x: number; y: number }>;
   bands: ProgramBandLabel[];
   arrows: UnlockArrow[];
+  chain: Set<string>;
 };
 
 export type MapSceneInput = {
@@ -213,9 +214,53 @@ export type MapSceneInput = {
   requirements: DegreeRequirement;
   scope: GraphScope;
   focusCode: string;
-  chain: Iterable<string>;
+  selectedCode: string;
   compare?: (left: string, right: string) => number;
 };
+
+function addRelation(graph: Map<string, Set<string>>, from: string, to: string) {
+  const next = graph.get(from) ?? new Set<string>();
+  next.add(to);
+  graph.set(from, next);
+}
+
+function walkRelations(start: string, graph: Map<string, Set<string>>): Set<string> {
+  const result = new Set<string>();
+  const seen = new Set([start]);
+  const queue = [start];
+  while (queue.length) {
+    const current = queue.shift();
+    if (current === undefined) break;
+    for (const next of graph.get(current) ?? []) {
+      if (seen.has(next)) continue;
+      seen.add(next);
+      result.add(next);
+      queue.push(next);
+    }
+  }
+  return result;
+}
+
+function selectedChainCodes(relations: readonly GraphRelation[], selectedCode: string): Set<string> {
+  const upstream = new Map<string, Set<string>>();
+  const downstream = new Map<string, Set<string>>();
+  for (const edge of relations) {
+    if (edge.corequisite) {
+      addRelation(upstream, edge.source, edge.target);
+      addRelation(upstream, edge.target, edge.source);
+      addRelation(downstream, edge.source, edge.target);
+      addRelation(downstream, edge.target, edge.source);
+    } else {
+      addRelation(upstream, edge.target, edge.source);
+      addRelation(downstream, edge.source, edge.target);
+    }
+  }
+  return new Set([
+    selectedCode,
+    ...walkRelations(selectedCode, upstream),
+    ...walkRelations(selectedCode, downstream),
+  ]);
+}
 
 function requirementTypeOrder(code: string, courses: Map<string, Pick<Course, "requirementType">>) {
   const course = courses.get(code);
@@ -234,6 +279,7 @@ export function mapScene(input: MapSceneInput): MapScene {
     input.requirements,
     relations,
   );
+  const chain = selectedChainCodes(relations, input.selectedCode);
   const courseByCode = new Map(input.courses.map((course) => [course.code, course] as const));
   const compare =
     input.compare ??
@@ -241,12 +287,13 @@ export function mapScene(input: MapSceneInput): MapScene {
       requirementTypeOrder(left, courseByCode) - requirementTypeOrder(right, courseByCode) ||
       left.localeCompare(right, undefined, { numeric: true }));
   const layout = layoutProgramFlow(visible.keys(), relations, input.courses, compare);
-  const arrows = unlockArrowView(relations, input.chain, visible.keys());
+  const arrows = unlockArrowView(relations, chain, visible.keys());
   return {
     visible,
     positions: layout.positions,
     bands: input.scope === "program" ? layout.bands : [],
     arrows,
+    chain,
   };
 }
 

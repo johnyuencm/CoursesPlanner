@@ -411,7 +411,7 @@ test("mapScene seats CS 5011 beside CS 5010 and draws no corequisite arrows", ()
     requirements,
     scope: "program",
     focusCode: "CS 5010",
-    chain: ["CS 5010", "CS 5011"],
+    selectedCode: "CS 5010",
   });
 
   assert.equal(scene.visible.has("CS 5010"), true);
@@ -436,7 +436,7 @@ test("mapScene neighborhood of CS 5500 is four courses left to right", () => {
     requirements,
     scope: "1",
     focusCode: "CS 5500",
-    chain: ["CS 5500"],
+    selectedCode: "CS 5500",
   });
 
   assert.deepEqual([...scene.visible.keys()].sort(), ["CS 5004", "CS 5010", "CS 5500", "CS 6510"]);
@@ -445,4 +445,34 @@ test("mapScene neighborhood of CS 5500 is four courses left to right", () => {
   assert.ok(x("CS 5010") < x("CS 5500"));
   assert.ok(x("CS 5500") < x("CS 6510"));
   assert.deepEqual(scene.bands, []);
+});
+
+test("mapScene highlights CS 5011 with CS 5010 from one catalogRelations walk", () => {
+  const { courses, requirements } = seattleGraph();
+  const selected5010 = mapScene({
+    courses,
+    requirements,
+    scope: "program",
+    focusCode: "CS 5010",
+    selectedCode: "CS 5010",
+  });
+  const selected5500 = mapScene({
+    courses,
+    requirements,
+    scope: "program",
+    focusCode: "CS 5010",
+    selectedCode: "CS 5500",
+  });
+
+  assert.equal(selected5010.chain.has("CS 5010"), true);
+  assert.equal(selected5010.chain.has("CS 5011"), true);
+  assert.equal(selected5010.chain.has("CS 5500"), true);
+  assert.equal(selected5010.chain.has("CS 5004"), false);
+  assert.equal(
+    selected5010.arrows.some((arrow) => arrow.source === "CS 5010" && arrow.target === "CS 5500" && arrow.emphasized),
+    true,
+  );
+  assert.equal(selected5500.chain.has("CS 5011"), true);
+  assert.equal(selected5500.chain.has("CS 5004"), true);
+  assert.equal(selected5500.chain.has("CS 5010"), true);
 });

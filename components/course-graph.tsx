@@ -13,7 +13,7 @@ import {
   type GraphScope,
 } from "@/lib/graph";
 import type { Course } from "@/lib/types";
-import { dependencyClosure, expressionLabel } from "@/lib/validation";
+import { expressionLabel } from "@/lib/validation";
 import { useApp } from "./app-provider";
 import { CodeLinks, courseStatus, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
@@ -121,9 +121,6 @@ function GraphWorkspace() {
   const waived = useMemo(() => new Set(plan.waivedCourses), [plan.waivedCourses]);
   const planned = useMemo(() => new Set(plan.semesters.flatMap((semester) => semester.courses.map((course) => course.code))), [plan.semesters]);
   const recorded = useMemo(() => new Set([...history, ...planned]), [history, planned]);
-  const upstream = useMemo(() => dependencyClosure(selectedCode, catalog?.courses ?? [], "upstream"), [catalog, selectedCode]);
-  const downstream = useMemo(() => dependencyClosure(selectedCode, catalog?.courses ?? [], "downstream"), [catalog, selectedCode]);
-  const highlighted = useMemo(() => new Set([selectedCode, ...upstream, ...downstream]), [selectedCode, upstream, downstream]);
   const scene = useMemo(() => {
     if (!catalog) {
       return {
@@ -131,6 +128,7 @@ function GraphWorkspace() {
         positions: new Map<string, { x: number; y: number }>(),
         bands: [],
         arrows: [],
+        chain: new Set<string>(),
       };
     }
     return mapScene({
@@ -138,10 +136,11 @@ function GraphWorkspace() {
       requirements: catalog.requirements,
       scope: depth,
       focusCode,
-      chain: highlighted,
+      selectedCode,
     });
-  }, [catalog, depth, focusCode, highlighted]);
+  }, [catalog, depth, focusCode, selectedCode]);
   const visible = scene.visible;
+  const highlighted = scene.chain;
   const graph = useMemo(() => {
     const incoming = new Set(scene.arrows.map((edge) => edge.target));
     const outgoing = new Set(scene.arrows.map((edge) => edge.source));
@@ -459,7 +458,7 @@ function GraphWorkspace() {
             <p>{selected ? expressionLabel(selected.prerequisites) : "Unknown"}</p>
             {selected?.prerequisiteCodes.length ? <div className="detail-code-links"><CodeLinks codes={selected.prerequisiteCodes} limit={1000} onSelect={focus} /></div> : <span className="muted small-text">No parsed prerequisites.</span>}
           </>}
-          <h3>Unlocks <span>{selected?.unlocks.length ?? downstream.size}</span></h3>
+          <h3>Unlocks <span>{selected?.unlocks.length ?? 0}</span></h3>
           {selected?.unlocks.length ? <div className="detail-code-links"><CodeLinks codes={selected.unlocks} limit={1000} onSelect={focus} /></div> : <span className="muted small-text">No linked downstream courses in this catalog.</span>}
           {showCorequisites ? <>
             <h3>Corequisites <span>{selected?.corequisiteCodes.length ?? 0}</span></h3>
