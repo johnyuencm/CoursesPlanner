@@ -4,19 +4,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Background, BackgroundVariant, Controls, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
 import { ArrowRight, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
 import {
-  catalogRelations,
   compactGraphStatusLabel,
   findCourses,
   isGraphFindSkipTarget,
-  layoutProgramFlow,
+  mapScene,
   PROGRAM_COL,
   PROGRAM_ROW,
   programMapCodes,
   shouldAutoLocateFind,
   shouldClearGraphFindOnEscape,
-  unlockArrowView,
-  visibleGraphDistances,
   wrapFindIndex,
+  type GraphScope,
 } from "@/lib/graph";
 import type { Course } from "@/lib/types";
 import { dependencyClosure, expressionLabel } from "@/lib/validation";
@@ -25,7 +23,6 @@ import { CodeLinks, courseStatus, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
 import { PageHeading, creditLabel } from "./ui";
 
-type GraphScope = "program" | "1" | "2" | "full";
 type GraphData = {
   code: string;
   title: string;
@@ -92,14 +89,6 @@ function FitToViewButton() {
   return <button className="button button-secondary button-small" type="button" onClick={() => { void fitView({ padding: 0.12 }); }}><Maximize2 size={14} /> Fit to view</button>;
 }
 
-function typeOrder(code: string, courseMap: Map<string, { requirementType: string }>) {
-  const course = courseMap.get(code);
-  if (!course || course.requirementType === "external") return 3;
-  if (course.requirementType === "core") return 0;
-  if (course.requirementType === "breadth") return 1;
-  return 2;
-}
-
 function nodeRequirementCopy(course: { requirementType: string; unlocks: string[]; prerequisites: Parameters<typeof expressionLabel>[0]; corequisites: Parameters<typeof expressionLabel>[0] } | undefined, kind: "prerequisites" | "corequisites") {
   if (!course) return "Unknown";
   if (course.requirementType === "external") {
@@ -136,21 +125,30 @@ function GraphWorkspace() {
   const waived = useMemo(() => new Set(plan.waivedCourses), [plan.waivedCourses]);
   const planned = useMemo(() => new Set(plan.semesters.flatMap((semester) => semester.courses.map((course) => course.code))), [plan.semesters]);
   const recorded = useMemo(() => new Set([...history, ...planned]), [history, planned]);
-  const relations = useMemo(() => catalogRelations(catalog?.courses ?? []), [catalog]);
   const upstream = useMemo(() => dependencyClosure(selectedCode, catalog?.courses ?? [], "upstream"), [catalog, selectedCode]);
   const downstream = useMemo(() => dependencyClosure(selectedCode, catalog?.courses ?? [], "downstream"), [catalog, selectedCode]);
-  const visible = useMemo(() => {
-    if (!catalog) return new Map<string, number>();
-    return visibleGraphDistances(depth, focusCode, catalog.courses, catalog.requirements, relations);
-  }, [catalog, depth, focusCode, relations]);
+  const highlighted = useMemo(() => new Set([selectedCode, ...upstream, ...downstream]), [selectedCode, upstream, downstream]);
+  const scene = useMemo(() => {
+    if (!catalog) {
+      return {
+        visible: new Map<string, number>(),
+        positions: new Map<string, { x: number; y: number }>(),
+        bands: [],
+        arrows: [],
+      };
+    }
+    return mapScene({
+      courses: catalog.courses,
+      requirements: catalog.requirements,
+      scope: depth,
+      focusCode,
+      chain: highlighted,
+    });
+  }, [catalog, depth, focusCode, highlighted]);
+  const visible = scene.visible;
   const graph = useMemo(() => {
-    const highlighted = new Set([selectedCode, ...upstream, ...downstream]);
-    const arrows = unlockArrowView(
-      relations.filter((edge) => visible.has(edge.source) && visible.has(edge.target)),
-      highlighted,
-    );
-    const incoming = new Set(arrows.map((edge) => edge.target));
-    const outgoing = new Set(arrows.map((edge) => edge.source));
+    const incoming = new Set(scene.arrows.map((edge) => edge.target));
+    const outgoing = new Set(scene.arrows.map((edge) => edge.source));
     const makeNode = (code: string, x: number, y: number): GraphNode => {
       const course = courseMap.get(code);
       const emphasized = highlighted.has(code);
@@ -186,26 +184,22 @@ function GraphWorkspace() {
       };
     };
     const nodes: FlowNode[] = [];
-    const compare = (left: string, right: string) => typeOrder(left, courseMap) - typeOrder(right, courseMap) || left.localeCompare(right, undefined, { numeric: true });
-    const layout = layoutProgramFlow(visible.keys(), relations, catalog?.courses ?? [], compare);
-    for (const [code, point] of layout.positions) nodes.push(makeNode(code, point.x, point.y));
-    if (depth === "program") {
-      for (const band of layout.bands) {
-        nodes.push({
-          id: `band:${band.id}`,
-          type: "band",
-          position: { x: band.x, y: band.y },
-          data: { label: band.label },
-          selectable: false,
-          draggable: false,
-          connectable: false,
-          focusable: false,
-          zIndex: 0,
-          style: { width: Math.max(PROGRAM_COL * 3, 420) },
-        });
-      }
+    for (const [code, point] of scene.positions) nodes.push(makeNode(code, point.x, point.y));
+    for (const band of scene.bands) {
+      nodes.push({
+        id: `band:${band.id}`,
+        type: "band",
+        position: { x: band.x, y: band.y },
+        data: { label: band.label },
+        selectable: false,
+        draggable: false,
+        connectable: false,
+        focusable: false,
+        zIndex: 0,
+        style: { width: Math.max(PROGRAM_COL * 3, 420) },
+      });
     }
-    const edges: Edge[] = arrows.map((edge, index) => {
+    const edges: Edge[] = scene.arrows.map((edge, index) => {
       const stroke = edge.stroke;
       return {
         id: `${edge.source}-${edge.target}-${index}`,
@@ -221,7 +215,7 @@ function GraphWorkspace() {
     });
     const courseNodes = nodes.filter((node): node is GraphNode => node.type === "course");
     return { nodes, edges, courseNodes };
-  }, [visible, depth, selectedCode, upstream, downstream, catalog, courseMap, relations, history, completed, waived, planned]);
+  }, [scene, highlighted, selectedCode, courseMap, history, completed, waived, planned]);
   const programCodes = useMemo(
     () => (catalog ? programMapCodes(catalog.courses, catalog.requirements) : new Set<string>()),
     [catalog],

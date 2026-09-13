@@ -10,6 +10,7 @@ import {
   findCourses,
   isGraphFindSkipTarget,
   layoutProgramFlow,
+  mapScene,
   neighborhoodDistances,
   PROGRAM_ROW,
   programGridDimensions,
@@ -359,4 +360,47 @@ test("compact graph cards shorten Prerequisite eligible without clipping other s
   assert.equal(compactGraphStatusLabel("Locked"), "Locked");
   assert.equal(compactGraphStatusLabel("Needs review"), "Needs review");
   assert.equal(compactGraphStatusLabel("Completed"), "Completed");
+});
+
+test("mapScene seats CS 5011 beside CS 5010 and draws no corequisite arrows", () => {
+  const { courses, requirements } = seattleGraph();
+  const scene = mapScene({
+    courses,
+    requirements,
+    scope: "program",
+    focusCode: "CS 5010",
+    chain: ["CS 5010", "CS 5011"],
+  });
+
+  assert.equal(scene.visible.has("CS 5010"), true);
+  assert.equal(scene.visible.has("CS 5011"), true);
+  assert.equal(scene.positions.get("CS 5011")!.x, scene.positions.get("CS 5010")!.x);
+  assert.equal(scene.positions.get("CS 5011")!.y, scene.positions.get("CS 5010")!.y + PROGRAM_ROW);
+  assert.equal(
+    scene.arrows.some(
+      (arrow) =>
+        (arrow.source === "CS 5010" && arrow.target === "CS 5011") ||
+        (arrow.source === "CS 5011" && arrow.target === "CS 5010"),
+    ),
+    false,
+  );
+  assert.ok(scene.bands.some((band) => band.id === "no-prerequisite"));
+});
+
+test("mapScene neighborhood of CS 5500 is four courses left to right", () => {
+  const { courses, requirements } = seattleGraph();
+  const scene = mapScene({
+    courses,
+    requirements,
+    scope: "1",
+    focusCode: "CS 5500",
+    chain: ["CS 5500"],
+  });
+
+  assert.deepEqual([...scene.visible.keys()].sort(), ["CS 5004", "CS 5010", "CS 5500", "CS 6510"]);
+  const x = (code: string) => scene.positions.get(code)!.x;
+  assert.ok(x("CS 5004") < x("CS 5500"));
+  assert.ok(x("CS 5010") < x("CS 5500"));
+  assert.ok(x("CS 5500") < x("CS 6510"));
+  assert.deepEqual(scene.bands, []);
 });

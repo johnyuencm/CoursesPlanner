@@ -93,8 +93,10 @@ export function topologicalRanks(codes: Iterable<string>, relations: GraphRelati
   return memo;
 }
 
+export type GraphScope = "program" | "1" | "2" | "full";
+
 export function visibleGraphDistances(
-  scope: "program" | "1" | "2" | "full",
+  scope: GraphScope,
   focusCode: string,
   courses: Course[],
   requirements: DegreeRequirement,
@@ -190,6 +192,58 @@ export function programGridDimensions(
   const columns = Math.max(1, Math.round(Math.sqrt(count * canvasAspect * (nodeHeight / nodeWidth))));
   const rows = Math.max(1, Math.ceil(count / columns));
   return { columns, rows };
+}
+
+export type MapScene = {
+  visible: Map<string, number>;
+  positions: Map<string, { x: number; y: number }>;
+  bands: ProgramBandLabel[];
+  arrows: UnlockArrow[];
+};
+
+export type MapSceneInput = {
+  courses: Course[];
+  requirements: DegreeRequirement;
+  scope: GraphScope;
+  focusCode: string;
+  chain: Iterable<string>;
+  compare?: (left: string, right: string) => number;
+};
+
+function requirementTypeOrder(code: string, courses: Map<string, Pick<Course, "requirementType">>) {
+  const course = courses.get(code);
+  if (!course || course.requirementType === "external") return 3;
+  if (course.requirementType === "core") return 0;
+  if (course.requirementType === "breadth") return 1;
+  return 2;
+}
+
+export function mapScene(input: MapSceneInput): MapScene {
+  const relations = catalogRelations(input.courses);
+  const visible = visibleGraphDistances(
+    input.scope,
+    input.focusCode,
+    input.courses,
+    input.requirements,
+    relations,
+  );
+  const courseByCode = new Map(input.courses.map((course) => [course.code, course] as const));
+  const compare =
+    input.compare ??
+    ((left, right) =>
+      requirementTypeOrder(left, courseByCode) - requirementTypeOrder(right, courseByCode) ||
+      left.localeCompare(right, undefined, { numeric: true }));
+  const layout = layoutProgramFlow(visible.keys(), relations, input.courses, compare);
+  const arrows = unlockArrowView(
+    relations.filter((edge) => visible.has(edge.source) && visible.has(edge.target)),
+    input.chain,
+  );
+  return {
+    visible,
+    positions: layout.positions,
+    bands: input.scope === "program" ? layout.bands : [],
+    arrows,
+  };
 }
 
 export function layoutProgramFlow(
