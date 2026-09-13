@@ -386,3 +386,13 @@ export function isGraphFindSkipTarget(target: EventTarget | null): boolean {
   if (!element) return false;
   return Boolean(element.closest("dialog, [role='dialog']"));
 }
+
+export function shouldClearGraphFindOnEscape(
+  key: string,
+  findQuery: string,
+  target: EventTarget | null,
+): boolean {
+  if (key !== "Escape") return false;
+  if (!findQuery.trim()) return false;
+  return !isGraphFindSkipTarget(target);
+}

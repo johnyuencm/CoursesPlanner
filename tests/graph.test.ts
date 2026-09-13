@@ -15,6 +15,7 @@ import {
   programMapCodes,
   selectedChainRelations,
   shouldAutoLocateFind,
+  shouldClearGraphFindOnEscape,
   unlockArrowView,
   visibleGraphDistances,
   wrapFindIndex,
@@ -311,4 +312,21 @@ test("graph find skips a native dialog even when it has no role attribute", () =
   assert.equal(isGraphFindSkipTarget(asTarget(insideDialog)), true);
   assert.equal(isGraphFindSkipTarget(asTarget(onCanvas)), false);
   assert.equal(isGraphFindSkipTarget(null), false);
+});
+
+test("graph find skips a role=dialog ancestor used by the course-details modal", () => {
+  const insideModal = new FakeElement("button", {}, new FakeElement("div", { role: "dialog" }));
+  assert.equal(isGraphFindSkipTarget(asTarget(insideModal)), true);
+});
+
+test("Escape clears map find when it has text and the canvas is focused", () => {
+  const canvas = new FakeElement("div", { class: "react-flow" });
+  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(canvas)), true);
+  assert.equal(shouldClearGraphFindOnEscape("Escape", "  ", asTarget(canvas)), false);
+  assert.equal(shouldClearGraphFindOnEscape("f", "cs55", asTarget(canvas)), false);
+});
+
+test("Escape does not steal dialog close when map find has text", () => {
+  const insideDialog = new FakeElement("input", {}, new FakeElement("dialog"));
+  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(insideDialog)), false);
 });
