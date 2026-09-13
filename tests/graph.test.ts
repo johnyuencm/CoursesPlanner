@@ -14,7 +14,6 @@ import {
   PROGRAM_ROW,
   programGridDimensions,
   programMapCodes,
-  selectedChainRelations,
   unlockArrowView,
   visibleGraphDistances,
 } from "../lib/graph";
@@ -106,16 +105,24 @@ test("a sole prerequisite sits on the same row immediately left of the course th
   assert.ok(positions.get("CS 5150")!.y > positions.get("CS 7332")!.y);
 });
 
-test("selected-chain arrows omit relationships that do not touch the selected course", () => {
-  const relations = [
-    { source: "CS 5004", target: "CS 5500", corequisite: false },
-    { source: "PHYS 5116", target: "CS 7332", corequisite: false },
-  ];
-  const shown = selectedChainRelations(relations, ["PHYS 5116", "CS 7332"]);
-  assert.deepEqual(shown, [{ source: "PHYS 5116", target: "CS 7332", corequisite: false }]);
+test("unlock arrows omit corequisites, off-map edges, and unselected chains", () => {
+  const arrows = unlockArrowView(
+    [
+      { source: "CS 5004", target: "CS 5500", corequisite: false },
+      { source: "PHYS 5116", target: "CS 7332", corequisite: false },
+      { source: "CS 5011", target: "CS 5010", corequisite: true },
+    ],
+    ["PHYS 5116", "CS 7332"],
+    ["PHYS 5116", "CS 7332", "CS 5011", "CS 5010"],
+  );
+
+  assert.deepEqual(
+    arrows.map((arrow) => ({ source: arrow.source, target: arrow.target, emphasized: arrow.emphasized })),
+    [{ source: "PHYS 5116", target: "CS 7332", emphasized: true }],
+  );
 });
 
-test("unlock arrows omit corequisites and emphasize only the selected chain", () => {
+test("unlock arrows keep unselected on-map prerequisites muted", () => {
   const arrows = unlockArrowView(
     [
       { source: "CS 5004", target: "CS 5500", corequisite: false },

@@ -120,12 +120,12 @@ export const PROGRAM_BAND_COPY = {
 export type ProgramBandId = keyof typeof PROGRAM_BAND_COPY;
 export type ProgramBandLabel = { id: ProgramBandId; label: string; x: number; y: number };
 
-export function selectedChainRelations(relations: GraphRelation[], chain: Iterable<string>): GraphRelation[] {
+function selectedChainRelations(relations: GraphRelation[], chain: Iterable<string>): GraphRelation[] {
   const keep = new Set(chain);
   return relations.filter((edge) => keep.has(edge.source) && keep.has(edge.target));
 }
 
-export function directedPrerequisiteRelations(relations: readonly GraphRelation[]): GraphRelation[] {
+function directedPrerequisiteRelations(relations: readonly GraphRelation[]): GraphRelation[] {
   return relations.filter((edge) => !edge.corequisite);
 }
 
@@ -136,8 +136,15 @@ export type UnlockArrow = {
   stroke: string;
 };
 
-export function unlockArrowView(relations: readonly GraphRelation[], chainCodes: Iterable<string>): UnlockArrow[] {
-  const directed = directedPrerequisiteRelations(relations);
+export function unlockArrowView(
+  relations: readonly GraphRelation[],
+  chainCodes: Iterable<string>,
+  visible?: Iterable<string>,
+): UnlockArrow[] {
+  const keep = visible ? new Set(visible) : null;
+  const directed = directedPrerequisiteRelations(relations).filter(
+    (edge) => !keep || (keep.has(edge.source) && keep.has(edge.target)),
+  );
   const chainKeys = new Set(
     selectedChainRelations(directed, chainCodes).map((edge) => `${edge.source}->${edge.target}`),
   );
@@ -234,10 +241,7 @@ export function mapScene(input: MapSceneInput): MapScene {
       requirementTypeOrder(left, courseByCode) - requirementTypeOrder(right, courseByCode) ||
       left.localeCompare(right, undefined, { numeric: true }));
   const layout = layoutProgramFlow(visible.keys(), relations, input.courses, compare);
-  const arrows = unlockArrowView(
-    relations.filter((edge) => visible.has(edge.source) && visible.has(edge.target)),
-    input.chain,
-  );
+  const arrows = unlockArrowView(relations, input.chain, visible.keys());
   return {
     visible,
     positions: layout.positions,
