@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-13T07:00:35.668Z",
+  "updated_at": "2026-09-13T07:04:27.856Z",
   "active_goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -17,7 +17,7 @@
       "worktree_status": "pending",
       "stop_enforcement": false,
       "created_at": "2026-09-12T06:05:27.486Z",
-      "updated_at": "2026-09-13T06:08:54.982Z"
+      "updated_at": "2026-09-13T07:03:50.987Z"
     }
   },
   "local_tickets": {
@@ -104,11 +104,11 @@
         "npm test and npm run typecheck both exit 0."
       ],
       "blocked_by": [],
-      "status": "in_review",
+      "status": "done",
       "code_changed": true,
       "order": 4,
       "created_at": "2026-09-13T06:08:44.664Z",
-      "updated_at": "2026-09-13T07:00:35.666Z"
+      "updated_at": "2026-09-13T07:03:50.986Z"
     }
   },
   "checkpoints": {
@@ -371,6 +371,54 @@
         "submitted_at": "2026-09-13T07:00:35.668Z"
       },
       "recorded_at": "2026-09-13T07:00:35.668Z"
+    },
+    "submission-ticket-seat-coreq-partners-beside-their-course-and-reuse-skill-6b3b09cd-e5d6b7": {
+      "id": "submission-ticket-seat-coreq-partners-beside-their-course-and-reuse-skill-6b3b09cd-e5d6b7",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "kind": "other",
+      "submission_digest": "3f4551c55950ee60921fe09cdf317a1833e6f0df961f60cd97bb0f003704d46e",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T07:02:52.092Z"
+      },
+      "recorded_at": "2026-09-13T07:02:52.092Z"
+    },
+    "evidence-b2b84bd8": {
+      "id": "evidence-b2b84bd8",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "kind": "verification",
+      "submission_digest": "3f4551c55950ee60921fe09cdf317a1833e6f0df961f60cd97bb0f003704d46e",
+      "evidence_digest": "05d430da6e33dc774b58c5ed0d257e73f32d17f62293079544b970bf7be40471",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-b2b84bd8.log",
+      "command": "cmd /c npm",
+      "outcome": "fail",
+      "provenance": {
+        "implementer_run": "impl-coreq-layout-17fc4c5",
+        "verifier_run": "verify-coreq-layout-orchestrator",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T07:03:14.231Z"
+      },
+      "recorded_at": "2026-09-13T07:03:14.232Z"
+    },
+    "evidence-c91d55c1": {
+      "id": "evidence-c91d55c1",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "kind": "verification",
+      "submission_digest": "3f4551c55950ee60921fe09cdf317a1833e6f0df961f60cd97bb0f003704d46e",
+      "evidence_digest": "25b9accbc5c2744bb492fe6321f2c7a9feae141d6eb20a05ffd1ebabcd58edb5",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-c91d55c1.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "impl-coreq-layout-17fc4c5",
+        "verifier_run": "verify-coreq-layout-r2",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T07:03:38.336Z"
+      },
+      "recorded_at": "2026-09-13T07:03:38.337Z"
     }
   },
   "wiki": {
@@ -388,6 +436,17 @@
         "body_path": "pages/work-lite-2026-09-13-skill-tree-map.md",
         "created_at": "2026-09-13T05:54:57.616Z",
         "updated_at": "2026-09-13T05:54:57.616Z"
+      },
+      "work-2026-09-13-coreq-adjacency": {
+        "id": "work-2026-09-13-coreq-adjacency",
+        "title": "Coreq adjacency leftover (skill-tree map)",
+        "source_ids": [],
+        "tags": [
+          "decision"
+        ],
+        "body_path": "pages/work-2026-09-13-coreq-adjacency.md",
+        "created_at": "2026-09-13T07:04:27.855Z",
+        "updated_at": "2026-09-13T07:04:27.855Z"
       }
     },
     "log": [
@@ -397,6 +456,13 @@
         "ref": "work-lite-2026-09-13-skill-tree-map",
         "note": "durable decision",
         "at": "2026-09-13T05:54:57.618Z"
+      },
+      {
+        "id": "wlg_939e4759",
+        "kind": "page.upserted",
+        "ref": "work-2026-09-13-coreq-adjacency",
+        "note": "durable decision",
+        "at": "2026-09-13T07:04:27.856Z"
       }
     ]
   },
