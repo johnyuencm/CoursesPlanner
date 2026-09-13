@@ -1,5 +1,7 @@
 import type { Course, DegreeRequirement } from "./types";
 
+export type ClassifiableCourse = Pick<Course, "code" | "requirementType" | "prerequisites">;
+
 export type GraphRelation = { source: string; target: string; corequisite: boolean };
 
 export function listedProgramCodes(requirements: DegreeRequirement): string[] {
@@ -112,6 +114,40 @@ export const PROGRAM_ISOLATE_GAP = 80;
 export function selectedChainRelations(relations: GraphRelation[], chain: Iterable<string>): GraphRelation[] {
   const keep = new Set(chain);
   return relations.filter((edge) => keep.has(edge.source) && keep.has(edge.target));
+}
+
+export function directedPrerequisiteRelations(relations: readonly GraphRelation[]): GraphRelation[] {
+  return relations.filter((edge) => !edge.corequisite);
+}
+
+export function classifyUnlinkedProgramCodes(
+  codes: Iterable<string>,
+  relations: readonly GraphRelation[],
+  courses: Iterable<ClassifiableCourse>,
+): { noPrerequisite: string[]; unlinked: string[] } {
+  const keep = new Set(codes);
+  const courseByCode = new Map<string, ClassifiableCourse>();
+  for (const course of courses) courseByCode.set(course.code, course);
+
+  const linked = new Set<string>();
+  for (const edge of directedPrerequisiteRelations(relations)) {
+    if (!keep.has(edge.source) || !keep.has(edge.target)) continue;
+    linked.add(edge.source);
+    linked.add(edge.target);
+  }
+
+  const noPrerequisite: string[] = [];
+  const unlinked: string[] = [];
+  for (const code of keep) {
+    if (linked.has(code)) continue;
+    const course = courseByCode.get(code);
+    if (course && course.requirementType !== "external" && course.prerequisites.type === "none") {
+      noPrerequisite.push(code);
+    } else {
+      unlinked.push(code);
+    }
+  }
+  return { noPrerequisite, unlinked };
 }
 
 export function programGridDimensions(

@@ -5,6 +5,7 @@ import test from "node:test";
 
 import {
   catalogRelations,
+  classifyUnlinkedProgramCodes,
   findCourses,
   neighborhoodDistances,
   programFlowPositions,
@@ -104,6 +105,17 @@ test("selected-chain arrows omit relationships that do not touch the selected co
   ];
   const shown = selectedChainRelations(relations, ["PHYS 5116", "CS 7332"]);
   assert.deepEqual(shown, [{ source: "PHYS 5116", target: "CS 7332", corequisite: false }]);
+});
+
+test("unlinked codes with no parsed prerequisite sit in the no-prereq band, not the connected roots", () => {
+  const { courses, requirements } = seattleGraph();
+  const codes = programMapCodes(courses, requirements);
+  const classified = classifyUnlinkedProgramCodes(codes, catalogRelations(courses), courses);
+
+  assert.equal(classified.noPrerequisite.includes("CS 5150"), true);
+  assert.equal(classified.noPrerequisite.includes("CS 5010"), false);
+  assert.equal(classified.unlinked.includes("CS 5010"), false);
+  assert.equal(classified.noPrerequisite.includes("PHYS 5116"), false);
 });
 
 test("findCourses matches compacted codes and titles and prefers courses on the map", () => {
