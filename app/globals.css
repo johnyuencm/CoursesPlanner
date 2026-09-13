@@ -363,11 +363,11 @@ textarea { resize: vertical; }
 .graph-canvas-hint { margin: 0; padding: 0.45rem 0.85rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.65rem; }
 .react-flow__minimap { border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
 .graph-course-node { position: relative; width: 196px; border: 1px solid transparent; border-radius: 10px; background: var(--purple-soft); box-shadow: var(--shadow); transition: box-shadow 140ms, border-color 140ms; }
-.graph-course-node.graph-compact { width: 152px; }
-.graph-course-node.graph-compact .graph-node-title,
+.graph-course-node.graph-compact { width: 176px; }
 .graph-course-node.graph-compact .graph-node-bottom { display: none; }
-.graph-course-node.graph-compact .graph-node-main { padding: 0.42rem 0.55rem 0.4rem; }
-.graph-course-node.graph-compact .graph-node-main strong { margin-top: 0.18rem; font-size: 0.95rem; }
+.graph-course-node.graph-compact .graph-node-main { padding: 0.42rem 0.55rem 0.45rem; }
+.graph-course-node.graph-compact .graph-node-main strong { margin-top: 0.12rem; font-size: 0.82rem; }
+.graph-course-node.graph-compact .graph-node-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 0; margin-top: 0.12rem; font-size: 0.62rem; }
 .graph-course-node.graph-core { background: var(--red-soft); }
 .graph-course-node.graph-breadth { background: var(--blue-soft); }
 .graph-course-node.graph-elective { background: var(--purple-soft); }
@@ -393,7 +393,7 @@ textarea { resize: vertical; }
 .legend-node.completed { background: var(--green-soft); }
 .legend-node.external { background: #eef0f3; border: 1px dashed #c5cad3; }
 .legend-node.emphasis { box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35); }
-.legend-line { width: 20px; height: 2px; background: #98a2b3; }
+.react-flow__handle.graph-handle-hidden { opacity: 0; pointer-events: none; }
 .legend-line.dashed { background: repeating-linear-gradient(90deg, #98a2b3 0 4px, transparent 4px 7px); }
 .graph-inspector { padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); align-self: start; box-shadow: var(--shadow); }
 .graph-inspector h2 { margin: 0.45rem 0 0.15rem; color: var(--ink); font-size: 1.2rem; }
