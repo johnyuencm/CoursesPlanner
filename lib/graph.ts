@@ -396,3 +396,7 @@ export function shouldClearGraphFindOnEscape(
   if (!findQuery.trim()) return false;
   return !isGraphFindSkipTarget(target);
 }
+
+export function compactGraphStatusLabel(fullLabel: string): string {
+  return fullLabel === "Prerequisite eligible" ? "Eligible" : fullLabel;
+}

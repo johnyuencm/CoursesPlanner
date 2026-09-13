@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   catalogRelations,
   classifyUnlinkedProgramCodes,
+  compactGraphStatusLabel,
   findCourses,
   isGraphFindSkipTarget,
   layoutProgramFlow,
@@ -329,4 +330,11 @@ test("Escape clears map find when it has text and the canvas is focused", () => 
 test("Escape does not steal dialog close when map find has text", () => {
   const insideDialog = new FakeElement("input", {}, new FakeElement("dialog"));
   assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(insideDialog)), false);
+});
+
+test("compact graph cards shorten Prerequisite eligible without clipping other statuses", () => {
+  assert.equal(compactGraphStatusLabel("Prerequisite eligible"), "Eligible");
+  assert.equal(compactGraphStatusLabel("Locked"), "Locked");
+  assert.equal(compactGraphStatusLabel("Needs review"), "Needs review");
+  assert.equal(compactGraphStatusLabel("Completed"), "Completed");
 });
