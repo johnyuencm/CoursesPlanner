@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-13T03:34:49.841Z",
+  "updated_at": "2026-09-13T04:08:26.963Z",
   "active_goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -87,11 +87,11 @@
         "npm test and npm run typecheck pass."
       ],
       "blocked_by": [],
-      "status": "in_progress",
+      "status": "done",
       "code_changed": true,
       "order": 3,
       "created_at": "2026-09-13T03:34:35.501Z",
-      "updated_at": "2026-09-13T03:34:49.840Z"
+      "updated_at": "2026-09-13T03:46:02.634Z"
     }
   },
   "checkpoints": {
@@ -114,6 +114,16 @@
       "notes": "Round-1 panel PASS (tech_lead, spec_reviewer, user_advocate, uiux, project_manager) with no high findings after a hung background dispatch was aborted and relaunched. Default /map is a left-to-right prereq flow; inspector chips pan or open neighborhood. Deferred: inspector-pan unit tests, flow test using UI typeOrder, unlabeled isolate band, first-paint CS 5500 off-screen at zoom 1, neighborhood chip remount, MiniMap clip, completed-color-only, dangling chips, explorer keyword spill. Parent goal left active.",
       "decisions": [],
       "created_at": "2026-09-13T01:04:10.243Z"
+    },
+    "cp_manual_independent-review-pass_9759": {
+      "id": "cp_manual_independent-review-pass_9759",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "kind": "manual",
+      "title": "independent review PASS",
+      "notes": "Round-1 panel PASS (tech_lead, spec_reviewer, user_advocate, uiux, project_manager) with no high findings. Live /map: Ctrl+F focuses graph find, cs5500 and PHYS 5116 pan off-screen nodes, Enter/F3 cycle, Escape clears. Verify evidence-40652cb9 45 tests + typecheck. Deferred mediums: native dialog skip uses [role=dialog] so course-details Ctrl+F is dead (course-graph.tsx:179 vs ui.tsx:20); keyboard/pan untested; 0-of-N until auto-locate; Escape does not restore neighborhood; find is not a combobox. Parent goal left active.",
+      "decisions": [],
+      "created_at": "2026-09-13T04:08:26.961Z"
     }
   },
   "evidence": {
@@ -272,6 +282,36 @@
         "submitted_at": "2026-09-13T03:27:41.042Z"
       },
       "recorded_at": "2026-09-13T03:27:41.043Z"
+    },
+    "submission-ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3-d818da": {
+      "id": "submission-ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3-d818da",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "kind": "other",
+      "submission_digest": "73a9b7cceff02ea1af7bf9d97266da84f0b3abc00950714036abee7e25fb5a50",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T03:45:13.477Z"
+      },
+      "recorded_at": "2026-09-13T03:45:13.477Z"
+    },
+    "evidence-40652cb9": {
+      "id": "evidence-40652cb9",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "kind": "verification",
+      "submission_digest": "73a9b7cceff02ea1af7bf9d97266da84f0b3abc00950714036abee7e25fb5a50",
+      "evidence_digest": "a3e9b780927e7df69c818c7bc22bfb35f250bfd45c4a79f0c9e177b3b7b7bcf4",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-40652cb9.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "find-impl-r1",
+        "verifier_run": "find-ver-r1",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T03:46:02.632Z"
+      },
+      "recorded_at": "2026-09-13T03:46:02.633Z"
     }
   },
   "wiki": {

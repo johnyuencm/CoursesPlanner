@@ -18,3 +18,5 @@
 {"id":"evt_c83b60e5","kind":"ticket.submitted","at":"2026-09-13T03:27:19.389Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df"}
 {"id":"evt_efe5c46c","kind":"ticket.created","at":"2026-09-13T03:34:35.515Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3"}
 {"id":"evt_8c066cb0","kind":"ticket.started","at":"2026-09-13T03:34:49.853Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3"}
+{"id":"evt_48269829","kind":"ticket.submitted","at":"2026-09-13T03:45:13.490Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3"}
+{"id":"evt_4f8bbf32","kind":"checkpoint.recorded","at":"2026-09-13T04:08:26.961Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3","checkpoint_id":"cp_manual_independent-review-pass_9759"}
