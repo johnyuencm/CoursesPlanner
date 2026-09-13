@@ -7,20 +7,16 @@ import {
   catalogRelations,
   classifyUnlinkedProgramCodes,
   compactGraphStatusLabel,
-  findCourses,
-  isGraphFindSkipTarget,
   layoutProgramFlow,
+  mapFind,
   mapScene,
   neighborhoodDistances,
   PROGRAM_ROW,
   programGridDimensions,
   programMapCodes,
   selectedChainRelations,
-  shouldAutoLocateFind,
-  shouldClearGraphFindOnEscape,
   unlockArrowView,
   visibleGraphDistances,
-  wrapFindIndex,
 } from "../lib/graph";
 import { PROGRAM_URL, buildCourseGraph, parseCourses, parseProgramRequirements } from "../scraper/parser";
 
@@ -245,7 +241,7 @@ test("layout stacks the no-prereq band below the connected flow and unlinked cou
   assert.equal(layout.positions.size, codes.size);
 });
 
-test("findCourses matches compacted codes and titles and prefers courses on the map", () => {
+test("mapFind matches compacted codes and titles and prefers courses on the map", () => {
   const courses = [
     { code: "CS 1800", title: "Discrete Structures" },
     { code: "CS 5500", title: "Foundations of Software Engineering" },
@@ -253,33 +249,49 @@ test("findCourses matches compacted codes and titles and prefers courses on the 
     { code: "PHYS 5116", title: "Electromagnetic Materials" },
   ];
 
-  assert.deepEqual(findCourses(courses, "  "), []);
-  assert.equal(findCourses(courses, "cs5500")[0]?.code, "CS 5500");
-  assert.equal(findCourses(courses, "PHYS 5116")[0]?.code, "PHYS 5116");
-  assert.equal(findCourses(courses, "discrete")[0]?.code, "CS 1800");
-  assert.equal(findCourses(courses, "800", ["CS 5800"])[0]?.code, "CS 5800");
-  assert.ok(findCourses(courses, "cs").length > 2);
+  assert.deepEqual(mapFind.query(courses, "  ").matches, []);
+  assert.equal(mapFind.query(courses, "cs5500").matches[0]?.code, "CS 5500");
+  assert.equal(mapFind.query(courses, "PHYS 5116").matches[0]?.code, "PHYS 5116");
+  assert.equal(mapFind.query(courses, "discrete").matches[0]?.code, "CS 1800");
+  assert.equal(mapFind.query(courses, "800", ["CS 5800"]).matches[0]?.code, "CS 5800");
+  assert.ok(mapFind.query(courses, "cs").matches.length > 2);
 });
 
-test("findCourses on the MSCS snapshot locates CS 5500 and PHYS 5116", () => {
+test("mapFind on the MSCS snapshot locates CS 5500 and PHYS 5116", () => {
   const { courses, requirements } = seattleGraph();
   const onMap = programMapCodes(courses, requirements);
-  assert.equal(findCourses(courses, "cs5500", onMap)[0]?.code, "CS 5500");
-  assert.equal(findCourses(courses, "5500", onMap)[0]?.code, "CS 5500");
-  assert.equal(findCourses(courses, "PHYS 5116", onMap)[0]?.code, "PHYS 5116");
+  assert.equal(mapFind.query(courses, "cs5500", onMap).matches[0]?.code, "CS 5500");
+  assert.equal(mapFind.query(courses, "5500", onMap).matches[0]?.code, "CS 5500");
+  assert.equal(mapFind.query(courses, "PHYS 5116", onMap).matches[0]?.code, "PHYS 5116");
 });
 
-test("wrapFindIndex and auto-locate match Ctrl+F next/previous behavior", () => {
-  assert.equal(wrapFindIndex(-1, 5, 1), 0);
-  assert.equal(wrapFindIndex(-1, 5, -1), 4);
-  assert.equal(wrapFindIndex(0, 5, 1), 1);
-  assert.equal(wrapFindIndex(4, 5, 1), 0);
-  assert.equal(wrapFindIndex(0, 5, -1), 4);
-  assert.equal(wrapFindIndex(0, 0, 1), -1);
-  assert.equal(shouldAutoLocateFind("c", 12), false);
-  assert.equal(shouldAutoLocateFind("cs55", 4), true);
-  assert.equal(shouldAutoLocateFind("xy", 1), true);
-  assert.equal(shouldAutoLocateFind("cs55", 0), false);
+test("mapFind cycles matches and auto-locates only for a unique hit or a long needle", () => {
+  const many = Array.from({ length: 12 }, (_, index) => ({
+    code: `CS ${1000 + index}`,
+    title: `Course ${index}`,
+  }));
+  const cs55 = [
+    { code: "CS 5500", title: "Foundations" },
+    { code: "CS 5510", title: "More" },
+    { code: "CS 5520", title: "Still" },
+    { code: "CS 5530", title: "Again" },
+  ];
+  assert.equal(mapFind.cycleIndex(-1, 5, 1), 0);
+  assert.equal(mapFind.cycleIndex(-1, 5, -1), 4);
+  assert.equal(mapFind.cycleIndex(0, 5, 1), 1);
+  assert.equal(mapFind.cycleIndex(4, 5, 1), 0);
+  assert.equal(mapFind.cycleIndex(0, 5, -1), 4);
+  assert.equal(mapFind.cycleIndex(0, 0, 1), -1);
+  assert.equal(mapFind.query(many, "c").autoLocate, false);
+  assert.equal(mapFind.query(cs55, "cs55").autoLocate, true);
+  assert.equal(mapFind.query([{ code: "XY 1", title: "Xylophone" }], "xy").autoLocate, true);
+  assert.equal(mapFind.query([], "cs55").autoLocate, false);
+});
+
+test("mapFind reveals off-map courses by switching to the immediate neighborhood", () => {
+  assert.deepEqual(mapFind.reveal("CS 1800", new Set(["CS 5010"])), { code: "CS 1800", neighborhood: true });
+  assert.deepEqual(mapFind.reveal("CS 5010", new Set(["CS 5010"])), { code: "CS 5010", neighborhood: false });
+  assert.deepEqual(mapFind.reveal("CS 5500", new Map([["CS 5500", 0]])), { code: "CS 5500", neighborhood: false });
 });
 
 class FakeElement {
@@ -314,45 +326,45 @@ const asTarget = (element: FakeElement) => element as unknown as EventTarget;
 test("graph find skips a native dialog even when it has no role attribute", () => {
   const insideDialog = new FakeElement("input", {}, new FakeElement("dialog"));
   const onCanvas = new FakeElement("div");
-  assert.equal(isGraphFindSkipTarget(asTarget(insideDialog)), true);
-  assert.equal(isGraphFindSkipTarget(asTarget(onCanvas)), false);
-  assert.equal(isGraphFindSkipTarget(null), false);
+  assert.equal(mapFind.intent({ key: "a", target: asTarget(insideDialog) }, "cs55").type, "skip");
+  assert.equal(mapFind.intent({ key: "a", target: asTarget(onCanvas) }, "cs55").type, "none");
+  assert.equal(mapFind.intent({ key: "a", target: null }, "cs55").type, "none");
 });
 
 test("graph find skips a role=dialog ancestor used by the course-details modal", () => {
   const insideModal = new FakeElement("button", {}, new FakeElement("div", { role: "dialog" }));
-  assert.equal(isGraphFindSkipTarget(asTarget(insideModal)), true);
+  assert.equal(mapFind.intent({ key: "F3", target: asTarget(insideModal) }, "cs55").type, "skip");
 });
 
 test("Escape clears map find when it has text and the canvas is focused", () => {
   const canvas = new FakeElement("div", { class: "react-flow" }, new FakeElement("div", { class: "flow-canvas" }));
-  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(canvas)), true);
-  assert.equal(shouldClearGraphFindOnEscape("Escape", "  ", asTarget(canvas)), false);
-  assert.equal(shouldClearGraphFindOnEscape("f", "cs55", asTarget(canvas)), false);
-  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", null), true);
+  assert.equal(mapFind.intent({ key: "Escape", target: asTarget(canvas) }, "cs55").type, "clear");
+  assert.equal(mapFind.intent({ key: "Escape", target: asTarget(canvas) }, "  ").type, "none");
+  assert.equal(mapFind.intent({ key: "f", target: asTarget(canvas) }, "cs55").type, "none");
+  assert.equal(mapFind.intent({ key: "Escape", target: null }, "cs55").type, "clear");
 });
 
 test("Escape does not steal dialog close when map find has text", () => {
   const insideDialog = new FakeElement("input", {}, new FakeElement("dialog"));
-  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(insideDialog)), false);
+  assert.equal(mapFind.intent({ key: "Escape", target: asTarget(insideDialog) }, "cs55").type, "skip");
 });
 
 test("Escape does not clear map find from the header catalog search", () => {
   const headerSearch = new FakeElement("input", { type: "search" });
-  assert.equal(isGraphFindSkipTarget(asTarget(headerSearch)), false);
-  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(headerSearch)), false);
+  assert.equal(mapFind.intent({ key: "Escape", target: asTarget(headerSearch) }, "cs55").type, "none");
+  assert.equal(mapFind.intent({ key: "f", ctrlKey: true, target: asTarget(headerSearch) }, "").type, "focus");
 });
 
 test("Escape does not clear map find from the Show depth select", () => {
   const depth = new FakeElement("select", {}, new FakeElement("label", { class: "graph-depth-label" }, new FakeElement("div", { class: "graph-panel" })));
-  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(depth)), false);
+  assert.equal(mapFind.intent({ key: "Escape", target: asTarget(depth) }, "cs55").type, "none");
 });
 
 test("Escape still clears map find from graph find UI and the map panel", () => {
   const findInput = new FakeElement("input", { id: "graph-find" }, new FakeElement("div", { class: "graph-search-wrap" }));
   const panelNode = new FakeElement("button", {}, new FakeElement("div", { class: "graph-panel" }));
-  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(findInput)), true);
-  assert.equal(shouldClearGraphFindOnEscape("Escape", "cs55", asTarget(panelNode)), true);
+  assert.equal(mapFind.intent({ key: "Escape", target: asTarget(findInput) }, "cs55").type, "clear");
+  assert.equal(mapFind.intent({ key: "Escape", target: asTarget(panelNode) }, "cs55").type, "clear");
 });
 
 test("compact graph cards shorten Prerequisite eligible without clipping other statuses", () => {

@@ -384,13 +384,13 @@ export function layoutProgramFlow(
   return { positions, bands };
 }
 
-export function normalizeFindNeedle(query: string): string {
+function normalizeFindNeedle(query: string): string {
   return query.trim().toLowerCase().replace(/\s+/g, "");
 }
 
 export type FindableCourse = { code: string; title: string };
 
-export function findCourses<T extends FindableCourse>(
+function findCourses<T extends FindableCourse>(
   courses: readonly T[],
   query: string,
   onMap: Iterable<string> = [],
@@ -418,13 +418,13 @@ export function findCourses<T extends FindableCourse>(
   return scored.map((item) => item.course);
 }
 
-export function wrapFindIndex(current: number, count: number, step: number): number {
+function wrapFindIndex(current: number, count: number, step: number): number {
   if (count <= 0) return -1;
   if (current < 0) return step < 0 ? count - 1 : 0;
   return (current + step + count) % count;
 }
 
-export function shouldAutoLocateFind(query: string, matchCount: number): boolean {
+function shouldAutoLocateFind(query: string, matchCount: number): boolean {
   if (matchCount <= 0) return false;
   return matchCount === 1 || normalizeFindNeedle(query).length >= 4;
 }
@@ -435,7 +435,7 @@ function elementWithClosest(target: EventTarget | null): { closest: (selector: s
   return typeof closest === "function" ? (target as { closest: (selector: string) => unknown }) : null;
 }
 
-export function isGraphFindSkipTarget(target: EventTarget | null): boolean {
+function isGraphFindSkipTarget(target: EventTarget | null): boolean {
   const element = elementWithClosest(target);
   if (!element) return false;
   return Boolean(element.closest("dialog, [role='dialog']"));
@@ -456,7 +456,7 @@ function isGraphFindEscapeScope(target: EventTarget | null): boolean {
   return Boolean(element.closest(".graph-panel"));
 }
 
-export function shouldClearGraphFindOnEscape(
+function shouldClearGraphFindOnEscape(
   key: string,
   findQuery: string,
   target: EventTarget | null,
@@ -466,6 +466,49 @@ export function shouldClearGraphFindOnEscape(
   if (isGraphFindSkipTarget(target)) return false;
   return isGraphFindEscapeScope(target);
 }
+
+export type MapFindKeyEvent = {
+  key: string;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  altKey?: boolean;
+  shiftKey?: boolean;
+  target?: EventTarget | null;
+};
+
+export type MapFindIntent =
+  | { type: "none" }
+  | { type: "skip" }
+  | { type: "focus" }
+  | { type: "clear" }
+  | { type: "cycle"; step: number };
+
+function visibleCodes(visible: Iterable<string> | Map<string, unknown> | Set<string>): Set<string> {
+  if (visible instanceof Set) return visible;
+  if (visible instanceof Map) return new Set(visible.keys());
+  return new Set(visible);
+}
+
+export const mapFind = {
+  query<T extends FindableCourse>(courses: readonly T[], query: string, onMap: Iterable<string> = []) {
+    const matches = findCourses(courses, query, onMap);
+    return { matches, autoLocate: shouldAutoLocateFind(query, matches.length) };
+  },
+  intent(event: MapFindKeyEvent, query: string): MapFindIntent {
+    const target = event.target ?? null;
+    if (isGraphFindSkipTarget(target)) return { type: "skip" };
+    const modifier = Boolean(event.ctrlKey || event.metaKey);
+    if ((event.key === "f" || event.key === "F") && modifier && !event.altKey) return { type: "focus" };
+    if (shouldClearGraphFindOnEscape(event.key, query, target)) return { type: "clear" };
+    const findNext = event.key === "F3" || ((event.key === "g" || event.key === "G") && modifier);
+    if (findNext) return { type: "cycle", step: event.shiftKey ? -1 : 1 };
+    return { type: "none" };
+  },
+  cycleIndex: wrapFindIndex,
+  reveal(code: string, visible: Iterable<string> | Map<string, unknown> | Set<string>) {
+    return { code, neighborhood: !visibleCodes(visible).has(code) };
+  },
+};
 
 export function compactGraphStatusLabel(fullLabel: string): string {
   return fullLabel === "Prerequisite eligible" ? "Eligible" : fullLabel;

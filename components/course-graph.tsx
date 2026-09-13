@@ -5,15 +5,11 @@ import { Background, BackgroundVariant, Controls, Handle, MarkerType, Position, 
 import { ArrowRight, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
 import {
   compactGraphStatusLabel,
-  findCourses,
-  isGraphFindSkipTarget,
+  mapFind,
   mapScene,
   PROGRAM_COL,
   PROGRAM_ROW,
   programMapCodes,
-  shouldAutoLocateFind,
-  shouldClearGraphFindOnEscape,
-  wrapFindIndex,
   type GraphScope,
 } from "@/lib/graph";
 import type { Course } from "@/lib/types";
@@ -220,46 +216,45 @@ function GraphWorkspace() {
     () => (catalog ? programMapCodes(catalog.courses, catalog.requirements) : new Set<string>()),
     [catalog],
   );
-  const matches = useMemo(
-    () => findCourses(catalog?.courses ?? [], search, programCodes),
+  const found = useMemo(
+    () => mapFind.query(catalog?.courses ?? [], search, programCodes),
     [catalog, search, programCodes],
   );
+  const matches = found.matches;
   matchesRef.current = matches;
   useEffect(() => {
     if (!matches.length) {
       setFindIndex(-1);
       return;
     }
-    if (!shouldAutoLocateFind(search, matches.length)) return;
+    if (!found.autoLocate) return;
     setFindIndex(0);
     locateRef.current(matches[0]!.code, true);
-  }, [search, matches]);
+  }, [search, matches, found.autoLocate]);
   useEffect(() => {
     if (findIndex < 0) return;
     document.getElementById(`graph-find-hit-${findIndex}`)?.scrollIntoView({ block: "nearest" });
   }, [findIndex]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const target = event.target;
-      if (isGraphFindSkipTarget(target)) return;
-      const modifier = event.ctrlKey || event.metaKey;
-      if ((event.key === "f" || event.key === "F") && modifier && !event.altKey) {
+      const intent = mapFind.intent(event, searchRef.current);
+      if (intent.type === "skip" || intent.type === "none") return;
+      if (intent.type === "focus") {
         event.preventDefault();
         const input = findInputRef.current;
         input?.focus();
         input?.select();
         return;
       }
-      if (shouldClearGraphFindOnEscape(event.key, searchRef.current, target)) {
+      if (intent.type === "clear") {
         event.preventDefault();
         setSearch("");
         setFindIndex(-1);
         return;
       }
-      const findNext = event.key === "F3" || ((event.key === "g" || event.key === "G") && modifier);
-      if (findNext && matchesRef.current.length) {
+      if (intent.type === "cycle" && matchesRef.current.length) {
         event.preventDefault();
-        cycleRef.current(event.shiftKey ? -1 : 1);
+        cycleRef.current(intent.step);
       }
     };
     window.addEventListener("keydown", onKey, true);
@@ -274,10 +269,10 @@ function GraphWorkspace() {
     if (laid) void setCenter(laid.position.x + (PROGRAM_COL - 12) / 2, laid.position.y + (PROGRAM_ROW - 8) / 2, { zoom: READABLE_ZOOM, duration: 180 });
   };
   const locate = (code: string, keepFind = false) => {
-    const onMap = visible.has(code);
+    const reveal = mapFind.reveal(code, visible);
     setFocusCode(code);
     setSelectedCode(code);
-    if (!onMap) {
+    if (reveal.neighborhood) {
       setDepth("1");
     } else if (view === "table") {
       requestAnimationFrame(() => document.getElementById(tableRowId(code))?.scrollIntoView({ block: "nearest" }));
@@ -297,7 +292,7 @@ function GraphWorkspace() {
   };
   const cycle = (step: number) => {
     if (!matches.length) return;
-    const next = wrapFindIndex(findIndex, matches.length, step);
+    const next = mapFind.cycleIndex(findIndex, matches.length, step);
     setFindIndex(next);
     const course = matches[next];
     if (course) locate(course.code, true);
