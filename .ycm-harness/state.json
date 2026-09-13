@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-13T05:54:57.618Z",
+  "updated_at": "2026-09-13T06:08:54.982Z",
   "active_goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -13,11 +13,11 @@
       "backend": {
         "kind": "local"
       },
-      "active_ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "active_ticket_id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
       "worktree_status": "pending",
       "stop_enforcement": false,
       "created_at": "2026-09-12T06:05:27.486Z",
-      "updated_at": "2026-09-13T04:11:17.587Z"
+      "updated_at": "2026-09-13T06:08:54.982Z"
     }
   },
   "local_tickets": {
@@ -92,6 +92,23 @@
       "order": 3,
       "created_at": "2026-09-13T03:34:35.501Z",
       "updated_at": "2026-09-13T04:11:17.585Z"
+    },
+    "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd": {
+      "id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "title": "Seat coreq partners beside their course and reuse skill-tree neighborhood layout",
+      "brief": "Finish skill-tree leftovers: CS 5011 must sit on the next row under CS 5010, and neighborhood/depth views must use layoutProgramFlow instead of wrap-4 packing.",
+      "acceptance": [
+        "On the Seattle program map, CS 5011.x equals CS 5010.x and CS 5011.y equals CS 5010.y plus PROGRAM_ROW; a synthetic exclusive coreq pair with no outgoing unlocks also occupies consecutive rows in the same column.",
+        "Show neighborhood of CS 5500 still contains exactly CS 5004, CS 5010, CS 5500, CS 6510; those four lay out left-to-right as a skill tree (5004 and 5010 left of 5500, 5500 left of 6510). GraphWorkspace depth views other than program call layoutProgramFlow and no longer use wrap=4 packing.",
+        "npm test and npm run typecheck both exit 0."
+      ],
+      "blocked_by": [],
+      "status": "in_progress",
+      "code_changed": true,
+      "order": 4,
+      "created_at": "2026-09-13T06:08:44.664Z",
+      "updated_at": "2026-09-13T06:08:54.981Z"
     }
   },
   "checkpoints": {
