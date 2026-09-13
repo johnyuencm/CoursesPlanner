@@ -13,3 +13,5 @@
 {"id":"evt_67aaed20","kind":"ticket.started","at":"2026-09-12T19:19:29.485Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304"}
 {"id":"evt_d4fe37f7","kind":"ticket.submitted","at":"2026-09-12T19:44:43.249Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304"}
 {"id":"evt_3c3473bb","kind":"checkpoint.recorded","at":"2026-09-13T01:04:10.243Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304","checkpoint_id":"cp_manual_independent-review-pass_c70a"}
+{"id":"evt_a8416146","kind":"ticket.created","at":"2026-09-13T02:45:49.532Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df"}
+{"id":"evt_4bbe532a","kind":"ticket.started","at":"2026-09-13T02:46:03.354Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","ticket_id":"ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df"}
