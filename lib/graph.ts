@@ -137,7 +137,7 @@ export function classifyUnlinkedProgramCodes(
   for (const course of courses) courseByCode.set(course.code, course);
 
   const linked = new Set<string>();
-  for (const edge of directedPrerequisiteRelations(relations)) {
+  for (const edge of relations) {
     if (!keep.has(edge.source) || !keep.has(edge.target)) continue;
     linked.add(edge.source);
     linked.add(edge.target);
@@ -182,8 +182,14 @@ export function layoutProgramFlow(
   const scoped = relations.filter((edge) => keep.has(edge.source) && keep.has(edge.target));
   const prereqEdges = directedPrerequisiteRelations(scoped);
   const ranks = topologicalRanks(keep, prereqEdges);
+  for (const edge of scoped) {
+    if (!edge.corequisite) continue;
+    const shared = Math.min(ranks.get(edge.source) ?? 0, ranks.get(edge.target) ?? 0);
+    ranks.set(edge.source, shared);
+    ranks.set(edge.target, shared);
+  }
   const linked = new Set<string>();
-  for (const edge of prereqEdges) {
+  for (const edge of scoped) {
     linked.add(edge.source);
     linked.add(edge.target);
   }

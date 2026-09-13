@@ -119,6 +119,44 @@ test("unlinked codes with no parsed prerequisite sit in the no-prereq band, not 
   assert.equal(classified.noPrerequisite.includes("PHYS 5116"), false);
 });
 
+test("a corequisite partner is linked even when it has no prerequisite of its own", () => {
+  const { courses, requirements } = seattleGraph();
+  const classified = classifyUnlinkedProgramCodes(programMapCodes(courses, requirements), catalogRelations(courses), courses);
+
+  assert.equal(classified.noPrerequisite.includes("CS 5011"), false);
+  assert.equal(classified.unlinked.includes("CS 5011"), false);
+});
+
+test("layout keeps CS 5011 in the skill tree beside CS 5010 instead of the no-prereq band", () => {
+  const { courses, requirements } = seattleGraph();
+  const codes = programMapCodes(courses, requirements);
+  const layout = layoutProgramFlow(codes, catalogRelations(courses), courses);
+  const noPrereqLabel = layout.bands.find((band) => band.id === "no-prerequisite");
+
+  assert.ok(noPrereqLabel, "expected a No prerequisite required label");
+  assert.ok(layout.positions.get("CS 5011")!.y < noPrereqLabel!.y);
+  assert.equal(layout.positions.get("CS 5011")!.x, layout.positions.get("CS 5010")!.x);
+});
+
+test("corequisite partners share the earlier prerequisite rank", () => {
+  const none = { type: "none" as const };
+  const layout = layoutProgramFlow(
+    ["A", "B", "C"],
+    [
+      { source: "A", target: "C", corequisite: false },
+      { source: "B", target: "C", corequisite: true },
+    ],
+    [
+      { code: "A", requirementType: "core", prerequisites: none },
+      { code: "B", requirementType: "core", prerequisites: none },
+      { code: "C", requirementType: "core", prerequisites: { type: "course", code: "A" } },
+    ],
+  );
+
+  assert.equal(layout.positions.get("B")!.x, layout.positions.get("C")!.x);
+  assert.equal(layout.positions.get("A")!.x, layout.positions.get("C")!.x);
+});
+
 test("layout stacks the no-prereq band below the connected flow and unlinked courses below that", () => {
   const { courses, requirements } = seattleGraph();
   const codes = programMapCodes(courses, requirements);
