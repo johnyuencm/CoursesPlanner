@@ -9,6 +9,7 @@ import {
   programFlowPositions,
   programGridDimensions,
   programMapCodes,
+  selectedChainRelations,
   visibleGraphDistances,
 } from "../lib/graph";
 import { PROGRAM_URL, buildCourseGraph, parseCourses, parseProgramRequirements } from "../scraper/parser";
@@ -75,6 +76,29 @@ test("program flow puts prerequisites to the left of the courses they unlock", (
   assert.equal(positions.has("CS 5800"), true);
   assert.equal(positions.has("CS 5100"), true);
   assert.ok(y("CS 5150") > y("CS 5500"), "courses with no arrows pack below the connected flow");
+  if (positions.has("PHYS 5116") && positions.has("CS 7332")) {
+    assert.ok(x("PHYS 5116") < x("CS 7332"));
+    assert.equal(y("PHYS 5116"), y("CS 7332"), "PHYS 5116 should sit on the same row as CS 7332");
+  }
   const spots = [...positions.values()].map((point) => `${point.x},${point.y}`);
   assert.equal(new Set(spots).size, spots.length, "no two courses may share a cell");
+});
+
+test("a sole prerequisite sits on the same row immediately left of the course that names it", () => {
+  const positions = programFlowPositions(
+    ["PHYS 5116", "CS 7332", "CS 5150"],
+    [{ source: "PHYS 5116", target: "CS 7332", corequisite: false }],
+  );
+  assert.ok(positions.get("PHYS 5116")!.x < positions.get("CS 7332")!.x);
+  assert.equal(positions.get("PHYS 5116")!.y, positions.get("CS 7332")!.y);
+  assert.ok(positions.get("CS 5150")!.y > positions.get("CS 7332")!.y);
+});
+
+test("selected-chain arrows omit relationships that do not touch the selected course", () => {
+  const relations = [
+    { source: "CS 5004", target: "CS 5500", corequisite: false },
+    { source: "PHYS 5116", target: "CS 7332", corequisite: false },
+  ];
+  const shown = selectedChainRelations(relations, ["PHYS 5116", "CS 7332"]);
+  assert.deepEqual(shown, [{ source: "PHYS 5116", target: "CS 7332", corequisite: false }]);
 });

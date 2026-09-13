@@ -105,10 +105,14 @@ export function visibleGraphDistances(
   return neighborhoodDistances(focusCode, relations, maxDepth);
 }
 
-export const PROGRAM_COL = 164;
-export const PROGRAM_ROW = 64;
-export const PROGRAM_WRAP_ROWS = 10;
+export const PROGRAM_COL = 188;
+export const PROGRAM_ROW = 104;
 export const PROGRAM_ISOLATE_GAP = 80;
+
+export function selectedChainRelations(relations: GraphRelation[], chain: Iterable<string>): GraphRelation[] {
+  const keep = new Set(chain);
+  return relations.filter((edge) => keep.has(edge.source) && keep.has(edge.target));
+}
 
 export function programGridDimensions(
   count: number,
@@ -128,12 +132,12 @@ export function programFlowPositions(
   compare: (left: string, right: string) => number = (left, right) => left.localeCompare(right, undefined, { numeric: true }),
   nodeWidth = PROGRAM_COL,
   nodeHeight = PROGRAM_ROW,
-  wrapRows = PROGRAM_WRAP_ROWS,
   isolateGap = PROGRAM_ISOLATE_GAP,
 ): Map<string, { x: number; y: number }> {
   const keep = new Set(codes);
   const scoped = relations.filter((edge) => keep.has(edge.source) && keep.has(edge.target));
-  const ranks = topologicalRanks(keep, scoped.filter((edge) => !edge.corequisite));
+  const prereqEdges = scoped.filter((edge) => !edge.corequisite);
+  const ranks = topologicalRanks(keep, prereqEdges);
   for (const edge of scoped) {
     if (!edge.corequisite) continue;
     const shared = Math.min(ranks.get(edge.source) ?? 0, ranks.get(edge.target) ?? 0);
@@ -157,18 +161,70 @@ export function programFlowPositions(
     group.push(code);
     connectedByRank.set(rank, group);
   }
+  const outgoing = new Map<string, string[]>();
+  const incoming = new Map<string, string[]>();
+  for (const edge of prereqEdges) {
+    const outs = outgoing.get(edge.source) ?? [];
+    outs.push(edge.target);
+    outgoing.set(edge.source, outs);
+    const ins = incoming.get(edge.target) ?? [];
+    ins.push(edge.source);
+    incoming.set(edge.target, ins);
+  }
+  const rankKeys = [...connectedByRank.keys()].sort((left, right) => left - right);
+  const order = new Map<number, string[]>();
+  for (const rank of rankKeys) order.set(rank, [...connectedByRank.get(rank)!].sort(compare));
+  const indexInRank = (code: string) => {
+    const group = order.get(ranks.get(code) ?? 0);
+    if (!group) return 0;
+    const index = group.indexOf(code);
+    return index < 0 ? 0 : index;
+  };
+  for (let pass = 0; pass < 4; pass++) {
+    for (const rank of rankKeys) {
+      const group = order.get(rank)!;
+      const score = (code: string) => {
+        const neighbors = pass % 2 === 0 ? outgoing.get(code) ?? [] : incoming.get(code) ?? [];
+        if (!neighbors.length) return indexInRank(code);
+        return neighbors.reduce((sum, neighbor) => sum + indexInRank(neighbor), 0) / neighbors.length;
+      };
+      group.sort((left, right) => score(left) - score(right) || compare(left, right));
+    }
+  }
   const positions = new Map<string, { x: number; y: number }>();
-  let columnX = 0;
   let flowBottom = 0;
-  for (const rank of [...connectedByRank.keys()].sort((left, right) => left - right)) {
-    const group = connectedByRank.get(rank)!.sort(compare);
-    group.forEach((code, index) => {
-      const x = (columnX + Math.floor(index / wrapRows)) * nodeWidth;
-      const y = (index % wrapRows) * nodeHeight;
+  for (let column = rankKeys.length - 1; column >= 0; column--) {
+    const rank = rankKeys[column]!;
+    const group = order.get(rank)!;
+    const x = column * nodeWidth;
+    const used = new Set<number>();
+    const aligned = group
+      .map((code) => {
+        const children = (outgoing.get(code) ?? []).filter((child) => positions.has(child));
+        if (!children.length) return null;
+        const ys = children.map((child) => positions.get(child)!.y).sort((left, right) => left - right);
+        return { code, y: ys[Math.floor((ys.length - 1) / 2)]! };
+      })
+      .filter((item): item is { code: string; y: number } => item !== null)
+      .sort((left, right) => left.y - right.y || compare(left.code, right.code));
+    const childCount = (code: string) => (outgoing.get(code) ?? []).filter((child) => positions.has(child)).length;
+    const exclusive = aligned.filter((item) => childCount(item.code) === 1);
+    const multi = aligned.filter((item) => childCount(item.code) !== 1);
+    for (const item of [...exclusive, ...multi]) {
+      let y = item.y;
+      while (used.has(y)) y += nodeHeight;
+      used.add(y);
+      positions.set(item.code, { x, y });
+      flowBottom = Math.max(flowBottom, y + nodeHeight);
+    }
+    let y = 0;
+    for (const code of group.filter((code) => !positions.has(code)).sort(compare)) {
+      while (used.has(y)) y += nodeHeight;
+      used.add(y);
       positions.set(code, { x, y });
       flowBottom = Math.max(flowBottom, y + nodeHeight);
-    });
-    columnX += Math.max(1, Math.ceil(group.length / wrapRows));
+      y += nodeHeight;
+    }
   }
   const isolateStartY = positions.size ? flowBottom + isolateGap : 0;
   const { columns } = programGridDimensions(isolates.length, nodeWidth, nodeHeight);
