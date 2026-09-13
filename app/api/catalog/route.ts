@@ -1,7 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { readCatalog, validateCatalog } from "@/lib/catalog";
-import { refreshCatalog } from "@/scraper/refresh";
 import type { Catalog } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -77,6 +76,7 @@ async function refreshCatalogSnapshot(): Promise<Catalog> {
     return await refreshViaService();
   } catch (error) {
     if (!isServiceUnreachable(error)) throw error;
+    const { refreshCatalog } = await import("@/scraper/refresh");
     return refreshCatalog({ force: true });
   }
 }

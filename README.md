@@ -8,7 +8,7 @@ The application explains the current catalog requirements, exposes parsed prereq
 
 - **Degree overview** for total credits, required core, breadth areas, and electives.
 - **Course explorer** with search, requirement, breadth, credit, prerequisite, eligibility, and topic filters.
-- **Prerequisite graph** with upstream and downstream exploration plus an accessible relationship table.
+- **Prerequisite graph** of the official MSCS Seattle program, with neighborhood zoom, upstream/downstream emphasis, and an accessible relationship table.
 - **Plan builder** with academic and internship/co-op terms, drag-and-drop, keyboard drag controls, and native move menus.
 - **Live validation** for prerequisites, corequisites, credits, core, breadth diversity, and electives.
 - **Next-course view** that reports prerequisite eligibility separately from actual course offerings.
@@ -218,7 +218,7 @@ npm run catalog:serve
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Run only one `next dev` at a time: if you are working in `.worktrees/<slug>/`, start Next there and do not also run it at the repo root. Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. For a production server on a shared network, bind loopback if you expose refresh at all:
+Open [http://localhost:3000](http://localhost:3000). Run only one `next dev` at a time: if you are working in `.worktrees/<slug>/`, start Next there and do not also run it at the repo root. Restart `next dev` if a session has been running for many hours; Turbopack memory eviction does not replace a process recycle. Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. For a production server on a shared network, bind loopback if you expose refresh at all:
 
 ```bash
 npx next start --hostname 127.0.0.1

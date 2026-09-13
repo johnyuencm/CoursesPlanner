@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { listedProgramCodes } from "../lib/graph";
 import type {
   BreadthCategory,
   Course,
@@ -59,10 +60,10 @@ function tokenizeRequirement(input: string): Token[] {
       index += gap.length;
       tail = input.slice(index);
 
-      const grade = tail.match(/^with\s+a\s+minimum\s+grade\s+of\s+([A-Z][+-]?)\b/i);
+      const grade = tail.match(/^with\s+a\s+minimum\s+grade\s+of\s+([A-Z](?:[+\u2212\u2013-])?)/i);
       let minimumGrade: string | undefined;
       if (grade) {
-        minimumGrade = grade[1].toUpperCase();
+        minimumGrade = grade[1].replace(/[\u2212\u2013]/g, "-").toUpperCase();
         index += grade[0].length;
       }
 
@@ -482,25 +483,33 @@ function externalPlaceholder(code: string, origin: string): Course {
 
 export function buildCourseGraph(courses: Course[], requirements: DegreeRequirement): Course[] {
   const origin = catalogOrigin(requirements.officialUrl);
-  const byCode = new Map<string, Course>();
+  const parsed = new Map<string, Course>();
   for (const course of courses) {
-    if (byCode.has(course.code)) throw new Error(`Duplicate parsed course: ${course.code}`);
-    byCode.set(course.code, { ...course, unlocks: [] });
+    if (parsed.has(course.code)) throw new Error(`Duplicate parsed course: ${course.code}`);
+    parsed.set(course.code, course);
   }
 
-  const listedCodes = new Set([
-    ...requirements.coreCourses,
-    ...requirements.eligibleElectives,
-    ...requirements.breadthRequirements.categories.flatMap((category) => category.courses),
-  ]);
-  for (const code of listedCodes) {
-    if (!byCode.has(code)) byCode.set(code, externalPlaceholder(code, origin));
-  }
-
-  for (const course of [...byCode.values()]) {
-    for (const dependency of [...course.prerequisiteCodes, ...course.corequisiteCodes]) {
-      if (!byCode.has(dependency)) byCode.set(dependency, externalPlaceholder(dependency, origin));
+  const listedCodes = new Set(listedProgramCodes(requirements));
+  const keep = new Set(listedCodes);
+  let growing = true;
+  while (growing) {
+    growing = false;
+    for (const code of [...keep]) {
+      const course = parsed.get(code);
+      if (!course) continue;
+      for (const dependency of [...course.prerequisiteCodes, ...course.corequisiteCodes]) {
+        if (!keep.has(dependency)) {
+          keep.add(dependency);
+          growing = true;
+        }
+      }
     }
+  }
+
+  const byCode = new Map<string, Course>();
+  for (const code of keep) {
+    const course = parsed.get(code);
+    byCode.set(code, course ? { ...course, unlocks: [] } : externalPlaceholder(code, origin));
   }
 
   const coreCodes = new Set(requirements.coreCourses);

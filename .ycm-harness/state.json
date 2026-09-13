@@ -1,0 +1,703 @@
+{
+  "version": 3,
+  "created_at": "2026-09-12T06:05:27.067Z",
+  "updated_at": "2026-09-13T08:07:06.585Z",
+  "goals": {
+    "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
+      "id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "title": "Complete MSCS Seattle prerequisite graph",
+      "description": "The Prerequisite Graph must show every course listed on the official MSCS Seattle program requirements page, including courses with no parsed prerequisites, plus only the cataloged external prerequisites those courses actually reference.",
+      "status": "done",
+      "assurance": "standard",
+      "backend": {
+        "kind": "local"
+      },
+      "active_ticket_id": "ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6",
+      "worktree_status": "pending",
+      "stop_enforcement": false,
+      "created_at": "2026-09-12T06:05:27.486Z",
+      "updated_at": "2026-09-13T08:07:06.584Z"
+    }
+  },
+  "local_tickets": {
+    "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f": {
+      "id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "title": "Show the full MSCS Seattle prerequisite graph",
+      "brief": "Default Prerequisite Graph must render every official MSCS Seattle program course from the catalog page, including isolated courses with no prerequisites. Keep neighborhood zoom. Do not invent offerings. Restrict the published catalog graph to program courses plus their requirement closure so undergraduate bulk listings stop hiding the program.",
+      "acceptance": [
+        "Opening /map without changing filters shows every core, breadth, and elective course listed on the official MSCS Seattle program requirements page as a node, including CS 5800 and CS 5100 which have no parsed prerequisites.",
+        "Direct external prerequisites of those program courses, such as CS 5004 for CS 5500, remain visible. Unrelated undergraduate CS listings such as CS 1800 are not in the published catalog snapshot.",
+        "The Show control still offers Immediate neighborhood and that view of CS 5500 stays a local neighborhood rather than replacing the entire-program default.",
+        "Grade floors such as C- parse as minimumGrade C- rather than an unknown hyphen token; npm test and npm run typecheck pass."
+      ],
+      "blocked_by": [],
+      "status": "done",
+      "code_changed": true,
+      "order": 0,
+      "created_at": "2026-09-12T06:05:54.100Z",
+      "updated_at": "2026-09-13T08:01:35.919Z"
+    },
+    "ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304": {
+      "id": "ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "title": "Lay out the program map as a prerequisite flow",
+      "brief": "Default Prerequisite Graph should place cataloged prerequisites to the left of the courses they unlock, and inspector code chips should pan the camera to that course instead of only opening a dialog.",
+      "acceptance": [
+        "On the default entire-program map, CS 5004 and CS 5010 sit to the left of CS 5500, and CS 5500 sits to the left of CS 6510.",
+        "Courses with no parsed arrows remain on the map packed below the connected flow; CS 5800 and CS 5100 are still present.",
+        "Clicking a prerequisite or unlock chip in the map inspector selects that course and pans to it when it is on the current view; a chip for a course not on this view opens that course neighborhood.",
+        "Immediate neighborhood of CS 5500 stays the local four-course set; npm test and npm run typecheck pass."
+      ],
+      "blocked_by": [],
+      "status": "done",
+      "code_changed": false,
+      "order": 1,
+      "created_at": "2026-09-12T19:18:49.959Z",
+      "updated_at": "2026-09-12T19:45:33.382Z"
+    },
+    "ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df": {
+      "id": "ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "title": "Show titles and real prerequisite arrows",
+      "brief": "Entire-program map should keep course titles, draw arrows only for the selected course's parsed prerequisite chain, and sit a sole prerequisite immediately left of the course that names it.",
+      "acceptance": [
+        "Entire-program map nodes show the course title, not only the code.",
+        "Unrelated neighbors are not visually linked: the entire-program map draws arrows only for the selected course's parsed prerequisite and unlock chain.",
+        "A course that is the sole on-map prerequisite of another sits immediately left of it on the same row, with the arrow pointing at that course.",
+        "Selecting PHYS 5116 shows only the arrow to CS 7332 and explains that CS 7332 named this external code; npm test and npm run typecheck pass."
+      ],
+      "blocked_by": [],
+      "status": "done",
+      "code_changed": true,
+      "order": 2,
+      "created_at": "2026-09-13T02:45:49.516Z",
+      "updated_at": "2026-09-13T08:01:39.602Z"
+    },
+    "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3": {
+      "id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "title": "Add Ctrl+F find on the prerequisite map",
+      "brief": "Browser Ctrl+F cannot find off-screen React Flow nodes. The map needs an in-page find that focuses with Ctrl+F and jumps through matching courses.",
+      "acceptance": [
+        "On /map, Ctrl+F or Cmd+F focuses the graph find field and does not open the browser find bar.",
+        "Typing a course code or title lists matches; Enter or F3 jumps to the next match and pans if it is on the current view.",
+        "A query such as cs5500 or PHYS 5116 locates that course even when the node is off-screen; Escape clears the find field.",
+        "npm test and npm run typecheck pass."
+      ],
+      "blocked_by": [],
+      "status": "done",
+      "code_changed": true,
+      "order": 3,
+      "created_at": "2026-09-13T03:34:35.501Z",
+      "updated_at": "2026-09-13T08:01:43.466Z"
+    },
+    "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd": {
+      "id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "title": "Seat coreq partners beside their course and reuse skill-tree neighborhood layout",
+      "brief": "Finish skill-tree leftovers: CS 5011 must sit on the next row under CS 5010, and neighborhood/depth views must use layoutProgramFlow instead of wrap-4 packing.",
+      "acceptance": [
+        "On the Seattle program map, CS 5011.x equals CS 5010.x and CS 5011.y equals CS 5010.y plus PROGRAM_ROW; a synthetic exclusive coreq pair with no outgoing unlocks also occupies consecutive rows in the same column.",
+        "Show neighborhood of CS 5500 still contains exactly CS 5004, CS 5010, CS 5500, CS 6510; those four lay out left-to-right as a skill tree (5004 and 5010 left of 5500, 5500 left of 6510). GraphWorkspace depth views other than program call layoutProgramFlow and no longer use wrap=4 packing.",
+        "npm test and npm run typecheck both exit 0."
+      ],
+      "blocked_by": [],
+      "status": "done",
+      "code_changed": true,
+      "order": 4,
+      "created_at": "2026-09-13T06:08:44.664Z",
+      "updated_at": "2026-09-13T08:01:47.285Z"
+    },
+    "ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6": {
+      "id": "ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "title": "Clear remaining map leftovers before closing the MSCS graph goal",
+      "brief": "Batch-fix named leftover debt: compact eligible pill clipping, course-details dialog stealing Ctrl+F, and Escape not clearing map find after a canvas click.",
+      "acceptance": [
+        "Compact graph course cards show the eligible status in full with no CSS ellipsis clipping; the inspector may keep the long Prerequisite eligible wording.",
+        "Map Ctrl+F is skipped while a native course-details dialog is open (closest dialog or role=dialog). The Modal dialog is discoverable as a dialog to that skip.",
+        "Escape clears the graph find field when it has text even if the React Flow canvas is focused; Escape inside an open dialog does not get stolen by map find.",
+        "npm test and npm run typecheck both exit 0."
+      ],
+      "blocked_by": [],
+      "status": "done",
+      "code_changed": true,
+      "order": 5,
+      "created_at": "2026-09-13T07:14:41.168Z",
+      "updated_at": "2026-09-13T08:01:50.959Z"
+    }
+  },
+  "checkpoints": {
+    "cp_manual_independent-review-pass_f742": {
+      "id": "cp_manual_independent-review-pass_f742",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "manual",
+      "title": "independent review PASS",
+      "notes": "Round-3 panel PASS (tech_lead, spec_reviewer, user_advocate, uiux, project_manager) with no high findings. Default /map is the official MSCS Seattle program at readable zoom. Deferred: first-paint subset, dangling external chips, explorer keyword spill, duplicate OR text on CS 5004.",
+      "decisions": [],
+      "created_at": "2026-09-12T08:30:22.152Z"
+    },
+    "cp_manual_independent-review-pass_c70a": {
+      "id": "cp_manual_independent-review-pass_c70a",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304",
+      "kind": "manual",
+      "title": "independent review PASS",
+      "notes": "Round-1 panel PASS (tech_lead, spec_reviewer, user_advocate, uiux, project_manager) with no high findings after a hung background dispatch was aborted and relaunched. Default /map is a left-to-right prereq flow; inspector chips pan or open neighborhood. Deferred: inspector-pan unit tests, flow test using UI typeOrder, unlabeled isolate band, first-paint CS 5500 off-screen at zoom 1, neighborhood chip remount, MiniMap clip, completed-color-only, dangling chips, explorer keyword spill. Parent goal left active.",
+      "decisions": [],
+      "created_at": "2026-09-13T01:04:10.243Z"
+    },
+    "cp_manual_independent-review-pass_9759": {
+      "id": "cp_manual_independent-review-pass_9759",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "kind": "manual",
+      "title": "independent review PASS",
+      "notes": "Round-1 panel PASS (tech_lead, spec_reviewer, user_advocate, uiux, project_manager) with no high findings. Live /map: Ctrl+F focuses graph find, cs5500 and PHYS 5116 pan off-screen nodes, Enter/F3 cycle, Escape clears. Verify evidence-40652cb9 45 tests + typecheck. Deferred mediums: native dialog skip uses [role=dialog] so course-details Ctrl+F is dead (course-graph.tsx:179 vs ui.tsx:20); keyboard/pan untested; 0-of-N until auto-locate; Escape does not restore neighborhood; find is not a combobox. Parent goal left active.",
+      "decisions": [],
+      "created_at": "2026-09-13T04:08:26.961Z"
+    },
+    "cp_manual_mscs-graph-finish-closeout_c17e": {
+      "id": "cp_manual_mscs-graph-finish-closeout_c17e",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "kind": "manual",
+      "title": "MSCS graph finish closeout",
+      "notes": "Named map leftovers and architecture candidates shipped. Wiki closeout recorded. Human leftover: merge fix/complete-prereq-graph to master only when asked.",
+      "decisions": [],
+      "next_action": "goal verify then goal complete; do not merge to master",
+      "created_at": "2026-09-13T08:06:28.605Z"
+    }
+  },
+  "evidence": {
+    "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-bd090b": {
+      "id": "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-bd090b",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "other",
+      "submission_digest": "63a0e5825a500e2b39a3ca5d31c151f0913f37a3b6ddb605b4f48a1765d35217",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-12T06:23:39.531Z"
+      },
+      "recorded_at": "2026-09-12T06:23:39.531Z"
+    },
+    "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-72a962": {
+      "id": "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-72a962",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "other",
+      "submission_digest": "dc83cac273833c0d1c10227d65b42cc61ec7c18cc11f90209dfd3ac58436f69f",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-12T07:18:48.985Z"
+      },
+      "recorded_at": "2026-09-12T07:18:48.985Z"
+    },
+    "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-a8df47": {
+      "id": "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-a8df47",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "other",
+      "submission_digest": "b74f9626889deed110011b638e1b3dd857ded93defcaaf5096b66971e39c509f",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-12T07:58:39.397Z"
+      },
+      "recorded_at": "2026-09-12T07:58:39.397Z"
+    },
+    "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-f44c6e": {
+      "id": "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-f44c6e",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "other",
+      "submission_digest": "f5f40286759309653496c17c4aaa29f3b49ba1b222107ad4fdaeec32dee925a5",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-12T08:24:53.001Z"
+      },
+      "recorded_at": "2026-09-12T08:24:53.001Z"
+    },
+    "evidence-e45b7550": {
+      "id": "evidence-e45b7550",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "verification",
+      "submission_digest": "f5f40286759309653496c17c4aaa29f3b49ba1b222107ad4fdaeec32dee925a5",
+      "evidence_digest": "7abaaac1c75c3f01c41b4e55bcc29847c58b71c24096acf4c02d30d8012c23a0",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-e45b7550.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "graph-impl-r3",
+        "verifier_run": "graph-ver-r3",
+        "knowledge": "none",
+        "submitted_at": "2026-09-12T08:29:44.626Z"
+      },
+      "recorded_at": "2026-09-12T08:29:44.628Z"
+    },
+    "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-607974": {
+      "id": "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-607974",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "other",
+      "submission_digest": "04c1217880e093736a7279fa11b9805b059b59dd6876a1dfcdd0cc891fdc7e11",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-12T08:32:57.475Z"
+      },
+      "recorded_at": "2026-09-12T08:32:57.475Z"
+    },
+    "evidence-a8e71f51": {
+      "id": "evidence-a8e71f51",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "verification",
+      "submission_digest": "04c1217880e093736a7279fa11b9805b059b59dd6876a1dfcdd0cc891fdc7e11",
+      "evidence_digest": "49cfedcf529a3c244459c32754bbd28b3e9a98aac6345ad26ec099b52eecd627",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-a8e71f51.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "graph-impl-r4",
+        "verifier_run": "graph-ver-r4",
+        "knowledge": "none",
+        "submitted_at": "2026-09-12T08:33:47.018Z"
+      },
+      "recorded_at": "2026-09-12T08:33:47.019Z"
+    },
+    "submission-ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304-0cfc47": {
+      "id": "submission-ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304-0cfc47",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304",
+      "kind": "other",
+      "submission_digest": "3a5ea230c8e459abc8332bf11941aa0e439b1ab64258728b302ebce8d5cf75b4",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-12T19:44:43.239Z"
+      },
+      "recorded_at": "2026-09-12T19:44:43.239Z"
+    },
+    "evidence-eb328f2d": {
+      "id": "evidence-eb328f2d",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-lay-out-the-program-map-as-a-prerequisite-flow-bd746304",
+      "kind": "verification",
+      "submission_digest": "3a5ea230c8e459abc8332bf11941aa0e439b1ab64258728b302ebce8d5cf75b4",
+      "evidence_digest": "24394c64788a784a0310539e93532d0c55eb31fcd26e7971debc997d4879f428",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-eb328f2d.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "flow-impl-r1",
+        "verifier_run": "flow-ver-r1",
+        "knowledge": "none",
+        "submitted_at": "2026-09-12T19:45:33.381Z"
+      },
+      "recorded_at": "2026-09-12T19:45:33.382Z"
+    },
+    "submission-ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df-b963d9": {
+      "id": "submission-ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df-b963d9",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df",
+      "kind": "other",
+      "submission_digest": "75920cf1d923dc18f82949dc98f00e95634b401a0652cc8c0a2e0e402ccfcebe",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T03:27:19.380Z"
+      },
+      "recorded_at": "2026-09-13T03:27:19.380Z"
+    },
+    "evidence-c469f9ba": {
+      "id": "evidence-c469f9ba",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df",
+      "kind": "verification",
+      "submission_digest": "75920cf1d923dc18f82949dc98f00e95634b401a0652cc8c0a2e0e402ccfcebe",
+      "evidence_digest": "e476c8f5f503c47d75da95eb1962eebc5eaf5edd6f19113e411b64f4c7eb4082",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-c469f9ba.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "titles-impl-r1",
+        "verifier_run": "titles-ver-r1",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T03:27:41.042Z"
+      },
+      "recorded_at": "2026-09-13T03:27:41.043Z"
+    },
+    "submission-ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3-d818da": {
+      "id": "submission-ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3-d818da",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "kind": "other",
+      "submission_digest": "73a9b7cceff02ea1af7bf9d97266da84f0b3abc00950714036abee7e25fb5a50",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T03:45:13.477Z"
+      },
+      "recorded_at": "2026-09-13T03:45:13.477Z"
+    },
+    "evidence-40652cb9": {
+      "id": "evidence-40652cb9",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "kind": "verification",
+      "submission_digest": "73a9b7cceff02ea1af7bf9d97266da84f0b3abc00950714036abee7e25fb5a50",
+      "evidence_digest": "a3e9b780927e7df69c818c7bc22bfb35f250bfd45c4a79f0c9e177b3b7b7bcf4",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-40652cb9.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "find-impl-r1",
+        "verifier_run": "find-ver-r1",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T03:46:02.632Z"
+      },
+      "recorded_at": "2026-09-13T03:46:02.633Z"
+    },
+    "submission-ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3-49a32b": {
+      "id": "submission-ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3-49a32b",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "kind": "other",
+      "submission_digest": "56de3d26b0886e4950d1dba904574c07805db0851f6546acb948d3a9fa3b2587",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T04:10:31.749Z"
+      },
+      "recorded_at": "2026-09-13T04:10:31.749Z"
+    },
+    "evidence-00d08e86": {
+      "id": "evidence-00d08e86",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "kind": "verification",
+      "submission_digest": "56de3d26b0886e4950d1dba904574c07805db0851f6546acb948d3a9fa3b2587",
+      "evidence_digest": "64732a02974b9b9d71475252f3faf4e2ec31e5dc787837586f1a05dc8a983563",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-00d08e86.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "find-impl-r2",
+        "verifier_run": "find-ver-r2",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T04:11:16.478Z"
+      },
+      "recorded_at": "2026-09-13T04:11:16.480Z"
+    },
+    "submission-ticket-seat-coreq-partners-beside-their-course-and-reuse-skill-6b3b09cd-51c727": {
+      "id": "submission-ticket-seat-coreq-partners-beside-their-course-and-reuse-skill-6b3b09cd-51c727",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "kind": "other",
+      "submission_digest": "395a6a1a3644c3229ca5dd7e97d3ac0e5aa382676f82465aec000630525e5c9b",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T07:00:35.668Z"
+      },
+      "recorded_at": "2026-09-13T07:00:35.668Z"
+    },
+    "submission-ticket-seat-coreq-partners-beside-their-course-and-reuse-skill-6b3b09cd-e5d6b7": {
+      "id": "submission-ticket-seat-coreq-partners-beside-their-course-and-reuse-skill-6b3b09cd-e5d6b7",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "kind": "other",
+      "submission_digest": "3f4551c55950ee60921fe09cdf317a1833e6f0df961f60cd97bb0f003704d46e",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T07:02:52.092Z"
+      },
+      "recorded_at": "2026-09-13T07:02:52.092Z"
+    },
+    "evidence-b2b84bd8": {
+      "id": "evidence-b2b84bd8",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "kind": "verification",
+      "submission_digest": "3f4551c55950ee60921fe09cdf317a1833e6f0df961f60cd97bb0f003704d46e",
+      "evidence_digest": "05d430da6e33dc774b58c5ed0d257e73f32d17f62293079544b970bf7be40471",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-b2b84bd8.log",
+      "command": "cmd /c npm",
+      "outcome": "fail",
+      "provenance": {
+        "implementer_run": "impl-coreq-layout-17fc4c5",
+        "verifier_run": "verify-coreq-layout-orchestrator",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T07:03:14.231Z"
+      },
+      "recorded_at": "2026-09-13T07:03:14.232Z"
+    },
+    "evidence-c91d55c1": {
+      "id": "evidence-c91d55c1",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "kind": "verification",
+      "submission_digest": "3f4551c55950ee60921fe09cdf317a1833e6f0df961f60cd97bb0f003704d46e",
+      "evidence_digest": "25b9accbc5c2744bb492fe6321f2c7a9feae141d6eb20a05ffd1ebabcd58edb5",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-c91d55c1.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "impl-coreq-layout-17fc4c5",
+        "verifier_run": "verify-coreq-layout-r2",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T07:03:38.336Z"
+      },
+      "recorded_at": "2026-09-13T07:03:38.337Z"
+    },
+    "submission-ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6-e6ecff": {
+      "id": "submission-ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6-e6ecff",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6",
+      "kind": "other",
+      "submission_digest": "1be6d5a8d3665ebacf629854199b352b0526555f4c7d445ba449ef17ffdeef47",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T07:44:17.459Z"
+      },
+      "recorded_at": "2026-09-13T07:44:17.459Z"
+    },
+    "evidence-89c4d85f": {
+      "id": "evidence-89c4d85f",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6",
+      "kind": "verification",
+      "submission_digest": "1be6d5a8d3665ebacf629854199b352b0526555f4c7d445ba449ef17ffdeef47",
+      "evidence_digest": "be774eceb0e0710a9d21d0ede268fc5135ee548a50991a96ff3d068c38496550",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-89c4d85f.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "leftover-sweep-impl-e06810a",
+        "verifier_run": "leftover-sweep-ver-orchestrator",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T07:45:01.752Z"
+      },
+      "recorded_at": "2026-09-13T07:45:01.753Z"
+    },
+    "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-661674": {
+      "id": "submission-ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f-661674",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "other",
+      "submission_digest": "4d1deb1bda422f9a5720d14884eefc826018bf93b4c8ba957b78937c570f8eeb",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T08:01:32.774Z"
+      },
+      "recorded_at": "2026-09-13T08:01:32.774Z"
+    },
+    "evidence-fe6cd753": {
+      "id": "evidence-fe6cd753",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-the-full-mscs-seattle-prerequisite-graph-8e4a497f",
+      "kind": "verification",
+      "submission_digest": "4d1deb1bda422f9a5720d14884eefc826018bf93b4c8ba957b78937c570f8eeb",
+      "evidence_digest": "d11c5fe66fc8050ea589874ae10b8555fefe0fe3a5652d4387d0f58c4500f6e1",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-fe6cd753.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "arch-head-impl-1",
+        "verifier_run": "arch-head-ver-1",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T08:01:35.917Z"
+      },
+      "recorded_at": "2026-09-13T08:01:35.919Z"
+    },
+    "submission-ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df-83958c": {
+      "id": "submission-ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df-83958c",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df",
+      "kind": "other",
+      "submission_digest": "b4d5b66e0326cfb6408f92dc9fdbd06c7c1b91865b0952ac2711e979e0da91a9",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T08:01:36.301Z"
+      },
+      "recorded_at": "2026-09-13T08:01:36.301Z"
+    },
+    "evidence-546655a2": {
+      "id": "evidence-546655a2",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-show-titles-and-real-prerequisite-arrows-6c4ad3df",
+      "kind": "verification",
+      "submission_digest": "b4d5b66e0326cfb6408f92dc9fdbd06c7c1b91865b0952ac2711e979e0da91a9",
+      "evidence_digest": "5424289aa2791b1e14f9fa99d1acbdfdcd936de5898435242dfe442f8bb4aa72",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-546655a2.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "arch-head-impl-2",
+        "verifier_run": "arch-head-ver-2",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T08:01:39.601Z"
+      },
+      "recorded_at": "2026-09-13T08:01:39.602Z"
+    },
+    "submission-ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3-20d975": {
+      "id": "submission-ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3-20d975",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "kind": "other",
+      "submission_digest": "bc57dcb99ae6aeb899805d4c0d0c4e3a6f7cd050765bf57309f88ef9c17400f8",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T08:01:40.005Z"
+      },
+      "recorded_at": "2026-09-13T08:01:40.005Z"
+    },
+    "evidence-4148aecf": {
+      "id": "evidence-4148aecf",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-add-ctrl-f-find-on-the-prerequisite-map-6ba0b9a3",
+      "kind": "verification",
+      "submission_digest": "bc57dcb99ae6aeb899805d4c0d0c4e3a6f7cd050765bf57309f88ef9c17400f8",
+      "evidence_digest": "a0789421f9ee9e9a49410e7ca8f4820b6c1b7c750c3a2355aa8983a2fc1df2e6",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-4148aecf.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "arch-head-impl-3",
+        "verifier_run": "arch-head-ver-3",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T08:01:43.465Z"
+      },
+      "recorded_at": "2026-09-13T08:01:43.466Z"
+    },
+    "submission-ticket-seat-coreq-partners-beside-their-course-and-reuse-skill-6b3b09cd-db63ee": {
+      "id": "submission-ticket-seat-coreq-partners-beside-their-course-and-reuse-skill-6b3b09cd-db63ee",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "kind": "other",
+      "submission_digest": "6f368984c338d848710705221f17b2cc26dd5f2d4d63d644e38ebfd7e3096bc5",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T08:01:43.850Z"
+      },
+      "recorded_at": "2026-09-13T08:01:43.850Z"
+    },
+    "evidence-9b99138a": {
+      "id": "evidence-9b99138a",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-seat-coreq-partners-beside-their-course-and-reuse-skill--6b3b09cd",
+      "kind": "verification",
+      "submission_digest": "6f368984c338d848710705221f17b2cc26dd5f2d4d63d644e38ebfd7e3096bc5",
+      "evidence_digest": "7adf04921425759ebe6f27ebde4ef77fec912e2fdfc35aa84875e09ad87da65d",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-9b99138a.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "arch-head-impl-4",
+        "verifier_run": "arch-head-ver-4",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T08:01:47.284Z"
+      },
+      "recorded_at": "2026-09-13T08:01:47.285Z"
+    },
+    "submission-ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6-9ae5ba": {
+      "id": "submission-ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6-9ae5ba",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6",
+      "kind": "other",
+      "submission_digest": "390295947e3b5ace452473b3d2165444858707e987663fbd9f23ec9b83fefa88",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-13T08:01:47.681Z"
+      },
+      "recorded_at": "2026-09-13T08:01:47.681Z"
+    },
+    "evidence-cfbf5e60": {
+      "id": "evidence-cfbf5e60",
+      "goal_id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
+      "ticket_id": "ticket-clear-remaining-map-leftovers-before-closing-the-mscs-gr-a27930d6",
+      "kind": "verification",
+      "submission_digest": "390295947e3b5ace452473b3d2165444858707e987663fbd9f23ec9b83fefa88",
+      "evidence_digest": "a9c41219e13d4eedf086617626d5221d0cbf8bc29b14b73b49d47005fc738235",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-cfbf5e60.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "arch-head-impl-5",
+        "verifier_run": "arch-head-ver-5",
+        "knowledge": "none",
+        "submitted_at": "2026-09-13T08:01:50.958Z"
+      },
+      "recorded_at": "2026-09-13T08:01:50.959Z"
+    }
+  },
+  "wiki": {
+    "initialized": true,
+    "initialized_at": "2026-09-13T05:54:57.616Z",
+    "sources": {},
+    "pages": {
+      "work-lite-2026-09-13-skill-tree-map": {
+        "id": "work-lite-2026-09-13-skill-tree-map",
+        "title": "Prerequisite Graph skill-tree map",
+        "source_ids": [],
+        "tags": [
+          "decision"
+        ],
+        "body_path": "pages/work-lite-2026-09-13-skill-tree-map.md",
+        "created_at": "2026-09-13T05:54:57.616Z",
+        "updated_at": "2026-09-13T05:54:57.616Z"
+      },
+      "work-2026-09-13-coreq-adjacency": {
+        "id": "work-2026-09-13-coreq-adjacency",
+        "title": "Coreq adjacency leftover (skill-tree map)",
+        "source_ids": [],
+        "tags": [
+          "decision"
+        ],
+        "body_path": "pages/work-2026-09-13-coreq-adjacency.md",
+        "created_at": "2026-09-13T07:04:27.855Z",
+        "updated_at": "2026-09-13T07:04:27.855Z"
+      },
+      "work-2026-09-13-mscs-graph-close": {
+        "id": "work-2026-09-13-mscs-graph-close",
+        "title": "MSCS program map closeout",
+        "source_ids": [],
+        "tags": [
+          "decision"
+        ],
+        "body_path": "pages/work-2026-09-13-mscs-graph-close.md",
+        "created_at": "2026-09-13T08:05:40.786Z",
+        "updated_at": "2026-09-13T08:05:40.786Z"
+      }
+    },
+    "log": [
+      {
+        "id": "wlg_46d209ec",
+        "kind": "page.upserted",
+        "ref": "work-lite-2026-09-13-skill-tree-map",
+        "note": "durable decision",
+        "at": "2026-09-13T05:54:57.618Z"
+      },
+      {
+        "id": "wlg_939e4759",
+        "kind": "page.upserted",
+        "ref": "work-2026-09-13-coreq-adjacency",
+        "note": "durable decision",
+        "at": "2026-09-13T07:04:27.856Z"
+      },
+      {
+        "id": "wlg_08bfa0e8",
+        "kind": "page.upserted",
+        "ref": "work-2026-09-13-mscs-graph-close",
+        "note": "durable decision",
+        "at": "2026-09-13T08:05:40.787Z"
+      }
+    ]
+  },
+  "tracker_cache": {},
+  "legacy_archive": {
+    "version": 2,
+    "state_path": ".ycm-harness/legacy/v2/state.json",
+    "sha256": "4bf67923f697b49bdaeb6f71f5fab8bdcf3aa374fd6aee2579b9e666fc5cd84c",
+    "manifest_path": ".ycm-harness/legacy/v2/manifest.json",
+    "archived_at": "2026-09-12T06:05:27.401Z"
+  },
+  "session_claims": {}
+}
