@@ -224,6 +224,18 @@ export function layoutProgramFlow(
     group.push(code);
     connectedByRank.set(rank, group);
   }
+  const coreqPartners = new Map<string, string[]>();
+  for (const edge of scoped) {
+    if (!edge.corequisite) continue;
+    const add = (from: string, to: string) => {
+      const partners = coreqPartners.get(from) ?? [];
+      partners.push(to);
+      coreqPartners.set(from, partners);
+    };
+    add(edge.source, edge.target);
+    add(edge.target, edge.source);
+  }
+  for (const partners of coreqPartners.values()) partners.sort(compare);
   const outgoing = new Map<string, string[]>();
   const incoming = new Map<string, string[]>();
   for (const edge of prereqEdges) {
@@ -273,20 +285,30 @@ export function layoutProgramFlow(
     const childCount = (code: string) => (outgoing.get(code) ?? []).filter((child) => positions.has(child)).length;
     const exclusive = aligned.filter((item) => childCount(item.code) === 1);
     const multi = aligned.filter((item) => childCount(item.code) !== 1);
-    for (const item of [...exclusive, ...multi]) {
-      let y = item.y;
-      while (used.has(y)) y += nodeHeight;
-      used.add(y);
-      positions.set(item.code, { x, y });
-      flowBottom = Math.max(flowBottom, y + nodeHeight);
-    }
-    let y = 0;
-    for (const code of group.filter((code) => !positions.has(code)).sort(compare)) {
+    const occupy = (code: string, preferredY: number) => {
+      if (positions.has(code)) return;
+      let y = preferredY;
       while (used.has(y)) y += nodeHeight;
       used.add(y);
       positions.set(code, { x, y });
       flowBottom = Math.max(flowBottom, y + nodeHeight);
-      y += nodeHeight;
+      let partnerY = y + nodeHeight;
+      for (const partner of coreqPartners.get(code) ?? []) {
+        if (positions.has(partner)) continue;
+        if ((ranks.get(partner) ?? 0) !== rank) continue;
+        while (used.has(partnerY)) partnerY += nodeHeight;
+        used.add(partnerY);
+        positions.set(partner, { x, y: partnerY });
+        flowBottom = Math.max(flowBottom, partnerY + nodeHeight);
+        partnerY += nodeHeight;
+      }
+    };
+    for (const item of [...exclusive, ...multi]) occupy(item.code, item.y);
+    let y = 0;
+    for (const code of group.filter((code) => !positions.has(code)).sort(compare)) {
+      if (positions.has(code)) continue;
+      occupy(code, y);
+      y = (positions.get(code)?.y ?? y) + nodeHeight;
     }
   }
   const classified = classifyUnlinkedProgramCodes(keep, relations, courses);

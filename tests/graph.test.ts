@@ -9,6 +9,7 @@ import {
   findCourses,
   layoutProgramFlow,
   neighborhoodDistances,
+  PROGRAM_ROW,
   programGridDimensions,
   programMapCodes,
   selectedChainRelations,
@@ -157,10 +158,12 @@ test("layout keeps CS 5011 in the skill tree beside CS 5010 instead of the no-pr
   const codes = programMapCodes(courses, requirements);
   const layout = layoutProgramFlow(codes, catalogRelations(courses), courses);
   const noPrereqLabel = layout.bands.find((band) => band.id === "no-prerequisite");
+  const y = (code: string) => layout.positions.get(code)!.y;
 
   assert.ok(noPrereqLabel, "expected a No prerequisite required label");
   assert.ok(layout.positions.get("CS 5011")!.y < noPrereqLabel!.y);
   assert.equal(layout.positions.get("CS 5011")!.x, layout.positions.get("CS 5010")!.x);
+  assert.equal(y("CS 5011"), y("CS 5010") + PROGRAM_ROW);
 });
 
 test("corequisite partners share the earlier prerequisite rank", () => {
