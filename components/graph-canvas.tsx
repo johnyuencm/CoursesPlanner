@@ -16,9 +16,8 @@ function PrerequisiteEdge({ sourceX, sourceY, targetX, targetY, markerEnd, style
     onSelectBranch?: () => void;
     onSelectBus?: () => void;
   } | undefined;
-  const short = targetX - sourceX <= 180 && targetX > sourceX;
-  const busStartY = edgeData?.busStartY ?? (short ? sourceY : sourceY + 82);
-  const busEndY = edgeData?.busEndY ?? targetY;
+  const busStartY = typeof edgeData?.busStartY === "number" ? edgeData.busStartY : sourceY;
+  const busEndY = typeof edgeData?.busEndY === "number" ? edgeData.busEndY : targetY;
   const hitPaths = prerequisiteHitPaths(sourceX, sourceY, targetX, targetY, busOffset, busStartY, busEndY);
   const selectBranch = (event: MouseEvent<SVGPathElement>) => {
     event.preventDefault();
