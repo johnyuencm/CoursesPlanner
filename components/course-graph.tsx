@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Handle, MarkerType, Position, type Edge, type Node, type NodeProps } from "@xyflow/react";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
 import {
@@ -9,6 +9,7 @@ import {
   mapScene,
   PROGRAM_COL,
   programMapCodes,
+  relationshipControlGroups,
   relationshipSelection,
   type GraphScope,
 } from "@/lib/graph";
@@ -335,6 +336,7 @@ function GraphWorkspace() {
   const selectedStatus = graphStatus(selected, selectedCode, completed, waived, planned, history);
   const findStatus = !search.trim() ? "" : matches.length ? `${findIndex >= 0 ? findIndex + 1 : 0} of ${matches.length}` : "No matches";
   const showCorequisites = Boolean(selected?.corequisiteCodes.length);
+  const relationshipGroups = relationshipControlGroups(scene.arrows.map((arrow) => ({ ...arrow, corequisite: false })));
   return <>
     <PageHeading title="Prerequisite Graph" description="See what a course needs and what it unlocks. Select a course to explore its connections." actions={<div className="graph-toolbar">
       <div className="graph-search-wrap">
@@ -463,7 +465,10 @@ function GraphWorkspace() {
         <button className="text-button inspector-focus" onClick={() => { setSelectedRelationship(null); setFocusCode(selectedCode); setDepth("prerequisites"); setOverview(false); }}><ArrowLeft size={14} /> Trace all prerequisites</button>
         <div className="inspector-relationships">
           {selectedRelationship ? <div className="graph-relationship-explanation"><h3>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} → ${selectedRelationship.target}` : `${selectedRelationship.target} shared prerequisite bus`}</h3><p>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} is named as a prerequisite of ${selectedRelationship.target}.` : `Visible incoming prerequisites: ${selectedRelationship.sources.join(", ")}.`}</p><p><strong>{selectedRelationship.target} catalog rule:</strong> {nodeRequirementCopy(relationshipTarget, "prerequisites")}</p><p className="muted small-text">A line records a named catalog link; the rule above states whether prerequisites are AND, OR, or need review.</p></div> : null}
-          {scene.arrows.length ? <><h3>Visible map relationships</h3><div className="graph-relationship-buttons">{scene.arrows.map((edge) => <button key={`${edge.source}-${edge.target}`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "branch" && selectedRelationship.source === edge.source && selectedRelationship.target === edge.target} onClick={() => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target))}>{edge.source} → {edge.target}</button>)}</div></> : <p className="muted small-text">This course has no prerequisite or unlock relationships in this catalog.</p>}
+          {scene.arrows.length ? <><h3>Visible map relationships</h3><div className="graph-relationship-buttons">{relationshipGroups.map((group) => <Fragment key={group.target}>
+            <button key={`${group.target}-bus`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "bus" && selectedRelationship.target === group.target} aria-label={`Select every visible prerequisite of ${group.target}: ${group.sources.join(", ")}`} onClick={() => setSelectedRelationship(relationshipSelection.bus(scene.arrows.map((arrow) => ({ ...arrow, corequisite: false })), group.target))}>All into {group.target}</button>
+            {group.branches.map((edge) => <button key={`${edge.source}-${edge.target}`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "branch" && selectedRelationship.source === edge.source && selectedRelationship.target === edge.target} aria-label={`Select exact relationship ${edge.source} unlocks ${edge.target}`} onClick={() => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target))}>{edge.source} → {edge.target}</button>)}
+          </Fragment>)}</div></> : <p className="muted small-text">This course has no prerequisite or unlock relationships in this catalog.</p>}
           {selectedRelationship && <button type="button" className="text-button inspector-focus" onClick={() => setSelectedRelationship(null)}>Clear relationship selection</button>}
           <h3>Prerequisites <span>{selected?.requirementType === "external" ? 0 : selected?.prerequisiteCodes.length ?? 0}</span></h3>
           {selected?.requirementType === "external" ? <p>{nodeRequirementCopy(selected, "prerequisites")}</p> : <>
