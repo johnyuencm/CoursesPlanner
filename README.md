@@ -4,6 +4,10 @@ A local-first course and degree planner for Northeastern University's Seattle MS
 
 The application explains the current catalog requirements, exposes parsed prerequisite relationships, and validates a semester-by-semester plan. It is an advising aid, not an official degree audit. Course availability in a specific semester or campus section is not included because the academic catalog does not provide that data.
 
+## Deployment
+
+Production is on Vercel at [https://courses-planner.vercel.app](https://courses-planner.vercel.app). The production Git branch is `master` (not `main`). Pushes and pull requests on the linked GitHub repo deploy through Vercel Git integration; GitHub Actions runs typecheck, tests, and a production build on pull requests and on `master`. Operator notes, Hobby-plan caveats, and optional CLI deploy secrets are in [`docs/deploy.md`](docs/deploy.md).
+
 ## What the application includes
 
 - **Degree overview** for total credits, required core, breadth areas, and electives.
@@ -85,7 +89,8 @@ The service does not fetch a second live university until that source file exist
 | `config/pathways.json` | Default recommendation-only pathway groups |
 | `data/raw/` | Cached official HTML and research fixtures |
 | `tests/` | Parser, catalog-service, validation, and persistence tests |
-| `docs/` | Source inspection and acceptance checklist |
+| `docs/` | Source inspection, acceptance checklist, and deployment notes |
+| `.github/workflows/` | GitHub Actions CI (and optional Vercel CLI production deploy) |
 
 ## Catalog cache and refresh behavior
 
