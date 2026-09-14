@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-13T08:07:06.585Z",
+  "updated_at": "2026-09-14T06:37:53.998Z",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
       "id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
@@ -665,6 +665,17 @@
         "body_path": "pages/work-2026-09-13-mscs-graph-close.md",
         "created_at": "2026-09-13T08:05:40.786Z",
         "updated_at": "2026-09-13T08:05:40.786Z"
+      },
+      "work-lite-2026-09-13-colored-course-lines": {
+        "id": "work-lite-2026-09-13-colored-course-lines",
+        "title": "Focused course graphs and selectable colored relationships",
+        "source_ids": [],
+        "tags": [
+          "decision"
+        ],
+        "body_path": "pages/work-lite-2026-09-13-colored-course-lines.md",
+        "created_at": "2026-09-14T06:37:53.997Z",
+        "updated_at": "2026-09-14T06:37:53.997Z"
       }
     },
     "log": [
@@ -688,6 +699,13 @@
         "ref": "work-2026-09-13-mscs-graph-close",
         "note": "durable decision",
         "at": "2026-09-13T08:05:40.787Z"
+      },
+      {
+        "id": "wlg_4a2c1e8c",
+        "kind": "page.upserted",
+        "ref": "work-lite-2026-09-13-colored-course-lines",
+        "note": "durable decision",
+        "at": "2026-09-14T06:37:53.998Z"
       }
     ]
   },
