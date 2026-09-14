@@ -380,6 +380,7 @@ textarea { resize: vertical; }
 .graph-course-node.graph-locked { background: #f4f5f7; }
 .graph-course-node.graph-locked .course-code, .graph-course-node.graph-locked .graph-node-title, .graph-course-node.graph-locked .credits { color: var(--muted); }
 .graph-course-node.graph-emphasized { border-color: #4b6cb3; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.22); }
+.graph-course-node.graph-dimmed { opacity: 0.42; }
 .graph-course-node.graph-focused { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22); }
 .graph-node-main { width: 100%; display: flex; flex-direction: column; padding: 0.55rem 0.62rem 0.5rem; border: 0; background: none; text-align: left; cursor: pointer; }
 .graph-node-meta { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.28rem; }
@@ -409,6 +410,10 @@ textarea { resize: vertical; }
 .inspector-relationships h3 { display: flex; justify-content: space-between; margin: 0.9rem 0 0.15rem; font-size: 0.82rem; }
 .inspector-relationships h3 span { color: var(--red-dark); }
 .inspector-relationships p { color: var(--muted); font-size: 0.65rem; }
+.graph-relationship-buttons { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.graph-relationship-buttons button[aria-pressed="true"] { color: var(--blue); text-decoration: underline; }
+.graph-relationship-explanation { margin-bottom: 0.8rem; padding: 0.65rem; border-radius: 8px; background: var(--blue-soft); }
+.graph-relationship-explanation h3 { margin-top: 0; }
 .inspector-tip { display: flex; gap: 0.5rem; margin-top: 1rem; padding: 0.65rem; border-radius: 9px; background: var(--surface-soft); color: var(--ink-soft); }
 .inspector-tip p { margin: 0; font-size: 0.65rem; }
 .relationship-table-wrap { max-height: 650px; overflow: auto; }

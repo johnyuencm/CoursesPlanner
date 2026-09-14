@@ -93,7 +93,7 @@ function topologicalRanks(codes: Iterable<string>, relations: GraphRelation[]): 
   return memo;
 }
 
-export type GraphScope = "program" | "1" | "2" | "full" | "prerequisites";
+export type GraphScope = "course" | "program" | "1" | "2" | "full" | "prerequisites";
 
 export function visibleGraphDistances(
   scope: GraphScope,
@@ -102,6 +102,9 @@ export function visibleGraphDistances(
   requirements: DegreeRequirement,
   relations: GraphRelation[],
 ): Map<string, number> {
+  if (scope === "course") {
+    return new Map([...directedCourseChain(relations, focusCode)].map((code) => [code, 0]));
+  }
   if (scope === "program") {
     return topologicalRanks(programMapCodes(courses, requirements), relations);
   }
@@ -143,6 +146,28 @@ export type UnlockArrow = {
   stroke: string;
 };
 
+const DESTINATION_COLORS = ["#2d6a9f", "#8b5a2b", "#7b4f9e", "#24756d", "#a64253", "#566c2d", "#8a4d74"];
+
+export function stableDestinationColor(destination: string): string {
+  let hash = 0;
+  for (const character of destination) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return DESTINATION_COLORS[hash % DESTINATION_COLORS.length]!;
+}
+
+export type RelationshipSelection =
+  | { kind: "branch"; source: string; target: string; codes: Set<string> }
+  | { kind: "bus"; target: string; sources: string[]; codes: Set<string> };
+
+export const relationshipSelection = {
+  branch(source: string, target: string): RelationshipSelection {
+    return { kind: "branch", source, target, codes: new Set([source, target]) };
+  },
+  bus(relations: readonly GraphRelation[], target: string): RelationshipSelection {
+    const sources = relations.filter((edge) => !edge.corequisite && edge.target === target).map((edge) => edge.source).sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
+    return { kind: "bus", target, sources, codes: new Set([...sources, target]) };
+  },
+};
+
 export function unlockArrowView(
   relations: readonly GraphRelation[],
   chainCodes: Iterable<string>,
@@ -161,7 +186,7 @@ export function unlockArrowView(
       source: edge.source,
       target: edge.target,
       emphasized,
-      stroke: emphasized ? "#3d4a5c" : "#d0d5de",
+      stroke: stableDestinationColor(edge.target),
     };
   });
 }
@@ -248,19 +273,13 @@ function walkRelations(start: string, graph: Map<string, Set<string>>): Set<stri
   return result;
 }
 
-function selectedChainCodes(relations: readonly GraphRelation[], selectedCode: string): Set<string> {
+export function directedCourseChain(relations: readonly GraphRelation[], selectedCode: string): Set<string> {
   const upstream = new Map<string, Set<string>>();
   const downstream = new Map<string, Set<string>>();
   for (const edge of relations) {
-    if (edge.corequisite) {
-      addRelation(upstream, edge.source, edge.target);
-      addRelation(upstream, edge.target, edge.source);
-      addRelation(downstream, edge.source, edge.target);
-      addRelation(downstream, edge.target, edge.source);
-    } else {
-      addRelation(upstream, edge.target, edge.source);
-      addRelation(downstream, edge.source, edge.target);
-    }
+    if (edge.corequisite) continue;
+    addRelation(upstream, edge.target, edge.source);
+    addRelation(downstream, edge.source, edge.target);
   }
   return new Set([
     selectedCode,
@@ -286,7 +305,7 @@ export function mapScene(input: MapSceneInput): MapScene {
     input.requirements,
     relations,
   );
-  const chain = selectedChainCodes(relations, input.selectedCode);
+  const chain = directedCourseChain(relations, input.selectedCode);
   const courseByCode = new Map(input.courses.map((course) => [course.code, course] as const));
   const compare =
     input.compare ??
