@@ -367,15 +367,16 @@ textarea { resize: vertical; }
 .graph-panel-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.65rem; padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 0.68rem; }
 .graph-panel-heading > span[role="status"] { flex-basis: 100%; order: 1; font-size: 0.62rem; }
 .graph-panel-heading span { display: flex; gap: 0.3rem; align-items: center; }
-.flow-canvas { height: clamp(380px, calc(100dvh - 330px), 760px); background: #fbfcfd; }
+.flow-canvas { height: clamp(380px, calc(100dvh - 330px), 760px); overflow: auto; scrollbar-gutter: stable; background: #fbfcfd; }
+.graph-history { display: flex; gap: 0.3rem; }
 .graph-canvas-hint { margin: 0; padding: 0.45rem 0.85rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.65rem; }
 .flow-canvas .react-flow__node:hover { z-index: 20 !important; }
 .graph-course-node { position: relative; width: 218px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); transition: box-shadow 140ms, border-color 140ms; }
 .graph-course-node.core-course { border-top: 2px solid var(--red); }
-.graph-course-node.graph-compact { width: 196px; }
+.graph-course-node.graph-compact { width: 224px; height: 116px; }
 .graph-course-node.graph-compact .graph-node-main { padding: 0.42rem 0.5rem 0.4rem; }
-.graph-course-node.graph-compact .course-code { margin-top: 0.28rem; font-size: 0.78rem; }
-.graph-course-node.graph-compact .graph-node-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 0; margin-top: 0.1rem; font-size: 0.62rem; }
+.graph-course-node.graph-compact .course-code { margin-top: 0.28rem; font-size: 0.9rem; }
+.graph-course-node.graph-compact .graph-node-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 0; margin-top: 0.1rem; font-size: 0.75rem; }
 .graph-course-node.graph-locked { background: #f4f5f7; }
 .graph-course-node.graph-locked .course-code, .graph-course-node.graph-locked .graph-node-title, .graph-course-node.graph-locked .credits { color: var(--muted); }
 .graph-course-node.graph-emphasized { border-color: #4b6cb3; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.22); }

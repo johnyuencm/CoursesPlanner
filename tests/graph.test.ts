@@ -11,12 +11,63 @@ import {
   mapScene,
   PROGRAM_ROW,
   programMapCodes,
+  prerequisiteConnector,
   unlockArrowView,
   visibleGraphDistances,
 } from "../lib/graph";
 import { PROGRAM_URL, buildCourseGraph, parseCourses, parseProgramRequirements } from "../scraper/parser";
 
 const fixture = (name: string) => readFileSync(path.join(process.cwd(), "data", "raw", name), "utf8");
+
+test("prerequisite trace follows every ancestor, excludes descendants and corequisites, and terminates on cycles", () => {
+  const { courses, requirements } = seattleGraph();
+  const relations = [
+    { source: "A", target: "B", corequisite: false },
+    { source: "B", target: "C", corequisite: false },
+    { source: "C", target: "D", corequisite: false },
+    { source: "B", target: "A", corequisite: false },
+    { source: "X", target: "C", corequisite: true },
+  ];
+  const visible = visibleGraphDistances("prerequisites", "C", courses, requirements, relations);
+  assert.deepEqual([...visible.keys()].sort(), ["A", "B", "C"]);
+});
+
+test("incoming connectors share a destination junction using only straight segments", () => {
+  const first = prerequisiteConnector(224, 58, 360, 218);
+  const second = prerequisiteConnector(224, 378, 360, 218);
+  assert.ok(first.endsWith("H 324 V 218 H 360"));
+  assert.ok(second.endsWith("H 324 V 218 H 360"));
+  assert.equal(/[CQSA]/.test(first + second), false);
+  assert.notEqual(first, prerequisiteConnector(224, 58, 360, 218, 46));
+});
+
+test("long connectors cross intervening columns in row gutters, never through course cards", () => {
+  const { courses, requirements } = seattleGraph();
+  const scene = mapScene({ courses, requirements, scope: "program", focusCode: "CS 6200", selectedCode: "CS 6200" });
+  for (const edge of scene.arrows) {
+    const source = scene.positions.get(edge.source)!;
+    const target = scene.positions.get(edge.target)!;
+    const path = prerequisiteConnector(source.x + 224, source.y + 58, target.x, target.y + 58);
+    const commands = [...path.matchAll(/([MHV]) (-?[\d.]+)(?: (-?[\d.]+))?/g)];
+    let x = 0;
+    let y = 0;
+    for (const [, command, first, second] of commands) {
+      const nextX = command === "V" ? x : Number(first);
+      const nextY = command === "H" ? y : Number(command === "V" ? first : second);
+      if (command !== "M") {
+        for (const [code, card] of scene.positions) {
+          if (code === edge.source || code === edge.target) continue;
+          const intersects = command === "H"
+            ? y > card.y && y < card.y + 116 && Math.max(x, nextX) > card.x && Math.min(x, nextX) < card.x + 224
+            : x > card.x && x < card.x + 224 && Math.max(y, nextY) > card.y && Math.min(y, nextY) < card.y + 116;
+          assert.equal(intersects, false, `${edge.source} -> ${edge.target} crosses ${code}`);
+        }
+      }
+      x = nextX;
+      y = nextY;
+    }
+  }
+});
 
 function bandCourses(
   layout: { positions: Map<string, { x: number; y: number }>; bands: { id: string; y: number }[] },

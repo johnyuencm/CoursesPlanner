@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Background, BackgroundVariant, Controls, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
-import { ArrowRight, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
+import { Handle, MarkerType, Position, type Edge, type Node, type NodeProps } from "@xyflow/react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
 import {
   compactGraphStatusLabel,
   mapFind,
@@ -17,6 +17,7 @@ import { useApp } from "./app-provider";
 import { CodeLinks, courseStatus, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
 import { PageHeading, creditLabel } from "./ui";
+import { GraphCanvas } from "./graph-canvas";
 
 type GraphData = {
   code: string;
@@ -66,11 +67,6 @@ function BandLabelNode({ data }: NodeProps<BandNode>) {
 
 const nodeTypes = { course: CourseNode, band: BandLabelNode };
 
-function FitToViewButton() {
-  const { fitView } = useReactFlow();
-  return <button className="button button-secondary button-small" type="button" onClick={() => { void fitView({ padding: 0.12 }); }}><Maximize2 size={14} /> Fit to view</button>;
-}
-
 function nodeRequirementCopy(course: { requirementType: string; unlocks: string[]; prerequisites: Parameters<typeof expressionLabel>[0]; corequisites: Parameters<typeof expressionLabel>[0] } | undefined, kind: "prerequisites" | "corequisites") {
   if (!course) return "Unknown";
   if (course.requirementType === "external") {
@@ -88,13 +84,14 @@ function graphStatus(course: Course | undefined, code: string, completed: Set<st
 
 function GraphWorkspace() {
   const { catalog, openCourse, openPicker, plan } = useApp();
-  const { fitView } = useReactFlow();
   const [focusCode, setFocusCode] = useState("CS 5010");
   const [selectedCode, setSelectedCode] = useState("CS 5010");
   const [search, setSearch] = useState("");
   const [findIndex, setFindIndex] = useState(-1);
-  const [depth, setDepth] = useState<GraphScope>("1");
+  const [depth, setDepth] = useState<GraphScope>("program");
   const [view, setView] = useState<"graph" | "table">("graph");
+  const [overview, setOverview] = useState(false);
+  const [navigation, setNavigation] = useState({ codes: ["CS 5010"], index: 0 });
   const findInputRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef(search);
   searchRef.current = search;
@@ -180,13 +177,22 @@ function GraphWorkspace() {
         style: { width: Math.max(PROGRAM_COL * 3, 420) },
       });
     }
+    const targetTracks = new Map<string, number>();
+    const columnTracks = new Map<number, number>();
+    for (const target of [...incoming].sort((a, b) => (scene.positions.get(a)?.y ?? 0) - (scene.positions.get(b)?.y ?? 0) || a.localeCompare(b))) {
+      const x = scene.positions.get(target)?.x ?? 0;
+      const track = columnTracks.get(x) ?? 0;
+      targetTracks.set(target, 36 + track * 10);
+      columnTracks.set(x, track + 1);
+    }
     const edges: Edge[] = scene.arrows.map((edge, index) => {
       const stroke = edge.stroke;
       return {
         id: `${edge.source}-${edge.target}-${index}`,
         source: edge.source,
         target: edge.target,
-        type: "default",
+        type: "prerequisite",
+        data: { busOffset: targetTracks.get(edge.target) ?? 36 },
         markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: stroke },
         style: { stroke, strokeWidth: edge.emphasized ? 2.2 : 1.15 },
         zIndex: edge.emphasized ? 4 : 0,
@@ -245,16 +251,15 @@ function GraphWorkspace() {
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, []);
-  const locate = (code: string, keepFind = false) => {
-    const reveal = mapFind.reveal(code, visible);
+  const locate = (code: string, keepFind = false, record = true) => {
+    if (record && code !== selectedCode) {
+      setNavigation((previous) => ({ codes: [...previous.codes.slice(0, previous.index + 1), code], index: previous.index + 1 }));
+    }
     setFocusCode(code);
     setSelectedCode(code);
-    if (reveal.neighborhood || depth === "program") {
-      setDepth("1");
-    } else if (view === "table") {
+    setOverview(false);
+    if (view === "table") {
       requestAnimationFrame(() => document.getElementById(tableRowId(code))?.scrollIntoView({ block: "nearest" }));
-    } else if (code === focusCode) {
-      void fitView({ padding: 0.18, maxZoom: 1, duration: 180 });
     }
     if (!keepFind) {
       setSearch("");
@@ -334,13 +339,13 @@ function GraphWorkspace() {
               onClick={() => { setFindIndex(index); locate(course.code, true); }}
             >
               <strong>{course.code}</strong>
-              <span>{course.title}{visible.has(course.code) ? "" : " · not on this view — opens neighborhood"}</span>
+              <span>{course.title}{visible.has(course.code) ? "" : " · outside current view"}</span>
               <Crosshair size={14} />
             </button>
           )) : <p>No matching courses. Try another code or title.</p>}
         </div> : null}
       </div>
-      <FitToViewButton />
+      <button className="button button-secondary button-small" type="button" aria-pressed={overview} onClick={() => { setView("graph"); setOverview(!overview); }}><Maximize2 size={14} /> {overview ? "Readable size" : "Overview"}</button>
     </div>} />
     <div className="graph-legend" aria-label="Map legend">
       <span><i className="legend-node core" /> Core</span>
@@ -357,6 +362,10 @@ function GraphWorkspace() {
       <section className="graph-panel" aria-label="Course prerequisite relationships">
         <a className="graph-skip" href="#graph-inspector">Skip map to selected course</a>
         <div className="graph-panel-heading">
+          <div className="graph-history" aria-label="Course navigation">
+            <button type="button" className="button button-secondary button-small" aria-label="Previous course" disabled={navigation.index === 0} onClick={() => { const index = navigation.index - 1; locate(navigation.codes[index]!, false, false); setNavigation({ ...navigation, index }); }}><ArrowLeft size={14} /> Back</button>
+            <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.codes.length - 1} onClick={() => { const index = navigation.index + 1; locate(navigation.codes[index]!, false, false); setNavigation({ ...navigation, index }); }}><ArrowRight size={14} /></button>
+          </div>
           <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : <><Crosshair size={15} /> Focused on <strong>{focusCode}</strong></>}</span>
           <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode}{depth === "program" ? "" : ` · focused on ${focusCode}`}.</span>
           <div className="segmented-control" aria-label="Map display">
@@ -369,34 +378,11 @@ function GraphWorkspace() {
               <option value="1">This course’s connections</option>
               <option value="2">Two connections away</option>
               <option value="full">Full connected component</option>
+              <option value="prerequisites">All prerequisites</option>
             </select>
           </label>
         </div>
-        {view === "graph" ? <div className="flow-canvas">
-          <ReactFlow
-            key={depth === "program" ? "program" : `${focusCode}-${depth}`}
-            nodes={graph.nodes}
-            edges={graph.edges}
-            nodeTypes={nodeTypes}
-            fitView
-            fitViewOptions={{ padding: 0.18, maxZoom: 1 }}
-            defaultViewport={{ x: 28, y: 20, zoom: READABLE_ZOOM }}
-            minZoom={0.02}
-            maxZoom={1.8}
-            nodesDraggable={false}
-            nodesConnectable={false}
-            nodesFocusable={false}
-            edgesFocusable={false}
-            elementsSelectable
-            onlyRenderVisibleElements
-            onNodeClick={(_, node) => { if (node.type === "course") locate(node.id); }}
-            proOptions={{ hideAttribution: false }}
-            aria-label="Interactive prerequisite map. Press Control F to find a course, then Enter or F3 for the next match. Use zoom, pan, or Fit to view to see the rest of the program."
-          >
-            <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#d5d9e0" />
-            <Controls showInteractive={false} />
-          </ReactFlow>
-        </div> : <div className="relationship-table-wrap">
+        {view === "graph" ? <GraphCanvas nodes={graph.nodes} edges={graph.edges} nodeTypes={nodeTypes} selectedCode={selectedCode} overview={overview} /> : <div className="relationship-table-wrap">
           <table className="relationship-table">
             <caption className="sr-only">All courses in the selected neighborhood and their complete prerequisite and corequisite rules</caption>
             <thead><tr><th scope="col">Course</th><th scope="col">Role</th><th scope="col">Prerequisite rule</th><th scope="col">Take together</th></tr></thead>
@@ -425,6 +411,7 @@ function GraphWorkspace() {
         {depth !== "program" && <button className="text-button inspector-focus" onClick={() => setDepth("program")}><Network size={14} /> Show entire program</button>}
         {depth !== "1" && <button className="text-button inspector-focus" onClick={() => { setFocusCode(selectedCode); setDepth("1"); }}><Crosshair size={14} /> Show neighborhood</button>}
         {depth !== "program" && focusCode !== selectedCode && <button className="text-button inspector-focus" onClick={() => focus(selectedCode)}><Crosshair size={14} /> Focus map here</button>}
+        <button className="text-button inspector-focus" onClick={() => { setFocusCode(selectedCode); setDepth("prerequisites"); setOverview(false); }}><ArrowLeft size={14} /> Trace all prerequisites</button>
         <div className="inspector-relationships">
           <h3>Prerequisites <span>{selected?.requirementType === "external" ? 0 : selected?.prerequisiteCodes.length ?? 0}</span></h3>
           {selected?.requirementType === "external" ? <p>{nodeRequirementCopy(selected, "prerequisites")}</p> : <>
@@ -451,5 +438,5 @@ function GraphWorkspace() {
 }
 
 export default function CourseGraph() {
-  return <ReactFlowProvider><GraphWorkspace /></ReactFlowProvider>;
+  return <GraphWorkspace />;
 }

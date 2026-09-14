@@ -93,7 +93,7 @@ function topologicalRanks(codes: Iterable<string>, relations: GraphRelation[]): 
   return memo;
 }
 
-export type GraphScope = "program" | "1" | "2" | "full";
+export type GraphScope = "program" | "1" | "2" | "full" | "prerequisites";
 
 export function visibleGraphDistances(
   scope: GraphScope,
@@ -105,12 +105,19 @@ export function visibleGraphDistances(
   if (scope === "program") {
     return topologicalRanks(programMapCodes(courses, requirements), relations);
   }
+  if (scope === "prerequisites") {
+    const incoming = new Map<string, Set<string>>();
+    for (const edge of relations) {
+      if (!edge.corequisite) addRelation(incoming, edge.target, edge.source);
+    }
+    return new Map([focusCode, ...walkRelations(focusCode, incoming)].map((code) => [code, 0]));
+  }
   const maxDepth = scope === "full" ? relations.length + 1 : Number(scope);
   return neighborhoodDistances(focusCode, relations, maxDepth);
 }
 
-export const PROGRAM_COL = 208;
-export const PROGRAM_ROW = 128;
+export const PROGRAM_COL = 360;
+export const PROGRAM_ROW = 160;
 export const PROGRAM_ISOLATE_GAP = 80;
 export const PROGRAM_BAND_LABEL_ROW = 40;
 export const PROGRAM_BAND_COPY = {
@@ -286,8 +293,20 @@ export function mapScene(input: MapSceneInput): MapScene {
     ((left, right) =>
       requirementTypeOrder(left, courseByCode) - requirementTypeOrder(right, courseByCode) ||
       left.localeCompare(right, undefined, { numeric: true }));
-  const layout = layoutProgramFlow(visible.keys(), relations, input.courses, compare, input.scope === "program" ? PROGRAM_COL : 310);
+  const layout = layoutProgramFlow(visible.keys(), relations, input.courses, compare);
   const arrows = unlockArrowView(relations, chain, visible.keys());
+  // Reserve a separate vertical track for each destination, so unrelated buses
+  // cannot merge into one ambiguous line in the gutter between columns.
+  const destinations = new Map<number, Set<string>>();
+  for (const arrow of arrows) {
+    const x = layout.positions.get(arrow.target)?.x;
+    if (x === undefined) continue;
+    const column = destinations.get(x) ?? new Set<string>();
+    column.add(arrow.target);
+    destinations.set(x, column);
+  }
+  const columnWidth = Math.max(PROGRAM_COL, 304 + 10 * Math.max(0, ...[...destinations.values()].map((column) => column.size)));
+  for (const point of layout.positions.values()) point.x = point.x / PROGRAM_COL * columnWidth;
   return {
     visible,
     positions: layout.positions,
@@ -295,6 +314,16 @@ export function mapScene(input: MapSceneInput): MapScene {
     arrows,
     chain,
   };
+}
+
+/** Orthogonal incoming bus; long edges travel in the gutter below their source row. */
+export function prerequisiteConnector(sourceX: number, sourceY: number, targetX: number, targetY: number, busOffset = 36): string {
+  const busX = targetX - busOffset;
+  if (targetX - sourceX <= 180 && targetX > sourceX) {
+    return `M ${sourceX} ${sourceY} H ${busX} V ${targetY} H ${targetX}`;
+  }
+  const laneY = sourceY + 82;
+  return `M ${sourceX} ${sourceY} H ${sourceX + 20} V ${laneY} H ${busX} V ${targetY} H ${targetX}`;
 }
 
 export function layoutProgramFlow(
