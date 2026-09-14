@@ -13,3 +13,5 @@ data/catalogs/
 .ycm-harness/legacy/
 playwright-report/
 test-results/
+.vercel/*
+!.vercel/project.json
