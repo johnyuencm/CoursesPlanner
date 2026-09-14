@@ -146,6 +146,32 @@ export type UnlockArrow = {
   stroke: string;
 };
 
+export const GRAPH_HIT_TARGET_WIDTH = 18;
+export const GRAPH_HIT_TARGET_GAP = 4;
+
+/**
+ * The visible connector joins at the bus, while its two interaction regions
+ * stop short / start at the junction. Their 18px hit strokes therefore never
+ * overlap, regardless of edge render order or selection z-index.
+ */
+export function prerequisiteHitPaths(
+  sourceX: number,
+  sourceY: number,
+  targetX: number,
+  targetY: number,
+  busOffset: number,
+  busStartY: number,
+  busEndY: number,
+): { branch: string; bus: string } {
+  const busX = targetX - busOffset;
+  const branchEndX = busX - GRAPH_HIT_TARGET_WIDTH - GRAPH_HIT_TARGET_GAP;
+  const short = targetX - sourceX <= 180 && targetX > sourceX;
+  const branch = short
+    ? `M ${sourceX} ${sourceY} H ${branchEndX}`
+    : `M ${sourceX} ${sourceY} H ${sourceX + 20} V ${sourceY + 82} H ${branchEndX}`;
+  return { branch, bus: `M ${busX} ${busStartY} V ${busEndY} M ${busX} ${targetY} H ${targetX}` };
+}
+
 const DESTINATION_COLORS = ["#2d6a9f", "#8b5a2b", "#7b4f9e", "#24756d", "#a64253", "#566c2d", "#8a4d74"];
 
 export function stableDestinationColor(destination: string): string {
@@ -157,6 +183,28 @@ export function stableDestinationColor(destination: string): string {
 export type RelationshipSelection =
   | { kind: "branch"; source: string; target: string; codes: Set<string> }
   | { kind: "bus"; target: string; sources: string[]; codes: Set<string> };
+
+export type RelationshipControlGroup = {
+  target: string;
+  sources: string[];
+  branches: GraphRelation[];
+};
+
+export function relationshipControlGroups(relations: readonly GraphRelation[]): RelationshipControlGroup[] {
+  const groups = new Map<string, GraphRelation[]>();
+  for (const relation of relations) {
+    if (relation.corequisite) continue;
+    const target = groups.get(relation.target) ?? [];
+    target.push(relation);
+    groups.set(relation.target, target);
+  }
+  return [...groups.entries()]
+    .map(([target, branches]) => {
+      const sorted = [...branches].sort((left, right) => left.source.localeCompare(right.source, undefined, { numeric: true }));
+      return { target, sources: sorted.map((branch) => branch.source), branches: sorted };
+    })
+    .sort((left, right) => left.target.localeCompare(right.target, undefined, { numeric: true }));
+}
 
 export const relationshipSelection = {
   branch(source: string, target: string): RelationshipSelection {
