@@ -8,7 +8,6 @@ import {
   mapFind,
   mapScene,
   PROGRAM_COL,
-  PROGRAM_ROW,
   programMapCodes,
   type GraphScope,
 } from "@/lib/graph";
