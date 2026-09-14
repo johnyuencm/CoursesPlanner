@@ -364,9 +364,10 @@ textarea { resize: vertical; }
 .graph-panel { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
 .graph-skip { position: absolute; z-index: 20; left: 0.7rem; top: -4.5rem; padding: 0.45rem 0.7rem; border-radius: 8px; background: white; box-shadow: var(--shadow); }
 .graph-skip:focus { top: 0.7rem; }
-.graph-panel-heading { display: flex; justify-content: space-between; gap: 1rem; padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 0.68rem; }
+.graph-panel-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.65rem; padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 0.68rem; }
+.graph-panel-heading > span[role="status"] { flex-basis: 100%; order: 1; font-size: 0.62rem; }
 .graph-panel-heading span { display: flex; gap: 0.3rem; align-items: center; }
-.flow-canvas { height: min(78vh, 820px); min-height: 580px; background: #fbfcfd; }
+.flow-canvas { height: clamp(380px, calc(100dvh - 330px), 760px); background: #fbfcfd; }
 .graph-canvas-hint { margin: 0; padding: 0.45rem 0.85rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.65rem; }
 .flow-canvas .react-flow__node:hover { z-index: 20 !important; }
 .graph-course-node { position: relative; width: 218px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); transition: box-shadow 140ms, border-color 140ms; }
