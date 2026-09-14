@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Handle, MarkerType, Position, type Edge, type Node, type NodeProps } from "@xyflow/react";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
 import {
@@ -9,6 +9,8 @@ import {
   mapScene,
   PROGRAM_COL,
   programMapCodes,
+  relationshipControlGroups,
+  relationshipSelection,
   type GraphScope,
 } from "@/lib/graph";
 import type { Course } from "@/lib/types";
@@ -32,6 +34,7 @@ type GraphData = {
   core: boolean;
   locked: boolean;
   emphasized: boolean;
+  dimmed: boolean;
   focused: boolean;
   compact: boolean;
   hasIncoming: boolean;
@@ -46,7 +49,7 @@ const READABLE_ZOOM = 1;
 const tableRowId = (code: string) => `graph-row-${code.replaceAll(" ", "-")}`;
 
 function CourseNode({ data }: NodeProps<GraphNode>) {
-  return <div className={`graph-course-node ${data.core ? "core-course" : ""} ${data.locked ? "graph-locked" : ""} ${data.emphasized ? "graph-emphasized" : ""} ${data.focused ? "graph-focused" : ""} ${data.compact ? "graph-compact" : ""}`}>
+  return <div className={`graph-course-node ${data.core ? "core-course" : ""} ${data.locked ? "graph-locked" : ""} ${data.emphasized ? "graph-emphasized" : ""} ${data.dimmed ? "graph-dimmed" : ""} ${data.focused ? "graph-focused" : ""} ${data.compact ? "graph-compact" : ""}`}>
     <Handle type="target" position={Position.Left} className={data.hasIncoming ? undefined : "graph-handle-hidden"} />
     <button type="button" className="graph-node-main nodrag" onClick={() => data.selectCourse(data.code)} aria-label={`Select ${data.code}, ${data.title}. ${data.badgeLabel}. ${data.statusLabel}.`}>
       <span className="graph-node-meta">
@@ -86,9 +89,10 @@ function GraphWorkspace() {
   const { catalog, openCourse, openPicker, plan } = useApp();
   const [focusCode, setFocusCode] = useState("CS 5010");
   const [selectedCode, setSelectedCode] = useState("CS 5010");
+  const [selectedRelationship, setSelectedRelationship] = useState<ReturnType<typeof relationshipSelection.branch> | ReturnType<typeof relationshipSelection.bus> | null>(null);
   const [search, setSearch] = useState("");
   const [findIndex, setFindIndex] = useState(-1);
-  const [depth, setDepth] = useState<GraphScope>("program");
+  const [depth, setDepth] = useState<GraphScope>("course");
   const [view, setView] = useState<"graph" | "table">("graph");
   const [overview, setOverview] = useState(false);
   const [navigation, setNavigation] = useState({ codes: ["CS 5010"], index: 0 });
@@ -129,7 +133,7 @@ function GraphWorkspace() {
     const outgoing = new Set(scene.arrows.map((edge) => edge.source));
     const makeNode = (code: string, x: number, y: number): GraphNode => {
       const course = courseMap.get(code);
-      const emphasized = highlighted.has(code);
+      const emphasized = selectedRelationship ? selectedRelationship.codes.has(code) : highlighted.has(code);
       const focused = code === selectedCode;
       const badge = requirementBadge(course?.requirementType ?? "external");
       const status = graphStatus(course, code, completed, waived, planned, history);
@@ -138,7 +142,7 @@ function GraphWorkspace() {
         id: code,
         type: "course",
         position: { x, y },
-        zIndex: focused ? 12 : emphasized ? 6 : 1,
+        zIndex: focused ? 12 : emphasized ? 6 : selectedRelationship ? 0 : 1,
         data: {
           code,
           title: course?.title ?? "Metadata not in this catalog",
@@ -152,6 +156,7 @@ function GraphWorkspace() {
           prerequisites: nodeRequirementCopy(course, "prerequisites"),
           corequisites: nodeRequirementCopy(course, "corequisites"),
           emphasized,
+          dimmed: Boolean(selectedRelationship && !selectedRelationship.codes.has(code)),
           focused,
           compact: true,
           hasIncoming: incoming.has(code),
@@ -185,24 +190,53 @@ function GraphWorkspace() {
       targetTracks.set(target, 36 + track * 10);
       columnTracks.set(x, track + 1);
     }
+    const busOwners = new Map<string, string>();
+    const busBounds = new Map<string, { start: number; end: number }>();
+    for (const edge of scene.arrows) {
+      const owner = busOwners.get(edge.target);
+      if (!owner || edge.source.localeCompare(owner, undefined, { numeric: true }) < 0) busOwners.set(edge.target, edge.source);
+      const source = scene.positions.get(edge.source);
+      const target = scene.positions.get(edge.target);
+      if (!source || !target) continue;
+      const sourceX = source.x + 224;
+      const targetX = target.x;
+      const entryY = targetX - sourceX <= 180 && targetX > sourceX ? source.y + 58 : source.y + 140;
+      const previous = busBounds.get(edge.target);
+      busBounds.set(edge.target, {
+        start: Math.min(previous?.start ?? entryY, entryY, target.y + 58),
+        end: Math.max(previous?.end ?? entryY, entryY, target.y + 58),
+      });
+    }
     const edges: Edge[] = scene.arrows.map((edge, index) => {
       const stroke = edge.stroke;
+      const selected = selectedRelationship?.kind === "branch"
+        ? selectedRelationship.source === edge.source && selectedRelationship.target === edge.target
+        : selectedRelationship?.kind === "bus" ? selectedRelationship.target === edge.target : false;
       return {
         id: `${edge.source}-${edge.target}-${index}`,
         source: edge.source,
         target: edge.target,
         type: "prerequisite",
-        data: { busOffset: targetTracks.get(edge.target) ?? 36 },
+        data: {
+          busOffset: targetTracks.get(edge.target) ?? 36,
+          busStartY: busBounds.get(edge.target)?.start,
+          busEndY: busBounds.get(edge.target)?.end,
+          isBusOwner: busOwners.get(edge.target) === edge.source,
+          selected,
+          onSelectBranch: () => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target)),
+          onSelectBus: () => setSelectedRelationship(relationshipSelection.bus(scene.arrows.map((arrow) => ({ ...arrow, corequisite: false })), edge.target)),
+        },
         markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: stroke },
-        style: { stroke, strokeWidth: edge.emphasized ? 2.2 : 1.15 },
-        zIndex: edge.emphasized ? 4 : 0,
+        style: { stroke, strokeWidth: selected || edge.emphasized ? 2.5 : 1.25, opacity: selectedRelationship && !selected ? 0.18 : 1 },
+        zIndex: selected || edge.emphasized ? 4 : 0,
         ariaLabel: `${edge.source} unlocks ${edge.target}`,
         focusable: false,
+        selectable: true,
       };
     });
     const courseNodes = nodes.filter((node): node is GraphNode => node.type === "course");
     return { nodes, edges, courseNodes };
-  }, [scene, highlighted, selectedCode, courseMap, history, completed, waived, planned]);
+  }, [scene, highlighted, selectedCode, selectedRelationship, courseMap, history, completed, waived, planned]);
   const programCodes = useMemo(
     () => (catalog ? programMapCodes(catalog.courses, catalog.requirements) : new Set<string>()),
     [catalog],
@@ -251,12 +285,26 @@ function GraphWorkspace() {
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, []);
+  useEffect(() => {
+    if (!selectedRelationship) return;
+    const clearRelationship = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      const target = event.target;
+      if (!(target instanceof Element) || !target.closest(".graph-panel")) return;
+      event.preventDefault();
+      setSelectedRelationship(null);
+    };
+    window.addEventListener("keydown", clearRelationship, true);
+    return () => window.removeEventListener("keydown", clearRelationship, true);
+  }, [selectedRelationship]);
   const locate = (code: string, keepFind = false, record = true) => {
     if (record && code !== selectedCode) {
       setNavigation((previous) => ({ codes: [...previous.codes.slice(0, previous.index + 1), code], index: previous.index + 1 }));
     }
     setFocusCode(code);
     setSelectedCode(code);
+    setSelectedRelationship(null);
+    setDepth("course");
     setOverview(false);
     if (view === "table") {
       requestAnimationFrame(() => document.getElementById(tableRowId(code))?.scrollIntoView({ block: "nearest" }));
@@ -283,10 +331,12 @@ function GraphWorkspace() {
   const focus = (code: string) => locate(code, false);
   if (!catalog) return <CatalogState />;
   const selected = courseMap.get(selectedCode);
+  const relationshipTarget = selectedRelationship ? courseMap.get(selectedRelationship.target) : undefined;
   const badge = selected ? requirementBadge(selected.requirementType) : requirementBadge("external");
   const selectedStatus = graphStatus(selected, selectedCode, completed, waived, planned, history);
   const findStatus = !search.trim() ? "" : matches.length ? `${findIndex >= 0 ? findIndex + 1 : 0} of ${matches.length}` : "No matches";
   const showCorequisites = Boolean(selected?.corequisiteCodes.length);
+  const relationshipGroups = relationshipControlGroups(scene.arrows.map((arrow) => ({ ...arrow, corequisite: false })));
   return <>
     <PageHeading title="Prerequisite Graph" description="See what a course needs and what it unlocks. Select a course to explore its connections." actions={<div className="graph-toolbar">
       <div className="graph-search-wrap">
@@ -366,14 +416,15 @@ function GraphWorkspace() {
             <button type="button" className="button button-secondary button-small" aria-label="Previous course" disabled={navigation.index === 0} onClick={() => { const index = navigation.index - 1; locate(navigation.codes[index]!, false, false); setNavigation({ ...navigation, index }); }}><ArrowLeft size={14} /> Back</button>
             <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.codes.length - 1} onClick={() => { const index = navigation.index + 1; locate(navigation.codes[index]!, false, false); setNavigation({ ...navigation, index }); }}><ArrowRight size={14} /></button>
           </div>
-          <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : <><Crosshair size={15} /> Focused on <strong>{focusCode}</strong></>}</span>
-          <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode}{depth === "program" ? "" : ` · focused on ${focusCode}`}.</span>
+          <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
+          <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode}{selectedRelationship ? ` · ${selectedRelationship.kind === "branch" ? `${selectedRelationship.source} unlocks ${selectedRelationship.target}` : `${selectedRelationship.sources.join(", ")} unlock ${selectedRelationship.target}`}` : ""}.</span>
           <div className="segmented-control" aria-label="Map display">
             <button type="button" aria-pressed={view === "graph"} className={view === "graph" ? "selected" : ""} onClick={() => setView("graph")}><Network size={15} /> Map</button>
             <button type="button" aria-pressed={view === "table"} className={view === "table" ? "selected" : ""} onClick={() => setView("table")}><List size={15} /> Table</button>
           </div>
           <label className="graph-depth-label">Show
-            <select value={depth} onChange={(event) => setDepth(event.target.value as GraphScope)}>
+            <select value={depth} onChange={(event) => { setSelectedRelationship(null); setDepth(event.target.value as GraphScope); }}>
+              <option value="course">This course’s full chain</option>
               <option value="program">Entire program</option>
               <option value="1">This course’s connections</option>
               <option value="2">Two connections away</option>
@@ -397,7 +448,7 @@ function GraphWorkspace() {
             })}</tbody>
           </table>
         </div>}
-        {view === "graph" && depth === "program" && <p className="graph-canvas-hint">Arrows point at the course that lists the prerequisite. Locked cards need earlier courses first. The No prerequisite required band is startable electives and other courses with no parsed prerequisite and no links on this map.</p>}
+        {view === "graph" && <p className="graph-canvas-hint">Arrows point at the course that lists the prerequisite. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination.</p>}
       </section>
       <aside className="graph-inspector" id="graph-inspector" tabIndex={-1}>
         <div className="inspector-heading-meta">
@@ -408,11 +459,17 @@ function GraphWorkspace() {
         <p className="inspector-course-title">{selected?.title ?? "External course reference"}</p>
         <p className="muted small-text">{selected ? `${creditLabel(selected)} credits` : "Credits unknown"}</p>
         {selected?.description ? <p className="inspector-description">{selected.description}</p> : <p className="muted small-text">No catalog description is cached for this code.</p>}
-        {depth !== "program" && <button className="text-button inspector-focus" onClick={() => setDepth("program")}><Network size={14} /> Show entire program</button>}
-        {depth !== "1" && <button className="text-button inspector-focus" onClick={() => { setFocusCode(selectedCode); setDepth("1"); }}><Crosshair size={14} /> Show neighborhood</button>}
+        {depth !== "program" && <button className="text-button inspector-focus" onClick={() => { setSelectedRelationship(null); setDepth("program"); }}><Network size={14} /> Show entire program</button>}
+        {depth !== "1" && <button className="text-button inspector-focus" onClick={() => { setSelectedRelationship(null); setFocusCode(selectedCode); setDepth("1"); }}><Crosshair size={14} /> Show neighborhood</button>}
         {depth !== "program" && focusCode !== selectedCode && <button className="text-button inspector-focus" onClick={() => focus(selectedCode)}><Crosshair size={14} /> Focus map here</button>}
-        <button className="text-button inspector-focus" onClick={() => { setFocusCode(selectedCode); setDepth("prerequisites"); setOverview(false); }}><ArrowLeft size={14} /> Trace all prerequisites</button>
+        <button className="text-button inspector-focus" onClick={() => { setSelectedRelationship(null); setFocusCode(selectedCode); setDepth("prerequisites"); setOverview(false); }}><ArrowLeft size={14} /> Trace all prerequisites</button>
         <div className="inspector-relationships">
+          {selectedRelationship ? <div className="graph-relationship-explanation"><h3>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} → ${selectedRelationship.target}` : `${selectedRelationship.target} shared prerequisite bus`}</h3><p>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} is named as a prerequisite of ${selectedRelationship.target}.` : `Visible incoming prerequisites: ${selectedRelationship.sources.join(", ")}.`}</p><p><strong>{selectedRelationship.target} catalog rule:</strong> {nodeRequirementCopy(relationshipTarget, "prerequisites")}</p><p className="muted small-text">A line records a named catalog link; the rule above states whether prerequisites are AND, OR, or need review.</p></div> : null}
+          {scene.arrows.length ? <><h3>Visible map relationships</h3><div className="graph-relationship-buttons">{relationshipGroups.map((group) => <Fragment key={group.target}>
+            <button key={`${group.target}-bus`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "bus" && selectedRelationship.target === group.target} aria-label={`Select every visible prerequisite of ${group.target}: ${group.sources.join(", ")}`} onClick={() => setSelectedRelationship(relationshipSelection.bus(scene.arrows.map((arrow) => ({ ...arrow, corequisite: false })), group.target))}>All into {group.target}</button>
+            {group.branches.map((edge) => <button key={`${edge.source}-${edge.target}`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "branch" && selectedRelationship.source === edge.source && selectedRelationship.target === edge.target} aria-label={`Select exact relationship ${edge.source} unlocks ${edge.target}`} onClick={() => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target))}>{edge.source} → {edge.target}</button>)}
+          </Fragment>)}</div></> : <p className="muted small-text">This course has no prerequisite or unlock relationships in this catalog.</p>}
+          {selectedRelationship && <button type="button" className="text-button inspector-focus" onClick={() => setSelectedRelationship(null)}>Clear relationship selection</button>}
           <h3>Prerequisites <span>{selected?.requirementType === "external" ? 0 : selected?.prerequisiteCodes.length ?? 0}</span></h3>
           {selected?.requirementType === "external" ? <p>{nodeRequirementCopy(selected, "prerequisites")}</p> : <>
             <p>{selected ? expressionLabel(selected.prerequisites) : "Unknown"}</p>
@@ -433,7 +490,7 @@ function GraphWorkspace() {
         <div className="inspector-tip"><Info size={16} /><p>Arrows point at the course that lists the prerequisite. Locked cards need earlier courses first. Open Full course details for the complete catalog description. Offerings are not listed because they are unknown.</p></div>
       </aside>
     </div>
-    <p className="page-footnote">The default map is every course listed on the official MSCS Seattle requirements page, plus cataloged external prerequisites those courses name. All in-scope prerequisite arrows stay on the map; selecting a course emphasizes its chain. A connection does not verify course availability.</p>
+    <p className="page-footnote">The default map follows the selected course through its cataloged prerequisites and unlocks; it does not add a downstream course’s other prerequisite branches. Choose Entire program to browse all listed MSCS Seattle courses and their cataloged external prerequisites. A shared color groups lines by destination, not by AND/OR satisfaction; read the catalog rule in the inspector. A connection does not verify course availability.</p>
   </>;
 }
 

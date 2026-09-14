@@ -6,12 +6,18 @@ import test from "node:test";
 import {
   catalogRelations,
   compactGraphStatusLabel,
+  directedCourseChain,
   layoutProgramFlow,
   mapFind,
   mapScene,
   PROGRAM_ROW,
   programMapCodes,
   prerequisiteConnector,
+  prerequisiteHitPaths,
+  relationshipControlGroups,
+  relationshipSelection,
+  GRAPH_HIT_TARGET_WIDTH,
+  stableDestinationColor,
   unlockArrowView,
   visibleGraphDistances,
 } from "../lib/graph";
@@ -32,6 +38,56 @@ test("prerequisite trace follows every ancestor, excludes descendants and corequ
   assert.deepEqual([...visible.keys()].sort(), ["A", "B", "C"]);
 });
 
+test("a directed course chain keeps ancestors and unlocks but excludes sibling prerequisites of downstream courses", () => {
+  const relations = [
+    { source: "A", target: "B", corequisite: false },
+    { source: "B", target: "C", corequisite: false },
+    { source: "SIBLING", target: "C", corequisite: false },
+    { source: "C", target: "D", corequisite: false },
+  ];
+  assert.deepEqual([...directedCourseChain(relations, "B")].sort(), ["A", "B", "C", "D"]);
+});
+
+test("relationship selection distinguishes an exact branch from an incoming bus", () => {
+  const relations = [
+    { source: "A", target: "C", corequisite: false },
+    { source: "B", target: "C", corequisite: false },
+    { source: "C", target: "D", corequisite: false },
+  ];
+  assert.deepEqual(relationshipSelection.branch("A", "C"), { kind: "branch", source: "A", target: "C", codes: new Set(["A", "C"]) });
+  assert.deepEqual(relationshipSelection.bus(relations, "C"), { kind: "bus", target: "C", sources: ["A", "B"], codes: new Set(["A", "B", "C"]) });
+});
+
+test("relationship control groups expose deterministic bus controls before exact branches", () => {
+  const relations = [
+    { source: "B", target: "C", corequisite: false },
+    { source: "A", target: "C", corequisite: false },
+    { source: "D", target: "E", corequisite: false },
+    { source: "X", target: "E", corequisite: true },
+  ];
+
+  assert.deepEqual(relationshipControlGroups(relations), [
+    {
+      target: "C",
+      sources: ["A", "B"],
+      branches: [
+        { source: "A", target: "C", corequisite: false },
+        { source: "B", target: "C", corequisite: false },
+      ],
+    },
+    {
+      target: "E",
+      sources: ["D"],
+      branches: [{ source: "D", target: "E", corequisite: false }],
+    },
+  ]);
+});
+
+test("destination bus colors are stable and distinct across destinations", () => {
+  assert.equal(stableDestinationColor("CS 5500"), stableDestinationColor("CS 5500"));
+  assert.notEqual(stableDestinationColor("CS 5500"), stableDestinationColor("CS 6510"));
+});
+
 test("incoming connectors share a destination junction using only straight segments", () => {
   const first = prerequisiteConnector(224, 58, 360, 218);
   const second = prerequisiteConnector(224, 378, 360, 218);
@@ -39,6 +95,45 @@ test("incoming connectors share a destination junction using only straight segme
   assert.ok(second.endsWith("H 324 V 218 H 360"));
   assert.equal(/[CQSA]/.test(first + second), false);
   assert.notEqual(first, prerequisiteConnector(224, 58, 360, 218, 46));
+});
+
+type SegmentBox = { left: number; right: number; top: number; bottom: number };
+
+function hitBoxes(pathText: string): SegmentBox[] {
+  const radius = GRAPH_HIT_TARGET_WIDTH / 2;
+  const commands = [...pathText.matchAll(/([MHV]) (-?[\d.]+)(?: (-?[\d.]+))?/g)];
+  let x = 0;
+  let y = 0;
+  const boxes: SegmentBox[] = [];
+  for (const [, command, first, second] of commands) {
+    const nextX = command === "V" ? x : Number(first);
+    const nextY = command === "H" ? y : Number(command === "V" ? first : second);
+    if (command === "H") {
+      boxes.push({ left: Math.min(x, nextX), right: Math.max(x, nextX), top: y - radius, bottom: y + radius });
+    } else if (command === "V") {
+      boxes.push({ left: x - radius, right: x + radius, top: Math.min(y, nextY), bottom: Math.max(y, nextY) });
+    }
+    x = nextX;
+    y = nextY;
+  }
+  return boxes;
+}
+
+function boxesOverlap(left: SegmentBox, right: SegmentBox): boolean {
+  return left.left < right.right && left.right > right.left && left.top < right.bottom && left.bottom > right.top;
+}
+
+test("branch hit regions stop outside the shared bus hit region for short and long entries", () => {
+  const short = prerequisiteHitPaths(224, 58, 360, 218, 36, 58, 218);
+  const long = prerequisiteHitPaths(224, 378, 360, 218, 36, 218, 460);
+
+  for (const paths of [short, long]) {
+    for (const branch of hitBoxes(paths.branch)) {
+      for (const bus of hitBoxes(paths.bus)) {
+        assert.equal(boxesOverlap(branch, bus), false, `${paths.branch} overlaps ${paths.bus}`);
+      }
+    }
+  }
 });
 
 test("long connectors cross intervening columns in row gutters, never through course cards", () => {
@@ -498,7 +593,7 @@ test("mapScene neighborhood of CS 5500 is four courses left to right", () => {
   assert.deepEqual(scene.bands, []);
 });
 
-test("mapScene highlights CS 5011 with CS 5010 from one catalogRelations walk", () => {
+test("mapScene highlights only directed prerequisite chains, not corequisite neighbors", () => {
   const { courses, requirements } = seattleGraph();
   const selected5010 = mapScene({
     courses,
@@ -516,14 +611,14 @@ test("mapScene highlights CS 5011 with CS 5010 from one catalogRelations walk", 
   });
 
   assert.equal(selected5010.chain.has("CS 5010"), true);
-  assert.equal(selected5010.chain.has("CS 5011"), true);
+  assert.equal(selected5010.chain.has("CS 5011"), false);
   assert.equal(selected5010.chain.has("CS 5500"), true);
   assert.equal(selected5010.chain.has("CS 5004"), false);
   assert.equal(
     selected5010.arrows.some((arrow) => arrow.source === "CS 5010" && arrow.target === "CS 5500" && arrow.emphasized),
     true,
   );
-  assert.equal(selected5500.chain.has("CS 5011"), true);
+  assert.equal(selected5500.chain.has("CS 5011"), false);
   assert.equal(selected5500.chain.has("CS 5004"), true);
   assert.equal(selected5500.chain.has("CS 5010"), true);
 });

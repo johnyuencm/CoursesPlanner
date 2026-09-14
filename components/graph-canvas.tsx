@@ -1,16 +1,40 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { Background, BackgroundVariant, BaseEdge, ReactFlow, type Edge, type EdgeProps, type Node, type NodeTypes } from "@xyflow/react";
-import { prerequisiteConnector } from "@/lib/graph";
+import { GRAPH_HIT_TARGET_WIDTH, prerequisiteConnector, prerequisiteHitPaths } from "@/lib/graph";
 
 // Every incoming relationship uses the same target-side bus and arrowhead.
 function PrerequisiteEdge({ sourceX, sourceY, targetX, targetY, markerEnd, style, data }: EdgeProps) {
   const busOffset = typeof data?.busOffset === "number" ? data.busOffset : 36;
   const path = prerequisiteConnector(sourceX, sourceY, targetX, targetY, busOffset);
+  const edgeData = data as {
+    isBusOwner?: boolean;
+    busStartY?: number;
+    busEndY?: number;
+    selected?: boolean;
+    onSelectBranch?: () => void;
+    onSelectBus?: () => void;
+  } | undefined;
+  const short = targetX - sourceX <= 180 && targetX > sourceX;
+  const busStartY = edgeData?.busStartY ?? (short ? sourceY : sourceY + 82);
+  const busEndY = edgeData?.busEndY ?? targetY;
+  const hitPaths = prerequisiteHitPaths(sourceX, sourceY, targetX, targetY, busOffset, busStartY, busEndY);
+  const selectBranch = (event: MouseEvent<SVGPathElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    edgeData?.onSelectBranch?.();
+  };
+  const selectBus = (event: MouseEvent<SVGPathElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    edgeData?.onSelectBus?.();
+  };
   return <>
-    <BaseEdge path={path} markerEnd={markerEnd} style={style} />
-    <circle cx={targetX - busOffset} cy={targetY} r={3} fill={style?.stroke ?? "#64748b"} />
+    <BaseEdge path={path} markerEnd={markerEnd} style={style} interactionWidth={0} />
+    <path d={hitPaths.branch} fill="none" stroke="transparent" strokeWidth={GRAPH_HIT_TARGET_WIDTH} pointerEvents="stroke" onClick={selectBranch} aria-label="Select this prerequisite relationship" />
+    {edgeData?.isBusOwner ? <path d={hitPaths.bus} fill="none" stroke="transparent" strokeWidth={GRAPH_HIT_TARGET_WIDTH} pointerEvents="stroke" onClick={selectBus} aria-label="Select all visible prerequisites sharing this bus" /> : null}
+    <circle cx={targetX - busOffset} cy={targetY} r={3} fill={style?.stroke ?? "#64748b"} pointerEvents="none" />
   </>;
 }
 
