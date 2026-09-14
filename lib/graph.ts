@@ -286,7 +286,7 @@ export function mapScene(input: MapSceneInput): MapScene {
     ((left, right) =>
       requirementTypeOrder(left, courseByCode) - requirementTypeOrder(right, courseByCode) ||
       left.localeCompare(right, undefined, { numeric: true }));
-  const layout = layoutProgramFlow(visible.keys(), relations, input.courses, compare);
+  const layout = layoutProgramFlow(visible.keys(), relations, input.courses, compare, input.scope === "program" ? PROGRAM_COL : 310);
   const arrows = unlockArrowView(relations, chain, visible.keys());
   return {
     visible,

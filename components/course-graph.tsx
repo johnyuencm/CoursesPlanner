@@ -45,19 +45,6 @@ type FlowNode = GraphNode | BandNode;
 const READABLE_ZOOM = 1;
 const tableRowId = (code: string) => `graph-row-${code.replaceAll(" ", "-")}`;
 
-function centerNode(
-  getNode: (id: string) => { position: { x: number; y: number }; measured?: { width?: number; height?: number } } | undefined,
-  setCenter: (x: number, y: number, options?: { zoom?: number; duration?: number }) => unknown,
-  code: string,
-  zoom = READABLE_ZOOM,
-) {
-  const node = getNode(code);
-  if (!node) return;
-  const width = node.measured?.width ?? PROGRAM_COL - 12;
-  const height = node.measured?.height ?? PROGRAM_ROW - 8;
-  void setCenter(node.position.x + width / 2, node.position.y + height / 2, { zoom, duration: 180 });
-}
-
 function CourseNode({ data }: NodeProps<GraphNode>) {
   return <div className={`graph-course-node ${data.core ? "core-course" : ""} ${data.locked ? "graph-locked" : ""} ${data.emphasized ? "graph-emphasized" : ""} ${data.focused ? "graph-focused" : ""} ${data.compact ? "graph-compact" : ""}`}>
     <Handle type="target" position={Position.Left} className={data.hasIncoming ? undefined : "graph-handle-hidden"} />
@@ -102,12 +89,12 @@ function graphStatus(course: Course | undefined, code: string, completed: Set<st
 
 function GraphWorkspace() {
   const { catalog, openCourse, openPicker, plan } = useApp();
-  const { getNode, setCenter } = useReactFlow();
+  const { fitView } = useReactFlow();
   const [focusCode, setFocusCode] = useState("CS 5010");
   const [selectedCode, setSelectedCode] = useState("CS 5010");
   const [search, setSearch] = useState("");
   const [findIndex, setFindIndex] = useState(-1);
-  const [depth, setDepth] = useState<GraphScope>("program");
+  const [depth, setDepth] = useState<GraphScope>("1");
   const [view, setView] = useState<"graph" | "table">("graph");
   const findInputRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef(search);
@@ -173,7 +160,7 @@ function GraphWorkspace() {
           compact: true,
           hasIncoming: incoming.has(code),
           hasOutgoing: outgoing.has(code),
-          selectCourse: setSelectedCode,
+          selectCourse: (code) => locateRef.current(code),
         },
         ariaLabel: `${code}: ${course?.title ?? "External reference"}`,
       };
@@ -200,7 +187,7 @@ function GraphWorkspace() {
         id: `${edge.source}-${edge.target}-${index}`,
         source: edge.source,
         target: edge.target,
-        type: "smoothstep",
+        type: "default",
         markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: stroke },
         style: { stroke, strokeWidth: edge.emphasized ? 2.2 : 1.15 },
         zIndex: edge.emphasized ? 4 : 0,
@@ -259,25 +246,16 @@ function GraphWorkspace() {
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, []);
-  const panTo = (code: string) => {
-    if (getNode(code)) {
-      centerNode(getNode, setCenter, code);
-      return;
-    }
-    const laid = graph.courseNodes.find((node) => node.id === code);
-    if (laid) void setCenter(laid.position.x + (PROGRAM_COL - 12) / 2, laid.position.y + (PROGRAM_ROW - 8) / 2, { zoom: READABLE_ZOOM, duration: 180 });
-  };
   const locate = (code: string, keepFind = false) => {
     const reveal = mapFind.reveal(code, visible);
     setFocusCode(code);
     setSelectedCode(code);
-    if (reveal.neighborhood) {
+    if (reveal.neighborhood || depth === "program") {
       setDepth("1");
     } else if (view === "table") {
       requestAnimationFrame(() => document.getElementById(tableRowId(code))?.scrollIntoView({ block: "nearest" }));
-    } else {
-      panTo(code);
-      requestAnimationFrame(() => panTo(code));
+    } else if (code === focusCode) {
+      void fitView({ padding: 0.18, maxZoom: 1, duration: 180 });
     }
     if (!keepFind) {
       setSearch("");
@@ -306,7 +284,7 @@ function GraphWorkspace() {
   const findStatus = !search.trim() ? "" : matches.length ? `${findIndex >= 0 ? findIndex + 1 : 0} of ${matches.length}` : "No matches";
   const showCorequisites = Boolean(selected?.corequisiteCodes.length);
   return <>
-    <PageHeading title="Prerequisite Graph" description="Explore every official MSCS Seattle course and the cataloged prerequisites that connect them. Press Ctrl+F to find a course on the map." actions={<div className="graph-toolbar">
+    <PageHeading title="Prerequisite Graph" description="See what a course needs and what it unlocks. Select a course to explore its connections." actions={<div className="graph-toolbar">
       <div className="graph-search-wrap">
         <div className="search-field graph-find-field">
           <Search size={16} />
@@ -374,7 +352,7 @@ function GraphWorkspace() {
       <span><span className="status-pill planned">Planned</span></span>
       <span><span className="status-pill locked">Locked</span></span>
       <span><i className="legend-arrow" aria-hidden="true" /> Unlocks after this course</span>
-      <span><span className="legend-band">No prerequisite required</span> Startable, unlinked</span>
+      {depth === "program" && <span><span className="legend-band">No prerequisite required</span> Startable, unlinked</span>}
     </div>
     <div className="graph-layout">
       <section className="graph-panel" aria-label="Course prerequisite relationships">
@@ -389,7 +367,7 @@ function GraphWorkspace() {
           <label className="graph-depth-label">Show
             <select value={depth} onChange={(event) => setDepth(event.target.value as GraphScope)}>
               <option value="program">Entire program</option>
-              <option value="1">Immediate neighborhood</option>
+              <option value="1">This course’s connections</option>
               <option value="2">Two connections away</option>
               <option value="full">Full connected component</option>
             </select>
@@ -401,14 +379,10 @@ function GraphWorkspace() {
             nodes={graph.nodes}
             edges={graph.edges}
             nodeTypes={nodeTypes}
-            fitView={depth !== "program"}
-            fitViewOptions={{ padding: 0.15 }}
+            fitView
+            fitViewOptions={{ padding: 0.18, maxZoom: 1 }}
             defaultViewport={{ x: 28, y: 20, zoom: READABLE_ZOOM }}
-            onInit={(instance) => {
-              if (depth !== "program") return;
-              centerNode((id) => instance.getNode(id), instance.setCenter, selectedCode, READABLE_ZOOM);
-            }}
-            minZoom={0.15}
+            minZoom={0.02}
             maxZoom={1.8}
             nodesDraggable={false}
             nodesConnectable={false}
@@ -416,7 +390,7 @@ function GraphWorkspace() {
             edgesFocusable={false}
             elementsSelectable
             onlyRenderVisibleElements
-            onNodeClick={(_, node) => { if (node.type === "course") setSelectedCode(node.id); }}
+            onNodeClick={(_, node) => { if (node.type === "course") locate(node.id); }}
             proOptions={{ hideAttribution: false }}
             aria-label="Interactive prerequisite map. Press Control F to find a course, then Enter or F3 for the next match. Use zoom, pan, or Fit to view to see the rest of the program."
           >
