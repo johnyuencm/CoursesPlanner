@@ -48,3 +48,5 @@
 {"id":"evt_d1a93f6f","kind":"ticket.submitted","at":"2026-09-15T22:14:02.022Z","goal_id":"goal_graph-line-focus-details-and-plan-from-line_705e","ticket_id":"ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75"}
 {"id":"evt_893e6c9e","kind":"ticket.done","at":"2026-09-15T22:14:27.889Z","goal_id":"goal_graph-line-focus-details-and-plan-from-line_705e","ticket_id":"ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75"}
 {"id":"evt_ccc12659","kind":"wiki.page.created","at":"2026-09-15T22:24:40.214Z","payload":{"page_id":"work-2026-09-15-line-focus-plan","trigger":"decision"}}
+{"id":"evt_99e6b106","kind":"ticket.submitted","at":"2026-09-15T22:25:56.463Z","goal_id":"goal_graph-line-focus-details-and-plan-from-line_705e","ticket_id":"ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75"}
+{"id":"evt_b1d4d7e1","kind":"ticket.done","at":"2026-09-15T22:26:16.524Z","goal_id":"goal_graph-line-focus-details-and-plan-from-line_705e","ticket_id":"ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75"}

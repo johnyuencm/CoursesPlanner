@@ -1,8 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-15T22:24:40.215Z",
-  "active_goal_id": "goal_graph-line-focus-details-and-plan-from-line_705e",
+  "updated_at": "2026-09-15T22:26:32.167Z",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
       "id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
@@ -23,7 +22,7 @@
       "id": "goal_graph-line-focus-details-and-plan-from-line_705e",
       "title": "Graph line-focus, details, and plan-from-line",
       "description": "Users can leave a selected graph line and return to the current map, see the clicked course in the inspector, and add that line's catalog courses to a semester.",
-      "status": "active",
+      "status": "done",
       "assurance": "standard",
       "backend": {
         "kind": "local"
@@ -32,7 +31,7 @@
       "worktree_status": "pending",
       "stop_enforcement": false,
       "created_at": "2026-09-15T21:52:48.208Z",
-      "updated_at": "2026-09-15T22:14:27.871Z"
+      "updated_at": "2026-09-15T22:26:32.165Z"
     }
   },
   "local_tickets": {
@@ -158,7 +157,7 @@
       "code_changed": true,
       "order": 0,
       "created_at": "2026-09-15T21:53:33.503Z",
-      "updated_at": "2026-09-15T22:14:27.870Z"
+      "updated_at": "2026-09-15T22:26:16.508Z"
     }
   },
   "checkpoints": {
@@ -701,6 +700,36 @@
         "submitted_at": "2026-09-15T22:14:06.895Z"
       },
       "recorded_at": "2026-09-15T22:14:06.896Z"
+    },
+    "submission-ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75-bd2478": {
+      "id": "submission-ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75-bd2478",
+      "goal_id": "goal_graph-line-focus-details-and-plan-from-line_705e",
+      "ticket_id": "ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75",
+      "kind": "other",
+      "submission_digest": "a54f1dfb9a6bd662fcd02e68f32d421e13a4d7f98a9cb5a439ba594d79bd7970",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-15T22:25:56.449Z"
+      },
+      "recorded_at": "2026-09-15T22:25:56.449Z"
+    },
+    "evidence-c13a8e1b": {
+      "id": "evidence-c13a8e1b",
+      "goal_id": "goal_graph-line-focus-details-and-plan-from-line_705e",
+      "ticket_id": "ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75",
+      "kind": "verification",
+      "submission_digest": "a54f1dfb9a6bd662fcd02e68f32d421e13a4d7f98a9cb5a439ba594d79bd7970",
+      "evidence_digest": "87e4e8a1f23eaee65f17ea86a863886c888cbac09927a7b6f36d930c3e916f0a",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-c13a8e1b.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "impl-arch-54f9fba",
+        "verifier_run": "ver-arch-ac17f32",
+        "knowledge": "none",
+        "submitted_at": "2026-09-15T22:26:15.887Z"
+      },
+      "recorded_at": "2026-09-15T22:26:15.888Z"
     }
   },
   "wiki": {
