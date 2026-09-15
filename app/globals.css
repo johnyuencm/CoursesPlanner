@@ -351,7 +351,7 @@ textarea { resize: vertical; }
 .graph-find-nav button:hover:not(:disabled) { background: var(--surface-soft); color: var(--ink); }
 .graph-find-nav button:disabled { opacity: 0.35; cursor: default; }
 .graph-search-results { position: absolute; z-index: 25; top: calc(100% + 0.3rem); left: 0; right: 0; max-height: min(320px, 50vh); overflow-y: auto; padding: 0.3rem; border: 1px solid var(--line); border-radius: 10px; background: white; box-shadow: var(--shadow); }
-.graph-search-results button { width: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center; padding: 0.5rem; border: 0; border-radius: 7px; background: none; text-align: left; cursor: pointer; }
+.graph-search-results button { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.5rem; align-items: center; padding: 0.5rem; border: 0; border-radius: 7px; background: none; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
 .graph-search-results button:hover, .graph-search-results button.graph-find-current { background: var(--red-soft); }
 .graph-search-results strong { color: var(--red-dark); font-size: 0.67rem; }
 .graph-search-results span { font-size: 0.72rem; }
@@ -369,9 +369,13 @@ textarea { resize: vertical; }
 .graph-skip:focus { top: 0.7rem; }
 .graph-panel-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.65rem; padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 0.68rem; }
 .graph-panel-heading .graph-search-wrap { flex: 1 1 380px; min-width: min(100%, 280px); }
-.graph-panel-heading > span[role="status"] { flex-basis: 100%; order: 1; font-size: 0.62rem; }
+.graph-panel-heading > * { min-width: 0; max-width: 100%; }
+.graph-panel-heading > span[role="status"] { display: block; flex-basis: 100%; order: 1; font-size: 0.62rem; overflow-wrap: anywhere; }
 .graph-panel-heading span { display: flex; gap: 0.3rem; align-items: center; }
 .flow-canvas { height: clamp(380px, calc(100dvh - 330px), 760px); overflow: auto; scrollbar-gutter: stable; background: #fbfcfd; }
+/* XYFlow's pane disables touch gestures even when its panning is off.
+   This map uses the surrounding native scroll area on both axes. */
+.flow-canvas .react-flow__pane { touch-action: auto; }
 .graph-history { display: flex; gap: 0.3rem; }
 .graph-canvas-hint { margin: 0; padding: 0.45rem 0.85rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.65rem; }
 .flow-canvas .react-flow__node:hover { z-index: 20 !important; }
@@ -404,7 +408,7 @@ textarea { resize: vertical; }
 .legend-arrow { width: 22px; height: 0; border-top: 2px solid #3d4a5c; position: relative; }
 .legend-arrow::after { content: ""; position: absolute; right: -1px; top: -5px; border: 4px solid transparent; border-left: 7px solid #3d4a5c; border-right: 0; }
 .legend-band { font-size: 0.58rem; font-weight: 780; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-soft); }
-.graph-inspector { padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); align-self: start; box-shadow: var(--shadow); }
+.graph-inspector { min-width: 0; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); align-self: start; box-shadow: var(--shadow); overflow-wrap: anywhere; }
 .graph-inspector h2 { margin: 0.45rem 0 0.15rem; color: var(--ink); font-size: 1.2rem; }
 .inspector-heading-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .inspector-course-title { color: var(--ink-soft); font-size: 0.8rem; }
@@ -427,7 +431,7 @@ textarea { resize: vertical; }
 .relationship-table tbody th span { display: block; margin-top: 0.2rem; color: var(--ink-soft); font-weight: 500; }
 .relationship-table tr.graph-find-current { background: var(--red-soft); }
 
-.graph-layout:fullscreen { width: 100vw; height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); align-items: stretch; gap: 0.85rem; padding: 0.9rem; overflow: hidden; background: var(--paper); }
+.graph-layout:fullscreen { width: 100%; height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); align-items: stretch; gap: 0.85rem; padding: 0.9rem; overflow: hidden; background: var(--paper); }
 .graph-layout:fullscreen .graph-panel { min-height: 0; display: flex; flex-direction: column; }
 .graph-layout:fullscreen .flow-canvas { flex: 1 1 auto; height: auto; min-height: 0; }
 .graph-layout:fullscreen .relationship-table-wrap { flex: 1 1 auto; max-height: none; }
@@ -628,7 +632,7 @@ textarea { resize: vertical; }
   .status-card-row, .status-card-row.four { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .suggestion-strip { grid-template-columns: 1fr; }
   .graph-layout { grid-template-columns: minmax(0, 1fr); }
-  .graph-inspector { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .graph-inspector { position: static; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.6rem; }
   .graph-inspector > .inspector-heading-meta, .graph-inspector > h2, .graph-inspector > .inspector-course-title, .graph-inspector > .inspector-description { grid-column: 1; }
   .inspector-relationships { grid-column: 2; grid-row: 1 / 7; margin-top: 0; padding: 0 0 0 1rem; border: 0; border-left: 1px solid var(--line); }
   .inspector-tip, .inspector-actions { grid-column: 1; }
@@ -646,6 +650,11 @@ textarea { resize: vertical; }
   .nav-link.active { background: var(--red-soft); color: var(--red); }
   .nav-link svg { width: 18px; height: 18px; }
   .topbar { top: 0; min-height: 62px; display: flex; flex-wrap: wrap; }
+  .top-utilities { width: 100%; min-width: 0; }
+  .target-control { flex: 1; min-width: 0; }
+  .target-control label { flex: 1; }
+  .target-control select { min-width: 0; width: 100%; }
+  .profile-menu { flex-shrink: 0; }
   .top-search { max-width: none; order: 3; flex-basis: 100%; }
   .announcement { bottom: 76px; }
   .main-content { padding-top: 1.1rem; }
@@ -658,12 +667,13 @@ textarea { resize: vertical; }
   .planner-layout, .pathway-layout, .page-with-rail { grid-template-columns: 1fr; }
   .audit-panel, .page-rail { position: static; max-height: none; }
   .pathway-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .graph-layout:fullscreen { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(160px, 34vh); }
+  .flow-canvas { height: clamp(240px, 55dvh, 560px); }
 }
 
 @media (max-width: 620px) {
   .main-content { padding-left: 0.8rem; padding-right: 0.8rem; }
   .topbar, .global-banner, .workspace-footer { padding-left: 0.8rem; padding-right: 0.8rem; }
+  .profile-menu > summary > span:last-of-type { display: none; }
   .page-heading h1 { font-size: 1.45rem; }
   .requirement-stats { grid-template-columns: 1fr; gap: 0.8rem; }
   .stat-plus { display: none; }
@@ -684,12 +694,19 @@ textarea { resize: vertical; }
   .modal-footer .button { width: 100%; }
   .graph-toolbar { align-items: stretch; flex-direction: column; }
   .graph-search-wrap { min-width: 0; }
+  .graph-panel-heading .graph-search-wrap { flex-basis: 100%; min-width: 0; }
+  .graph-panel-heading > span { flex-wrap: wrap; }
+  .graph-find-kbd { display: none; }
+  .graph-find-nav { flex-shrink: 0; }
+  .graph-find-nav button { width: 44px; height: 44px; }
+  .graph-view-toolbar { flex-basis: 100%; justify-content: flex-start; }
+  .graph-panel-heading button { min-height: 44px; }
+  .graph-view-toolbar .icon-button { width: 44px; }
   .graph-depth-label { justify-content: space-between; }
-  .graph-depth-label select { flex: 1; }
+  .graph-depth-label select { flex: 1; min-width: 0; max-width: 100%; min-height: 44px; }
   .segmented-control button { flex: 1; justify-content: center; }
   .graph-inspector { display: block; }
   .inspector-relationships { margin-top: 1rem; padding: 1rem 0 0; border-left: 0; border-top: 1px solid var(--line); }
-  .flow-canvas { height: min(62vh, 560px); min-height: 420px; }
   .semester-header { grid-template-columns: 1fr auto; }
   .semester-order { grid-column: 1; }
   .semester-name { grid-column: 1 / 3; }
@@ -706,6 +723,17 @@ textarea { resize: vertical; }
   .pathway-course-list { grid-template-columns: 1fr; }
   .pathway-edit-actions { align-items: flex-start; flex-direction: column; }
   .pathway-closing .button { width: 100%; }
+}
+
+/* A wrapped toolbar plus a fixed inspector row can consume the entire phone
+   fullscreen height. Keep the readable map and inspector in a scrolling stack. */
+@media (max-width: 860px), (max-height: 540px) {
+  .graph-layout:fullscreen { display: block; overflow: auto; padding: 0.5rem 0.5rem calc(64px + env(safe-area-inset-bottom)); }
+  .graph-layout:fullscreen .graph-panel { display: block; }
+  .graph-layout:fullscreen .flow-canvas { height: clamp(240px, 55dvh, 560px); }
+  .graph-layout:fullscreen .relationship-table-wrap { max-height: max(240px, 55dvh); }
+  .graph-layout:fullscreen .graph-inspector { margin-top: 0.85rem; overflow: visible; }
+  .graph-layout:fullscreen .graph-fullscreen-toggle { position: fixed; right: max(0.75rem, env(safe-area-inset-right)); bottom: max(0.75rem, env(safe-area-inset-bottom)); z-index: 40; min-height: 44px; box-shadow: 0 2px 12px rgb(16 24 40 / 18%); }
 }
 
 @media (prefers-reduced-motion: reduce) {

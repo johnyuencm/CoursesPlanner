@@ -489,7 +489,7 @@ function GraphWorkspace() {
             <button
               type="button"
               ref={fullscreenButtonRef}
-              className="button button-secondary button-small"
+              className="button button-secondary button-small graph-fullscreen-toggle"
               aria-pressed={isFullscreen}
               aria-busy={fullscreenBusy}
               disabled={!fullscreenSupported || fullscreenBusy}
