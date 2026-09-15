@@ -149,6 +149,62 @@ export type UnlockArrow = {
 export const GRAPH_HIT_TARGET_WIDTH = 18;
 export const GRAPH_HIT_TARGET_GAP = 4;
 
+const GRAPH_NODE_WIDTH = 224;
+const GRAPH_HANDLE_Y = 58;
+const SHORT_PREREQUISITE_DX = 180;
+const LONG_PREREQUISITE_LANE_DY = 82;
+
+function isShortPrerequisiteEdge(sourceX: number, targetX: number) {
+  return targetX - sourceX <= SHORT_PREREQUISITE_DX && targetX > sourceX;
+}
+
+function prerequisiteEntryY(source: { x: number; y: number }, target: { x: number; y: number }) {
+  return isShortPrerequisiteEdge(source.x + GRAPH_NODE_WIDTH, target.x)
+    ? source.y + GRAPH_HANDLE_Y
+    : source.y + GRAPH_HANDLE_Y + LONG_PREREQUISITE_LANE_DY;
+}
+
+export type PrerequisiteBusMeta = {
+  busOwner: string;
+  busStartY: number;
+  busEndY: number;
+};
+
+/**
+ * Per-destination bus owner (lexicographically least source) and the vertical
+ * span covering every incoming entry Y plus the target handle.
+ */
+export function prerequisiteBusMeta(
+  edges: readonly { source: string; target: string }[],
+  positions: ReadonlyMap<string, { x: number; y: number }>,
+): Map<string, PrerequisiteBusMeta> {
+  const owners = new Map<string, string>();
+  const bounds = new Map<string, { start: number; end: number }>();
+  for (const edge of edges) {
+    const owner = owners.get(edge.target);
+    if (!owner || edge.source.localeCompare(owner, undefined, { numeric: true }) < 0) {
+      owners.set(edge.target, edge.source);
+    }
+    const source = positions.get(edge.source);
+    const target = positions.get(edge.target);
+    if (!source || !target) continue;
+    const entryY = prerequisiteEntryY(source, target);
+    const handleY = target.y + GRAPH_HANDLE_Y;
+    const previous = bounds.get(edge.target);
+    bounds.set(edge.target, {
+      start: Math.min(previous?.start ?? entryY, entryY, handleY),
+      end: Math.max(previous?.end ?? entryY, entryY, handleY),
+    });
+  }
+  const result = new Map<string, PrerequisiteBusMeta>();
+  for (const [target, busOwner] of owners) {
+    const span = bounds.get(target);
+    if (!span) continue;
+    result.set(target, { busOwner, busStartY: span.start, busEndY: span.end });
+  }
+  return result;
+}
+
 /**
  * The visible connector joins at the bus, while its two interaction regions
  * stop short / start at the junction. Their 18px hit strokes therefore never
@@ -165,10 +221,9 @@ export function prerequisiteHitPaths(
 ): { branch: string; bus: string } {
   const busX = targetX - busOffset;
   const branchEndX = busX - GRAPH_HIT_TARGET_WIDTH - GRAPH_HIT_TARGET_GAP;
-  const short = targetX - sourceX <= 180 && targetX > sourceX;
-  const branch = short
+  const branch = isShortPrerequisiteEdge(sourceX, targetX)
     ? `M ${sourceX} ${sourceY} H ${branchEndX}`
-    : `M ${sourceX} ${sourceY} H ${sourceX + 20} V ${sourceY + 82} H ${branchEndX}`;
+    : `M ${sourceX} ${sourceY} H ${sourceX + 20} V ${sourceY + LONG_PREREQUISITE_LANE_DY} H ${branchEndX}`;
   return { branch, bus: `M ${busX} ${busStartY} V ${busEndY} M ${busX} ${targetY} H ${targetX}` };
 }
 
@@ -184,14 +239,16 @@ export type RelationshipSelection =
   | { kind: "branch"; source: string; target: string; codes: Set<string> }
   | { kind: "bus"; target: string; sources: string[]; codes: Set<string> };
 
+type RelationInput = { source: string; target: string; corequisite?: boolean };
+
 export type RelationshipControlGroup = {
   target: string;
   sources: string[];
-  branches: GraphRelation[];
+  branches: RelationInput[];
 };
 
-export function relationshipControlGroups(relations: readonly GraphRelation[]): RelationshipControlGroup[] {
-  const groups = new Map<string, GraphRelation[]>();
+export function relationshipControlGroups(relations: readonly RelationInput[]): RelationshipControlGroup[] {
+  const groups = new Map<string, RelationInput[]>();
   for (const relation of relations) {
     if (relation.corequisite) continue;
     const target = groups.get(relation.target) ?? [];
@@ -210,9 +267,15 @@ export const relationshipSelection = {
   branch(source: string, target: string): RelationshipSelection {
     return { kind: "branch", source, target, codes: new Set([source, target]) };
   },
-  bus(relations: readonly GraphRelation[], target: string): RelationshipSelection {
+  bus(relations: readonly RelationInput[], target: string): RelationshipSelection {
     const sources = relations.filter((edge) => !edge.corequisite && edge.target === target).map((edge) => edge.source).sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
     return { kind: "bus", target, sources, codes: new Set([...sources, target]) };
+  },
+  isSelected(selection: RelationshipSelection | null, source: string, target: string) {
+    if (!selection) return false;
+    return selection.kind === "branch"
+      ? selection.source === source && selection.target === target
+      : selection.target === target;
   },
 };
 
@@ -386,10 +449,10 @@ export function mapScene(input: MapSceneInput): MapScene {
 /** Orthogonal incoming bus; long edges travel in the gutter below their source row. */
 export function prerequisiteConnector(sourceX: number, sourceY: number, targetX: number, targetY: number, busOffset = 36): string {
   const busX = targetX - busOffset;
-  if (targetX - sourceX <= 180 && targetX > sourceX) {
+  if (isShortPrerequisiteEdge(sourceX, targetX)) {
     return `M ${sourceX} ${sourceY} H ${busX} V ${targetY} H ${targetX}`;
   }
-  const laneY = sourceY + 82;
+  const laneY = sourceY + LONG_PREREQUISITE_LANE_DY;
   return `M ${sourceX} ${sourceY} H ${sourceX + 20} V ${laneY} H ${busX} V ${targetY} H ${targetX}`;
 }
 

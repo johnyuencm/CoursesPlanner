@@ -9,9 +9,11 @@ import {
   mapScene,
   PROGRAM_COL,
   programMapCodes,
+  prerequisiteBusMeta,
   relationshipControlGroups,
   relationshipSelection,
   type GraphScope,
+  type RelationshipSelection,
 } from "@/lib/graph";
 import type { Course } from "@/lib/types";
 import { expressionLabel } from "@/lib/validation";
@@ -89,7 +91,7 @@ function GraphWorkspace() {
   const { catalog, openCourse, openPicker, plan } = useApp();
   const [focusCode, setFocusCode] = useState("CS 5010");
   const [selectedCode, setSelectedCode] = useState("CS 5010");
-  const [selectedRelationship, setSelectedRelationship] = useState<ReturnType<typeof relationshipSelection.branch> | ReturnType<typeof relationshipSelection.bus> | null>(null);
+  const [selectedRelationship, setSelectedRelationship] = useState<RelationshipSelection | null>(null);
   const [search, setSearch] = useState("");
   const [findIndex, setFindIndex] = useState(-1);
   const [depth, setDepth] = useState<GraphScope>("course");
@@ -190,28 +192,11 @@ function GraphWorkspace() {
       targetTracks.set(target, 36 + track * 10);
       columnTracks.set(x, track + 1);
     }
-    const busOwners = new Map<string, string>();
-    const busBounds = new Map<string, { start: number; end: number }>();
-    for (const edge of scene.arrows) {
-      const owner = busOwners.get(edge.target);
-      if (!owner || edge.source.localeCompare(owner, undefined, { numeric: true }) < 0) busOwners.set(edge.target, edge.source);
-      const source = scene.positions.get(edge.source);
-      const target = scene.positions.get(edge.target);
-      if (!source || !target) continue;
-      const sourceX = source.x + 224;
-      const targetX = target.x;
-      const entryY = targetX - sourceX <= 180 && targetX > sourceX ? source.y + 58 : source.y + 140;
-      const previous = busBounds.get(edge.target);
-      busBounds.set(edge.target, {
-        start: Math.min(previous?.start ?? entryY, entryY, target.y + 58),
-        end: Math.max(previous?.end ?? entryY, entryY, target.y + 58),
-      });
-    }
+    const busMeta = prerequisiteBusMeta(scene.arrows, scene.positions);
     const edges: Edge[] = scene.arrows.map((edge, index) => {
       const stroke = edge.stroke;
-      const selected = selectedRelationship?.kind === "branch"
-        ? selectedRelationship.source === edge.source && selectedRelationship.target === edge.target
-        : selectedRelationship?.kind === "bus" ? selectedRelationship.target === edge.target : false;
+      const selected = relationshipSelection.isSelected(selectedRelationship, edge.source, edge.target);
+      const bus = busMeta.get(edge.target);
       return {
         id: `${edge.source}-${edge.target}-${index}`,
         source: edge.source,
@@ -219,12 +204,12 @@ function GraphWorkspace() {
         type: "prerequisite",
         data: {
           busOffset: targetTracks.get(edge.target) ?? 36,
-          busStartY: busBounds.get(edge.target)?.start,
-          busEndY: busBounds.get(edge.target)?.end,
-          isBusOwner: busOwners.get(edge.target) === edge.source,
+          busStartY: bus?.busStartY,
+          busEndY: bus?.busEndY,
+          isBusOwner: bus?.busOwner === edge.source,
           selected,
           onSelectBranch: () => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target)),
-          onSelectBus: () => setSelectedRelationship(relationshipSelection.bus(scene.arrows.map((arrow) => ({ ...arrow, corequisite: false })), edge.target)),
+          onSelectBus: () => setSelectedRelationship(relationshipSelection.bus(scene.arrows, edge.target)),
         },
         markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: stroke },
         style: { stroke, strokeWidth: selected || edge.emphasized ? 2.5 : 1.25, opacity: selectedRelationship && !selected ? 0.18 : 1 },
@@ -336,7 +321,7 @@ function GraphWorkspace() {
   const selectedStatus = graphStatus(selected, selectedCode, completed, waived, planned, history);
   const findStatus = !search.trim() ? "" : matches.length ? `${findIndex >= 0 ? findIndex + 1 : 0} of ${matches.length}` : "No matches";
   const showCorequisites = Boolean(selected?.corequisiteCodes.length);
-  const relationshipGroups = relationshipControlGroups(scene.arrows.map((arrow) => ({ ...arrow, corequisite: false })));
+  const relationshipGroups = relationshipControlGroups(scene.arrows);
   return <>
     <PageHeading title="Prerequisite Graph" description="See what a course needs and what it unlocks. Select a course to explore its connections." actions={<div className="graph-toolbar">
       <div className="graph-search-wrap">
@@ -466,7 +451,7 @@ function GraphWorkspace() {
         <div className="inspector-relationships">
           {selectedRelationship ? <div className="graph-relationship-explanation"><h3>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} → ${selectedRelationship.target}` : `${selectedRelationship.target} shared prerequisite bus`}</h3><p>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} is named as a prerequisite of ${selectedRelationship.target}.` : `Visible incoming prerequisites: ${selectedRelationship.sources.join(", ")}.`}</p><p><strong>{selectedRelationship.target} catalog rule:</strong> {nodeRequirementCopy(relationshipTarget, "prerequisites")}</p><p className="muted small-text">A line records a named catalog link; the rule above states whether prerequisites are AND, OR, or need review.</p></div> : null}
           {scene.arrows.length ? <><h3>Visible map relationships</h3><div className="graph-relationship-buttons">{relationshipGroups.map((group) => <Fragment key={group.target}>
-            <button key={`${group.target}-bus`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "bus" && selectedRelationship.target === group.target} aria-label={`Select every visible prerequisite of ${group.target}: ${group.sources.join(", ")}`} onClick={() => setSelectedRelationship(relationshipSelection.bus(scene.arrows.map((arrow) => ({ ...arrow, corequisite: false })), group.target))}>All into {group.target}</button>
+            <button key={`${group.target}-bus`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "bus" && selectedRelationship.target === group.target} aria-label={`Select every visible prerequisite of ${group.target}: ${group.sources.join(", ")}`} onClick={() => setSelectedRelationship(relationshipSelection.bus(scene.arrows, group.target))}>All into {group.target}</button>
             {group.branches.map((edge) => <button key={`${edge.source}-${edge.target}`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "branch" && selectedRelationship.source === edge.source && selectedRelationship.target === edge.target} aria-label={`Select exact relationship ${edge.source} unlocks ${edge.target}`} onClick={() => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target))}>{edge.source} → {edge.target}</button>)}
           </Fragment>)}</div></> : <p className="muted small-text">This course has no prerequisite or unlock relationships in this catalog.</p>}
           {selectedRelationship && <button type="button" className="text-button inspector-focus" onClick={() => setSelectedRelationship(null)}>Clear relationship selection</button>}

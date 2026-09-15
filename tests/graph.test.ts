@@ -12,6 +12,7 @@ import {
   mapScene,
   PROGRAM_ROW,
   programMapCodes,
+  prerequisiteBusMeta,
   prerequisiteConnector,
   prerequisiteHitPaths,
   relationshipControlGroups,
@@ -56,6 +57,13 @@ test("relationship selection distinguishes an exact branch from an incoming bus"
   ];
   assert.deepEqual(relationshipSelection.branch("A", "C"), { kind: "branch", source: "A", target: "C", codes: new Set(["A", "C"]) });
   assert.deepEqual(relationshipSelection.bus(relations, "C"), { kind: "bus", target: "C", sources: ["A", "B"], codes: new Set(["A", "B", "C"]) });
+  const branch = relationshipSelection.branch("A", "C");
+  const bus = relationshipSelection.bus(relations, "C");
+  assert.equal(relationshipSelection.isSelected(branch, "A", "C"), true);
+  assert.equal(relationshipSelection.isSelected(branch, "B", "C"), false);
+  assert.equal(relationshipSelection.isSelected(bus, "A", "C"), true);
+  assert.equal(relationshipSelection.isSelected(bus, "C", "D"), false);
+  assert.equal(relationshipSelection.isSelected(null, "A", "C"), false);
 });
 
 test("relationship control groups expose deterministic bus controls before exact branches", () => {
@@ -81,6 +89,57 @@ test("relationship control groups expose deterministic bus controls before exact
       branches: [{ source: "D", target: "E", corequisite: false }],
     },
   ]);
+});
+
+test("relationship helpers accept unlock arrows that omit corequisite", () => {
+  const arrows = [
+    { source: "B", target: "C" },
+    { source: "A", target: "C" },
+  ];
+  assert.deepEqual(relationshipSelection.bus(arrows, "C"), {
+    kind: "bus",
+    target: "C",
+    sources: ["A", "B"],
+    codes: new Set(["A", "B", "C"]),
+  });
+  assert.deepEqual(relationshipControlGroups(arrows)[0]?.sources, ["A", "B"]);
+});
+
+test("prerequisite bus owner is the lexicographically least source", () => {
+  const positions = new Map([
+    ["CS 10", { x: 0, y: 0 }],
+    ["CS 2", { x: 0, y: 160 }],
+    ["CS 99", { x: 600, y: 80 }],
+  ]);
+  const meta = prerequisiteBusMeta(
+    [
+      { source: "CS 10", target: "CS 99" },
+      { source: "CS 2", target: "CS 99" },
+    ],
+    positions,
+  );
+  assert.equal(meta.get("CS 99")?.busOwner, "CS 2");
+});
+
+test("prerequisite bus bounds span short and long entry Y", () => {
+  const positions = new Map([
+    ["SHORT", { x: 200, y: 50 }],
+    ["LONG", { x: 0, y: 200 }],
+    ["T", { x: 600, y: 100 }],
+  ]);
+  const meta = prerequisiteBusMeta(
+    [
+      { source: "SHORT", target: "T" },
+      { source: "LONG", target: "T" },
+    ],
+    positions,
+  );
+  // Short: (600 - (200+224)=176) <= 180 → entry Y = 50+58
+  // Long: (600 - (0+224)=376) > 180 → entry Y = 200+140
+  // Target handle Y = 100+58
+  assert.equal(meta.get("T")?.busOwner, "LONG");
+  assert.equal(meta.get("T")?.busStartY, 108);
+  assert.equal(meta.get("T")?.busEndY, 340);
 });
 
 test("destination bus colors are stable and distinct across destinations", () => {
