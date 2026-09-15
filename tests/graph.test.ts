@@ -5,8 +5,12 @@ import test from "node:test";
 
 import {
   catalogRelations,
+  centeredGraphZoomScroll,
+  clampGraphZoom,
   compactGraphStatusLabel,
   directedCourseChain,
+  graphFitZoom,
+  graphZoomPercent,
   layoutProgramFlow,
   mapFind,
   mapScene,
@@ -17,6 +21,7 @@ import {
   relationshipControlGroups,
   relationshipSelection,
   GRAPH_HIT_TARGET_WIDTH,
+  selectedGraphScroll,
   stableDestinationColor,
   unlockArrowView,
   visibleGraphDistances,
@@ -548,6 +553,35 @@ test("compact graph cards shorten Prerequisite eligible without clipping other s
   assert.equal(compactGraphStatusLabel("Locked"), "Locked");
   assert.equal(compactGraphStatusLabel("Needs review"), "Needs review");
   assert.equal(compactGraphStatusLabel("Completed"), "Completed");
+});
+
+test("fit zoom uses the limiting dimension and can go below manual zoom minimum", () => {
+  assert.equal(graphFitZoom({ width: 800, height: 600 }, { width: 4000, height: 1000 }), 0.195);
+  assert.equal(graphFitZoom({ width: 800, height: 600 }, { width: 1000, height: 5000 }), 0.116);
+  assert.equal(graphFitZoom({ width: 800, height: 600 }, { width: 200, height: 120 }), 1);
+  assert.equal(graphFitZoom({ width: 800, height: 600 }, { width: 50000, height: 50000 }), 0.05);
+});
+
+test("zoom readout reports actual fit scale while manual zoom remains bounded", () => {
+  assert.equal(graphZoomPercent(0.08), 8);
+  assert.equal(graphZoomPercent(Number.NaN), 100);
+  assert.equal(clampGraphZoom(0.08), 0.25);
+  assert.equal(clampGraphZoom(0.08 + 0.25), 0.33);
+});
+
+test("manual graph zoom preserves the viewport center", () => {
+  const next = centeredGraphZoomScroll(
+    { scrollLeft: 300, scrollTop: 120, clientWidth: 400, clientHeight: 300 },
+    1,
+    1.5,
+  );
+  assert.deepEqual(next, { left: 550, top: 255 });
+});
+
+test("selected course reveal uses the current zoomed card geometry", () => {
+  const current = { scrollLeft: 0, scrollTop: 0, clientWidth: 500, clientHeight: 360 };
+  assert.deepEqual(selectedGraphScroll({ x: 50, y: 40 }, 0.5, current), { left: 0, top: 0 });
+  assert.deepEqual(selectedGraphScroll({ x: 1000, y: 700 }, 0.5, current), { left: 322, top: 215 });
 });
 
 test("mapScene seats CS 5011 beside CS 5010 and draws no corequisite arrows", () => {

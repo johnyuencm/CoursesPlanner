@@ -1,8 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import { Background, BackgroundVariant, BaseEdge, ReactFlow, type Edge, type EdgeProps, type Node, type NodeTypes } from "@xyflow/react";
-import { GRAPH_HIT_TARGET_WIDTH, prerequisiteConnector, prerequisiteHitPaths } from "@/lib/graph";
+import {
+  centeredGraphZoomScroll,
+  graphFitZoom,
+  GRAPH_CARD_WIDTH,
+  GRAPH_HIT_TARGET_WIDTH,
+  GRAPH_MAX_ZOOM,
+  GRAPH_READABLE_ZOOM,
+  prerequisiteConnector,
+  prerequisiteHitPaths,
+  selectedGraphScroll,
+} from "@/lib/graph";
 
 // Every incoming relationship uses the same target-side bus and arrowhead.
 function PrerequisiteEdge({ sourceX, sourceY, targetX, targetY, markerEnd, style, data }: EdgeProps) {
@@ -40,14 +50,18 @@ function PrerequisiteEdge({ sourceX, sourceY, targetX, targetY, markerEnd, style
 
 const edgeTypes = { prerequisite: PrerequisiteEdge };
 
-export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, overview }: {
+export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, zoom, fitRequest, onZoomChange }: {
   nodes: Node[];
   edges: Edge[];
   nodeTypes: NodeTypes;
   selectedCode: string;
-  overview: boolean;
+  zoom: number;
+  fitRequest: number;
+  onZoomChange: (zoom: number) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef(zoom);
+  const latestFitRequest = useRef(fitRequest);
   const [size, setSize] = useState({ width: 800, height: 600 });
   useEffect(() => {
     const element = scrollRef.current;
@@ -56,31 +70,42 @@ export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, overview }:
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const width = Math.max(400, ...nodes.map((node) => node.position.x + (Number(node.style?.width) || 224) + 80));
+  const width = Math.max(400, ...nodes.map((node) => node.position.x + (Number(node.style?.width) || GRAPH_CARD_WIDTH) + 80));
   const height = Math.max(300, ...nodes.map((node) => node.position.y + 200));
-  const zoom = overview ? Math.min(1, (size.width - 20) / width, (size.height - 20) / height) : 1;
   const selected = nodes.find((node) => node.id === selectedCode);
   const x = selected?.position.x ?? 0;
   const y = selected?.position.y ?? 0;
   useEffect(() => {
+    if (latestFitRequest.current === fitRequest) return;
+    latestFitRequest.current = fitRequest;
+    onZoomChange(graphFitZoom(size, { width, height }));
+  }, [fitRequest, height, onZoomChange, size, width]);
+  useLayoutEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
-    if (overview) {
-      element.scrollTo({ left: 0, top: 0 });
-      return;
-    }
+    const previousZoom = zoomRef.current;
+    if (previousZoom === zoom) return;
+    element.scrollTo(centeredGraphZoomScroll({
+      scrollLeft: element.scrollLeft,
+      scrollTop: element.scrollTop,
+      clientWidth: element.clientWidth,
+      clientHeight: element.clientHeight,
+    }, previousZoom, zoom));
+    zoomRef.current = zoom;
+  }, [zoom]);
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
     // Move only the map, and only when the selected card is outside its viewport.
-    const left = x + 32;
-    const top = y + 32;
-    const outsideX = left < element.scrollLeft || left + 224 > element.scrollLeft + element.clientWidth;
-    const outsideY = top < element.scrollTop || top + 116 > element.scrollTop + element.clientHeight;
-    element.scrollTo({
-      left: outsideX ? Math.max(0, left - (element.clientWidth - 224) / 2) : element.scrollLeft,
-      top: outsideY ? Math.max(0, top - (element.clientHeight - 116) / 2) : element.scrollTop,
-    });
-  }, [x, y, selectedCode, overview]);
+    element.scrollTo(selectedGraphScroll({ x, y }, zoomRef.current, {
+      scrollLeft: element.scrollLeft,
+      scrollTop: element.scrollTop,
+      clientWidth: element.clientWidth,
+      clientHeight: element.clientHeight,
+    }));
+  }, [x, y, selectedCode]);
 
-  return <div ref={scrollRef} className="flow-canvas" tabIndex={0} aria-label="Scrollable prerequisite map. Use arrow keys or scrollbars to explore. Cards remain at full size; Overview shows the whole map.">
+  return <div ref={scrollRef} className="flow-canvas" tabIndex={0} aria-label="Scrollable prerequisite map. Use the zoom controls, arrow keys, or scrollbars to explore.">
     <div style={{ width: Math.max(size.width - 20, width * zoom), height: Math.max(size.height - 20, height * zoom) }}>
       <ReactFlow
         nodes={nodes}
@@ -89,7 +114,7 @@ export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, overview }:
         edgeTypes={edgeTypes}
         viewport={{ x: 32 * zoom, y: 32 * zoom, zoom }}
         minZoom={0.001}
-        maxZoom={1}
+        maxZoom={Math.max(GRAPH_READABLE_ZOOM, GRAPH_MAX_ZOOM)}
         panOnDrag={false}
         zoomOnScroll={false}
         zoomOnPinch={false}

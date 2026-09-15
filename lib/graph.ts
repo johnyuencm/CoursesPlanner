@@ -148,6 +148,64 @@ export type UnlockArrow = {
 
 export const GRAPH_HIT_TARGET_WIDTH = 18;
 export const GRAPH_HIT_TARGET_GAP = 4;
+export const GRAPH_READABLE_ZOOM = 1;
+export const GRAPH_MIN_ZOOM = 0.25;
+export const GRAPH_MAX_ZOOM = 2;
+export const GRAPH_FIT_MIN_ZOOM = 0.05;
+export const GRAPH_FIT_PADDING = 20;
+export const GRAPH_CARD_WIDTH = 224;
+export const GRAPH_CARD_HEIGHT = 116;
+
+export type GraphViewport = {
+  scrollLeft: number;
+  scrollTop: number;
+  clientWidth: number;
+  clientHeight: number;
+};
+
+export function clampGraphZoom(zoom: number, min = GRAPH_MIN_ZOOM, max = GRAPH_MAX_ZOOM): number {
+  if (!Number.isFinite(zoom)) return GRAPH_READABLE_ZOOM;
+  return Math.min(max, Math.max(min, zoom));
+}
+
+export function graphZoomPercent(zoom: number): number {
+  return Math.round((Number.isFinite(zoom) ? zoom : GRAPH_READABLE_ZOOM) * 100);
+}
+
+export function graphFitZoom(
+  container: { width: number; height: number },
+  map: { width: number; height: number },
+  padding = GRAPH_FIT_PADDING,
+): number {
+  if (container.width <= padding || container.height <= padding || map.width <= 0 || map.height <= 0) return GRAPH_READABLE_ZOOM;
+  const fit = Math.min((container.width - padding) / map.width, (container.height - padding) / map.height);
+  return Math.min(GRAPH_READABLE_ZOOM, Math.max(GRAPH_FIT_MIN_ZOOM, fit));
+}
+
+export function centeredGraphZoomScroll(viewport: GraphViewport, previousZoom: number, nextZoom: number): { left: number; top: number } {
+  const ratio = nextZoom / Math.max(GRAPH_FIT_MIN_ZOOM, previousZoom);
+  return {
+    left: Math.max(0, (viewport.scrollLeft + viewport.clientWidth / 2) * ratio - viewport.clientWidth / 2),
+    top: Math.max(0, (viewport.scrollTop + viewport.clientHeight / 2) * ratio - viewport.clientHeight / 2),
+  };
+}
+
+export function selectedGraphScroll(
+  point: { x: number; y: number },
+  zoom: number,
+  viewport: GraphViewport,
+): { left: number; top: number } {
+  const left = (point.x + 32) * zoom;
+  const top = (point.y + 32) * zoom;
+  const width = GRAPH_CARD_WIDTH * zoom;
+  const height = GRAPH_CARD_HEIGHT * zoom;
+  const outsideX = left < viewport.scrollLeft || left + width > viewport.scrollLeft + viewport.clientWidth;
+  const outsideY = top < viewport.scrollTop || top + height > viewport.scrollTop + viewport.clientHeight;
+  return {
+    left: outsideX ? Math.max(0, left - (viewport.clientWidth - width) / 2) : viewport.scrollLeft,
+    top: outsideY ? Math.max(0, top - (viewport.clientHeight - height) / 2) : viewport.scrollTop,
+  };
+}
 
 /**
  * The visible connector joins at the bus, while its two interaction regions
