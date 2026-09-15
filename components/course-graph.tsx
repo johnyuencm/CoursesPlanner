@@ -346,8 +346,8 @@ function GraphWorkspace() {
     }
     requestAnimationFrame(() => findInputRef.current?.focus());
   };
-  const inspectCourse = (code: string) => {
-    if (code !== selectedCode) {
+  const inspectCourse = (code: string, record = true) => {
+    if (record && code !== selectedCode) {
       setNavigation((previous) => ({ codes: [...previous.codes.slice(0, previous.index + 1), code], index: previous.index + 1 }));
     }
     setSelectedCode(code);
@@ -479,8 +479,8 @@ function GraphWorkspace() {
             </div> : null}
           </div>
           <div className="graph-history" aria-label="Course navigation">
-            <button type="button" className="button button-secondary button-small" aria-label="Previous course" disabled={navigation.index === 0} onClick={() => { const index = navigation.index - 1; locate(navigation.codes[index]!, false, false); setNavigation({ ...navigation, index }); }}><ArrowLeft size={14} /> Back</button>
-            <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.codes.length - 1} onClick={() => { const index = navigation.index + 1; locate(navigation.codes[index]!, false, false); setNavigation({ ...navigation, index }); }}><ArrowRight size={14} /></button>
+            <button type="button" className="button button-secondary button-small" aria-label="Previous course" disabled={navigation.index === 0} onClick={() => { const index = navigation.index - 1; inspectCourse(navigation.codes[index]!, false); setNavigation({ ...navigation, index }); }}><ArrowLeft size={14} /> Back</button>
+            <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.codes.length - 1} onClick={() => { const index = navigation.index + 1; inspectCourse(navigation.codes[index]!, false); setNavigation({ ...navigation, index }); }}><ArrowRight size={14} /></button>
           </div>
           <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
           <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode}{selectedRelationship ? ` · ${selectedRelationship.kind === "branch" ? `${selectedRelationship.source} unlocks ${selectedRelationship.target}` : `${selectedRelationship.sources.join(", ")} unlock ${selectedRelationship.target}`}` : ""}.</span>
