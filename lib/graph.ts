@@ -148,6 +148,8 @@ export type UnlockArrow = {
 
 export const GRAPH_HIT_TARGET_WIDTH = 18;
 export const GRAPH_HIT_TARGET_GAP = 4;
+export const GRAPH_SELECTED_EDGE_Z = 4;
+export const GRAPH_NODE_Z = { dimmed: 5, emphasized: 6, focused: 12 } as const;
 export const GRAPH_READABLE_ZOOM = 1;
 export const GRAPH_MIN_ZOOM = 0.25;
 export const GRAPH_MAX_ZOOM = 2;
@@ -170,6 +172,12 @@ export function clampGraphZoom(zoom: number, min = GRAPH_MIN_ZOOM, max = GRAPH_M
 
 export function graphZoomPercent(zoom: number): number {
   return Math.round((Number.isFinite(zoom) ? zoom : GRAPH_READABLE_ZOOM) * 100);
+}
+
+export function graphCourseZIndex(input: { focused: boolean; emphasized: boolean }): number {
+  if (input.focused) return GRAPH_NODE_Z.focused;
+  if (input.emphasized) return GRAPH_NODE_Z.emphasized;
+  return GRAPH_NODE_Z.dimmed;
 }
 
 export function graphFitZoom(
@@ -683,6 +691,20 @@ function shouldClearGraphFindOnEscape(
   if (!findQuery.trim()) return false;
   if (isGraphFindSkipTarget(target)) return false;
   return isGraphFindEscapeScope(target);
+}
+
+export function shouldClearLineFocusOnEscape(
+  event: { key: string; target?: EventTarget | null },
+  input: { active: boolean; findQuery: string; fullscreen: boolean },
+): boolean {
+  const target = event.target ?? null;
+  if (event.key !== "Escape") return false;
+  if (!input.active || input.fullscreen) return false;
+  if (isGraphFindSkipTarget(target)) return false;
+  if (shouldClearGraphFindOnEscape(event.key, input.findQuery, target)) return false;
+  const element = elementWithClosest(target);
+  if (!element) return true;
+  return Boolean(element.closest(".graph-layout"));
 }
 
 export type MapFindKeyEvent = {

@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { Catalog, DegreeProgress, StudentPlan } from "@/lib/types";
-import { emptyPlan, loadPlan, parsePlan, restorePlan, serializePlanBackup, STORAGE_KEY } from "@/lib/plan";
+import { addableLineCourses, appendCoursesToSemester, emptyPlan, loadPlan, parsePlan, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY } from "@/lib/plan";
 import { validatePlan } from "@/lib/validation";
 
 type PickerState = { semesterId?: string; courseCode?: string } | null;
@@ -32,6 +32,7 @@ interface AppContextValue {
   closePicker: () => void;
   setCourseStatus: (code: string, status: CourseStatus, credits?: number) => void;
   addCourse: (code: string, semesterId: string, credits: number, includeCorequisite?: boolean) => void;
+  addCourses: (codes: Iterable<string>, semesterId: string) => void;
   careerTargetId: string | null;
   setCareerTargetId: (id: string | null) => void;
   notice: string;
@@ -231,8 +232,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPlan((current) => ({ ...current, semesters: current.semesters.map((semester) => semester.id === semesterId ? { ...semester, courses: [...semester.courses, ...newItems] } : semester) }));
     announce(`${newItems.map((item) => item.code).join(" and ")} added to your plan. Check the live audit for prerequisites and corequisites.`);
   };
+  const addCourses = (codes: Iterable<string>, semesterId: string) => {
+    if (!catalog) {
+      announce("Catalog is still loading. Try adding the line again in a moment.");
+      return;
+    }
+    const items = addableLineCourses(codes, catalog.courses, recordedCourseCodes(plan));
+    const result = appendCoursesToSemester(plan, semesterId, items);
+    if (!result.ok) {
+      if (result.reason === "missing-term") announce("Choose an existing term before adding a course.");
+      else if (result.reason === "capacity") announce("That term already has 32 planned courses.");
+      else announce("Every course on this line is already in your plan or history, or is an external catalog reference.");
+      return;
+    }
+    setPlan(result.plan);
+    announce(`${result.added.join(", ")} added to ${result.semesterName}. Check the live audit for prerequisites and corequisites.`);
+  };
 
-  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, careerTargetId, setCareerTargetId, notice, announce }}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId, notice, announce }}>{children}</AppContext.Provider>;
 }
 
 export function useApp() {

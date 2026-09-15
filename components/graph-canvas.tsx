@@ -76,7 +76,7 @@ export class GraphZoomScrollFrame extends Component<ZoomScrollFrameProps> {
   }
 }
 
-export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, zoom, fitRequest, acknowledgedFitRequest, onZoomChange }: {
+export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, zoom, fitRequest, acknowledgedFitRequest, onZoomChange, onClearLineFocus }: {
   nodes: Node[];
   edges: Edge[];
   nodeTypes: NodeTypes;
@@ -85,6 +85,7 @@ export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, zoom, fitRe
   fitRequest: number;
   acknowledgedFitRequest: RefObject<number>;
   onZoomChange: (zoom: number) => void;
+  onClearLineFocus?: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef(zoom);
@@ -143,6 +144,7 @@ export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, zoom, fitRe
         nodesFocusable={false}
         edgesFocusable={false}
         elementsSelectable={false}
+        onPaneClick={onClearLineFocus}
       >
         <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#d5d9e0" />
       </ReactFlow>

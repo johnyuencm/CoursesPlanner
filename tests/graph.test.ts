@@ -10,8 +10,11 @@ import {
   clampGraphZoom,
   compactGraphStatusLabel,
   directedCourseChain,
+  graphCourseZIndex,
   graphFitZoom,
   graphZoomPercent,
+  GRAPH_SELECTED_EDGE_Z,
+  shouldClearLineFocusOnEscape,
   layoutProgramFlow,
   mapFind,
   mapScene,
@@ -668,4 +671,24 @@ test("mapScene highlights only directed prerequisite chains, not corequisite nei
   assert.equal(selected5500.chain.has("CS 5011"), false);
   assert.equal(selected5500.chain.has("CS 5004"), true);
   assert.equal(selected5500.chain.has("CS 5010"), true);
+});
+
+test("dimmed course cards stack above selected edges so line-focus does not steal clicks", () => {
+  assert.ok(graphCourseZIndex({ focused: false, emphasized: false }) > GRAPH_SELECTED_EDGE_Z);
+  assert.ok(graphCourseZIndex({ focused: false, emphasized: true }) > GRAPH_SELECTED_EDGE_Z);
+  assert.ok(graphCourseZIndex({ focused: true, emphasized: true }) > graphCourseZIndex({ focused: false, emphasized: true }));
+});
+
+test("Escape clears line focus from the inspector and empty map, not from find text or fullscreen", () => {
+  const inspector = new FakeElement("h2", {}, new FakeElement("aside", { class: "graph-inspector", id: "graph-inspector" }, new FakeElement("div", { class: "graph-layout" })));
+  const pane = new FakeElement("div", { class: "react-flow__pane" }, new FakeElement("div", { class: "flow-canvas" }, new FakeElement("div", { class: "graph-layout" })));
+  const dialog = new FakeElement("button", {}, new FakeElement("div", { role: "dialog" }));
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: false }), true);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(pane) }, { active: true, findQuery: "", fullscreen: false }), true);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: null }, { active: true, findQuery: "", fullscreen: false }), true);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(inspector) }, { active: false, findQuery: "", fullscreen: false }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(pane) }, { active: true, findQuery: "cs55", fullscreen: false }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: true }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Enter", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: false }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(dialog) }, { active: true, findQuery: "", fullscreen: false }), false);
 });

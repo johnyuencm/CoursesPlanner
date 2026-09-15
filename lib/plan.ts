@@ -6,11 +6,68 @@ export const MAX_PLAN_BACKUP_BYTES = 1_000_000;
 const MAX_COURSE_CODES = 256;
 const MAX_CREDIT_ENTRIES = 256;
 const MAX_SEMESTERS = 32;
-const MAX_COURSES_PER_SEMESTER = 32;
+export const MAX_COURSES_PER_SEMESTER = 32;
 const MAX_CREDITS_PER_COURSE = 32;
 const MAX_TEXT_LENGTH = 100;
 const COURSE_CODE = /^[A-Z]{2,6} [0-9]{2,4}[A-Z]{0,2}$/;
 const SEMESTER_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/;
+
+export function recordedCourseCodes(plan: StudentPlan): Set<string> {
+  return new Set([
+    ...plan.completedCourses,
+    ...plan.waivedCourses,
+    ...plan.semesters.flatMap((semester) => semester.courses.map((course) => course.code)),
+  ]);
+}
+
+export function addableLineCourses(
+  codes: Iterable<string>,
+  courses: Iterable<{ code: string; requirementType: string; credits: number }>,
+  recorded: Iterable<string>,
+): PlannedCourse[] {
+  const skip = new Set(recorded);
+  const catalog = new Map([...courses].map((course) => [course.code, course]));
+  const added = new Set<string>();
+  const items: PlannedCourse[] = [];
+  for (const code of codes) {
+    if (added.has(code) || skip.has(code)) continue;
+    const course = catalog.get(code);
+    if (!course || course.requirementType === "external") continue;
+    added.add(code);
+    items.push({ code: course.code, credits: course.credits });
+  }
+  return items;
+}
+
+export type AppendCoursesResult =
+  | { ok: true; plan: StudentPlan; added: string[]; semesterName: string }
+  | { ok: false; reason: "missing-term" | "capacity" | "none" };
+
+export function appendCoursesToSemester(
+  plan: StudentPlan,
+  semesterId: string,
+  items: readonly PlannedCourse[],
+): AppendCoursesResult {
+  const target = plan.semesters.find((semester) => semester.id === semesterId);
+  if (!target) return { ok: false, reason: "missing-term" };
+  const present = recordedCourseCodes(plan);
+  const newItems = items.filter((item) => !present.has(item.code));
+  if (!newItems.length) return { ok: false, reason: "none" };
+  if (target.courses.length + newItems.length > MAX_COURSES_PER_SEMESTER) {
+    return { ok: false, reason: "capacity" };
+  }
+  return {
+    ok: true,
+    added: newItems.map((item) => item.code),
+    semesterName: target.name,
+    plan: {
+      ...plan,
+      semesters: plan.semesters.map((semester) =>
+        semester.id === semesterId ? { ...semester, courses: [...semester.courses, ...newItems] } : semester,
+      ),
+    },
+  };
+}
 
 export function emptyPlan(): StudentPlan {
   return {
