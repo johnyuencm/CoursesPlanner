@@ -214,38 +214,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const items = [{ code, credits }];
     const companionCourse = includeCorequisite && companionCode ? catalog?.courses.find((course) => course.code === companionCode) : null;
     if (companionCourse) items.push({ code: companionCourse.code, credits: companionCourse.credits });
-    const present = new Set([...plan.completedCourses, ...plan.waivedCourses, ...plan.semesters.flatMap((semester) => semester.courses.map((course) => course.code))]);
-    const newItems = items.filter((item) => !present.has(item.code));
-    const target = plan.semesters.find((semester) => semester.id === semesterId);
-    if (!target) {
-      announce("Choose an existing term before adding a course.");
+    let result: ReturnType<typeof appendCoursesToSemester> | undefined;
+    let semesterName: string | undefined;
+    setPlan((current) => {
+      result = appendCoursesToSemester(current, semesterId, items);
+      semesterName = current.semesters.find((semester) => semester.id === semesterId)?.name;
+      return result.ok ? result.plan : current;
+    });
+    if (!result) return;
+    if (!result.ok) {
+      if (result.reason === "missing-term") announce("Choose an existing term before adding a course.");
+      else if (result.reason === "capacity") announce(`${semesterName} supports up to 32 planned courses.`);
+      else announce(`${code} is already recorded in your plan or history.`);
       return;
     }
-    if (target.courses.length + newItems.length > 32) {
-      announce(`${target.name} supports up to 32 planned courses.`);
-      return;
-    }
-    if (!newItems.length) {
-      announce(`${code} is already recorded in your plan or history.`);
-      return;
-    }
-    setPlan((current) => ({ ...current, semesters: current.semesters.map((semester) => semester.id === semesterId ? { ...semester, courses: [...semester.courses, ...newItems] } : semester) }));
-    announce(`${newItems.map((item) => item.code).join(" and ")} added to your plan. Check the live audit for prerequisites and corequisites.`);
+    announce(`${result.added.join(" and ")} added to your plan. Check the live audit for prerequisites and corequisites.`);
   };
   const addCourses = (codes: Iterable<string>, semesterId: string) => {
     if (!catalog) {
       announce("Catalog is still loading. Try adding the line again in a moment.");
       return;
     }
-    const items = addableLineCourses(codes, catalog.courses, recordedCourseCodes(plan));
-    const result = appendCoursesToSemester(plan, semesterId, items);
+    let result: ReturnType<typeof appendCoursesToSemester> | undefined;
+    setPlan((current) => {
+      const items = addableLineCourses(codes, catalog.courses, recordedCourseCodes(current));
+      result = appendCoursesToSemester(current, semesterId, items);
+      return result.ok ? result.plan : current;
+    });
+    if (!result) return;
     if (!result.ok) {
       if (result.reason === "missing-term") announce("Choose an existing term before adding a course.");
       else if (result.reason === "capacity") announce("That term already has 32 planned courses.");
       else announce("Every course on this line is already in your plan or history, or is an external catalog reference.");
       return;
     }
-    setPlan(result.plan);
     announce(`${result.added.join(", ")} added to ${result.semesterName}. Check the live audit for prerequisites and corequisites.`);
   };
 
