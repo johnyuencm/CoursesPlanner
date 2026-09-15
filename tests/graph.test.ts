@@ -683,6 +683,7 @@ test("Escape clears line focus from the inspector and empty map, not from find t
   const inspector = new FakeElement("h2", {}, new FakeElement("aside", { class: "graph-inspector", id: "graph-inspector" }, new FakeElement("div", { class: "graph-layout" })));
   const pane = new FakeElement("div", { class: "react-flow__pane" }, new FakeElement("div", { class: "flow-canvas" }, new FakeElement("div", { class: "graph-layout" })));
   const dialog = new FakeElement("button", {}, new FakeElement("div", { role: "dialog" }));
+  const semesterSelect = new FakeElement("select", { id: "line-focus-semester" }, new FakeElement("div", { class: "graph-layout" }));
   assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: false }), true);
   assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(pane) }, { active: true, findQuery: "", fullscreen: false }), true);
   assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: null }, { active: true, findQuery: "", fullscreen: false }), true);
@@ -691,4 +692,5 @@ test("Escape clears line focus from the inspector and empty map, not from find t
   assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: true }), false);
   assert.equal(shouldClearLineFocusOnEscape({ key: "Enter", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: false }), false);
   assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(dialog) }, { active: true, findQuery: "", fullscreen: false }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(semesterSelect) }, { active: true, findQuery: "", fullscreen: false }), false);
 });

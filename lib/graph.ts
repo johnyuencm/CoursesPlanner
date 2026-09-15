@@ -702,6 +702,8 @@ export function shouldClearLineFocusOnEscape(
   if (!input.active || input.fullscreen) return false;
   if (isGraphFindSkipTarget(target)) return false;
   if (shouldClearGraphFindOnEscape(event.key, input.findQuery, target)) return false;
+  const tag = tagNameOf(target);
+  if (tag === "input" || tag === "select" || tag === "textarea" || tag === "option") return false;
   const element = elementWithClosest(target);
   if (!element) return true;
   return Boolean(element.closest(".graph-layout"));
