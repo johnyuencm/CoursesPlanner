@@ -44,3 +44,4 @@
 {"id":"evt_b48d5ab0","kind":"goal.created","at":"2026-09-15T21:52:48.208Z","goal_id":"goal_graph-line-focus-details-and-plan-from-line_705e","payload":{"assurance":"standard","backend":"local"}}
 {"id":"evt_9dc11183","kind":"ticket.created","at":"2026-09-15T21:53:33.515Z","goal_id":"goal_graph-line-focus-details-and-plan-from-line_705e","ticket_id":"ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75"}
 {"id":"evt_fc896670","kind":"ticket.started","at":"2026-09-15T21:53:50.878Z","goal_id":"goal_graph-line-focus-details-and-plan-from-line_705e","ticket_id":"ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75"}
+{"id":"evt_4dc23cd2","kind":"ticket.submitted","at":"2026-09-15T22:12:43.602Z","goal_id":"goal_graph-line-focus-details-and-plan-from-line_705e","ticket_id":"ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75"}
