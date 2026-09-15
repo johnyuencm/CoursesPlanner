@@ -182,6 +182,19 @@ export function graphFitZoom(
   return Math.min(GRAPH_READABLE_ZOOM, Math.max(GRAPH_FIT_MIN_ZOOM, fit));
 }
 
+// The acknowledgment belongs to the workspace, so remounting the map cannot
+// swallow a pending request or replay one that was already applied.
+export function consumeGraphFitRequest(
+  request: number,
+  acknowledged: { current: number },
+  container: { width: number; height: number },
+  map: { width: number; height: number },
+): number | null {
+  if (request <= acknowledged.current || container.width <= 0 || container.height <= 0) return null;
+  acknowledged.current = request;
+  return graphFitZoom(container, map);
+}
+
 export function centeredGraphZoomScroll(viewport: GraphViewport, previousZoom: number, nextZoom: number): { left: number; top: number } {
   const ratio = nextZoom / Math.max(GRAPH_FIT_MIN_ZOOM, previousZoom);
   return {

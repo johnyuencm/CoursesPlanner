@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "react";
+import { Component, useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from "react";
 import { Background, BackgroundVariant, BaseEdge, ReactFlow, type Edge, type EdgeProps, type Node, type NodeTypes } from "@xyflow/react";
 import {
   centeredGraphZoomScroll,
-  graphFitZoom,
+  consumeGraphFitRequest,
   GRAPH_CARD_WIDTH,
   GRAPH_HIT_TARGET_WIDTH,
   GRAPH_MAX_ZOOM,
@@ -50,18 +50,44 @@ function PrerequisiteEdge({ sourceX, sourceY, targetX, targetY, markerEnd, style
 
 const edgeTypes = { prerequisite: PrerequisiteEdge };
 
-export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, zoom, fitRequest, onZoomChange }: {
+type ZoomScrollFrameProps = {
+  zoom: number;
+  scrollRef: RefObject<HTMLDivElement | null>;
+  children?: ReactNode;
+};
+
+// This lifecycle runs before React shrinks the scroll area. A layout effect
+// runs after that mutation, when the browser may already have clamped offsets.
+export class GraphZoomScrollFrame extends Component<ZoomScrollFrameProps> {
+  getSnapshotBeforeUpdate(previous: ZoomScrollFrameProps): ScrollToOptions | null {
+    const element = this.props.scrollRef.current;
+    if (!element || previous.zoom === this.props.zoom) return null;
+    return centeredGraphZoomScroll(element, previous.zoom, this.props.zoom);
+  }
+
+  componentDidUpdate(_previous: ZoomScrollFrameProps, _state: unknown, snapshot: ScrollToOptions | null) {
+    if (snapshot) this.props.scrollRef.current?.scrollTo(snapshot);
+  }
+
+  render() {
+    return <div ref={this.props.scrollRef} className="flow-canvas" tabIndex={0} aria-label="Scrollable prerequisite map. Use the zoom controls, arrow keys, or scrollbars to explore.">
+      {this.props.children}
+    </div>;
+  }
+}
+
+export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, zoom, fitRequest, acknowledgedFitRequest, onZoomChange }: {
   nodes: Node[];
   edges: Edge[];
   nodeTypes: NodeTypes;
   selectedCode: string;
   zoom: number;
   fitRequest: number;
+  acknowledgedFitRequest: RefObject<number>;
   onZoomChange: (zoom: number) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef(zoom);
-  const latestFitRequest = useRef(fitRequest);
   const [size, setSize] = useState({ width: 800, height: 600 });
   useEffect(() => {
     const element = scrollRef.current;
@@ -76,21 +102,13 @@ export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, zoom, fitRe
   const x = selected?.position.x ?? 0;
   const y = selected?.position.y ?? 0;
   useEffect(() => {
-    if (latestFitRequest.current === fitRequest) return;
-    latestFitRequest.current = fitRequest;
-    onZoomChange(graphFitZoom(size, { width, height }));
-  }, [fitRequest, height, onZoomChange, size, width]);
-  useLayoutEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
-    const previousZoom = zoomRef.current;
-    if (previousZoom === zoom) return;
-    element.scrollTo(centeredGraphZoomScroll({
-      scrollLeft: element.scrollLeft,
-      scrollTop: element.scrollTop,
-      clientWidth: element.clientWidth,
-      clientHeight: element.clientHeight,
-    }, previousZoom, zoom));
+    const next = consumeGraphFitRequest(fitRequest, acknowledgedFitRequest,
+      { width: element.clientWidth, height: element.clientHeight }, { width, height });
+    if (next !== null) onZoomChange(next);
+  }, [fitRequest, acknowledgedFitRequest, height, onZoomChange, size, width]);
+  useLayoutEffect(() => {
     zoomRef.current = zoom;
   }, [zoom]);
   useEffect(() => {
@@ -105,7 +123,7 @@ export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, zoom, fitRe
     }));
   }, [x, y, selectedCode]);
 
-  return <div ref={scrollRef} className="flow-canvas" tabIndex={0} aria-label="Scrollable prerequisite map. Use the zoom controls, arrow keys, or scrollbars to explore.">
+  return <GraphZoomScrollFrame scrollRef={scrollRef} zoom={zoom}>
     <div style={{ width: Math.max(size.width - 20, width * zoom), height: Math.max(size.height - 20, height * zoom) }}>
       <ReactFlow
         nodes={nodes}
@@ -129,5 +147,5 @@ export function GraphCanvas({ nodes, edges, nodeTypes, selectedCode, zoom, fitRe
         <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#d5d9e0" />
       </ReactFlow>
     </div>
-  </div>;
+  </GraphZoomScrollFrame>;
 }

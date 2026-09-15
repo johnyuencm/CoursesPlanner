@@ -101,6 +101,7 @@ function GraphWorkspace() {
   const [view, setView] = useState<"graph" | "table">("graph");
   const [zoom, setZoom] = useState(GRAPH_READABLE_ZOOM);
   const [fitRequest, setFitRequest] = useState(0);
+  const acknowledgedFitRequest = useRef(0);
   const [fullscreenBusy, setFullscreenBusy] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenSupported, setFullscreenSupported] = useState(false);
@@ -500,7 +501,7 @@ function GraphWorkspace() {
           </div>
           {fullscreenMessage ? <span className="graph-fullscreen-status" role="status">{fullscreenMessage}</span> : null}
         </div>
-        {view === "graph" ? <GraphCanvas nodes={graph.nodes} edges={graph.edges} nodeTypes={nodeTypes} selectedCode={selectedCode} zoom={zoom} fitRequest={fitRequest} onZoomChange={setCanvasZoom} /> : <div className="relationship-table-wrap">
+        {view === "graph" ? <GraphCanvas nodes={graph.nodes} edges={graph.edges} nodeTypes={nodeTypes} selectedCode={selectedCode} zoom={zoom} fitRequest={fitRequest} acknowledgedFitRequest={acknowledgedFitRequest} onZoomChange={setCanvasZoom} /> : <div className="relationship-table-wrap">
           <table className="relationship-table">
             <caption className="sr-only">All courses in the selected neighborhood and their complete prerequisite and corequisite rules</caption>
             <thead><tr><th scope="col">Course</th><th scope="col">Role</th><th scope="col">Prerequisite rule</th><th scope="col">Take together</th></tr></thead>

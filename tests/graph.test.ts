@@ -4,6 +4,7 @@ import path from "node:path";
 import test from "node:test";
 
 import {
+  consumeGraphFitRequest,
   catalogRelations,
   centeredGraphZoomScroll,
   clampGraphZoom,
@@ -553,6 +554,18 @@ test("compact graph cards shorten Prerequisite eligible without clipping other s
   assert.equal(compactGraphStatusLabel("Locked"), "Locked");
   assert.equal(compactGraphStatusLabel("Needs review"), "Needs review");
   assert.equal(compactGraphStatusLabel("Completed"), "Completed");
+});
+
+test("a pending Fit survives Table to Map and is consumed once across remounts", () => {
+  const acknowledged = { current: 0 };
+  const container = { width: 800, height: 600 };
+  const map = { width: 4000, height: 1000 };
+  assert.equal(consumeGraphFitRequest(1, acknowledged, { width: 0, height: 0 }, map), null);
+  assert.equal(consumeGraphFitRequest(1, acknowledged, container, map), 0.195);
+  assert.equal(consumeGraphFitRequest(1, acknowledged, container, map), null);
+  // The parent retains this acknowledgment while the canvas is unmounted.
+  assert.equal(consumeGraphFitRequest(1, acknowledged, { width: 1200, height: 900 }, map), null);
+  assert.equal(consumeGraphFitRequest(2, acknowledged, { width: 1200, height: 900 }, map), 0.295);
 });
 
 test("fit zoom uses the limiting dimension and can go below manual zoom minimum", () => {
