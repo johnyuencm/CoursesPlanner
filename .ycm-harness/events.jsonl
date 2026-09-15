@@ -41,3 +41,6 @@
 {"id":"evt_71f462e9","kind":"wiki.page.created","at":"2026-09-13T08:05:40.786Z","payload":{"page_id":"work-2026-09-13-mscs-graph-close","trigger":"decision"}}
 {"id":"evt_0e8c4da6","kind":"checkpoint.recorded","at":"2026-09-13T08:06:28.605Z","goal_id":"goal_complete-mscs-seattle-prerequisite-graph_5f65","checkpoint_id":"cp_manual_mscs-graph-finish-closeout_c17e"}
 {"id":"evt_009f27c4","kind":"wiki.page.created","at":"2026-09-14T06:37:53.997Z","payload":{"page_id":"work-lite-2026-09-13-colored-course-lines","trigger":"decision"}}
+{"id":"evt_b48d5ab0","kind":"goal.created","at":"2026-09-15T21:52:48.208Z","goal_id":"goal_graph-line-focus-details-and-plan-from-line_705e","payload":{"assurance":"standard","backend":"local"}}
+{"id":"evt_9dc11183","kind":"ticket.created","at":"2026-09-15T21:53:33.515Z","goal_id":"goal_graph-line-focus-details-and-plan-from-line_705e","ticket_id":"ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75"}
+{"id":"evt_fc896670","kind":"ticket.started","at":"2026-09-15T21:53:50.878Z","goal_id":"goal_graph-line-focus-details-and-plan-from-line_705e","ticket_id":"ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75"}
