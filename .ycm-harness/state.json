@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-16T02:11:28.814Z",
+  "updated_at": "2026-09-16T02:21:23.198Z",
   "active_goal_id": "goal_double-click-course-connections-escape-back_d248",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -38,7 +38,7 @@
       "id": "goal_double-click-course-connections-escape-back_d248",
       "title": "Double-click course connections, Escape back",
       "description": "Double-clicking a course card enters that course's connections view. Escape restores the previous map view, including Entire program.",
-      "status": "active",
+      "status": "verifying",
       "assurance": "standard",
       "backend": {
         "kind": "local"
@@ -47,7 +47,7 @@
       "worktree_status": "pending",
       "stop_enforcement": false,
       "created_at": "2026-09-16T01:51:23.122Z",
-      "updated_at": "2026-09-16T01:51:46.250Z"
+      "updated_at": "2026-09-16T02:21:23.197Z"
     }
   },
   "local_tickets": {
@@ -187,11 +187,11 @@
         "npm test and npm run typecheck pass."
       ],
       "blocked_by": [],
-      "status": "in_review",
+      "status": "done",
       "code_changed": true,
       "order": 0,
       "created_at": "2026-09-16T01:51:37.524Z",
-      "updated_at": "2026-09-16T02:11:28.813Z"
+      "updated_at": "2026-09-16T02:12:55.516Z"
     }
   },
   "checkpoints": {
@@ -800,6 +800,36 @@
         "submitted_at": "2026-09-16T02:11:28.814Z"
       },
       "recorded_at": "2026-09-16T02:11:28.814Z"
+    },
+    "submission-ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1-cd4d7a": {
+      "id": "submission-ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1-cd4d7a",
+      "goal_id": "goal_double-click-course-connections-escape-back_d248",
+      "ticket_id": "ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1",
+      "kind": "other",
+      "submission_digest": "fd7c6577acb419f955bdaed77d8db5695a50c1e782c0d8a6ed4b1358b9776886",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-16T02:12:52.451Z"
+      },
+      "recorded_at": "2026-09-16T02:12:52.451Z"
+    },
+    "evidence-ed999acb": {
+      "id": "evidence-ed999acb",
+      "goal_id": "goal_double-click-course-connections-escape-back_d248",
+      "ticket_id": "ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1",
+      "kind": "verification",
+      "submission_digest": "fd7c6577acb419f955bdaed77d8db5695a50c1e782c0d8a6ed4b1358b9776886",
+      "evidence_digest": "05557db918c873d992be53ba7d1bc504af26aecfe821125eb11054834b30bb01",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-ed999acb.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "impl-dblclick-520fab8",
+        "verifier_run": "ver-dblclick-49b5689",
+        "knowledge": "none",
+        "submitted_at": "2026-09-16T02:12:55.515Z"
+      },
+      "recorded_at": "2026-09-16T02:12:55.516Z"
     }
   },
   "wiki": {
@@ -861,6 +891,17 @@
         "body_path": "pages/work-2026-09-15-line-focus-plan.md",
         "created_at": "2026-09-15T22:24:40.214Z",
         "updated_at": "2026-09-15T22:24:40.214Z"
+      },
+      "work-2026-09-15-dblclick-connections": {
+        "id": "work-2026-09-15-dblclick-connections",
+        "title": "Double-click course connections and Escape restore",
+        "source_ids": [],
+        "tags": [
+          "decision"
+        ],
+        "body_path": "pages/work-2026-09-15-dblclick-connections.md",
+        "created_at": "2026-09-16T02:21:12.777Z",
+        "updated_at": "2026-09-16T02:21:12.777Z"
       }
     },
     "log": [
@@ -898,6 +939,13 @@
         "ref": "work-2026-09-15-line-focus-plan",
         "note": "durable decision",
         "at": "2026-09-15T22:24:40.215Z"
+      },
+      {
+        "id": "wlg_83d8efd3",
+        "kind": "page.upserted",
+        "ref": "work-2026-09-15-dblclick-connections",
+        "note": "durable decision",
+        "at": "2026-09-16T02:21:12.777Z"
       }
     ]
   },

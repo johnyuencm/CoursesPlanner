@@ -56,3 +56,5 @@
 {"id":"evt_50cce386","kind":"ticket.submitted","at":"2026-09-16T01:57:27.449Z","goal_id":"goal_double-click-course-connections-escape-back_d248","ticket_id":"ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1"}
 {"id":"evt_7f167c29","kind":"ticket.submitted","at":"2026-09-16T02:10:45.457Z","goal_id":"goal_double-click-course-connections-escape-back_d248","ticket_id":"ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1"}
 {"id":"evt_a9377823","kind":"ticket.submitted","at":"2026-09-16T02:11:28.825Z","goal_id":"goal_double-click-course-connections-escape-back_d248","ticket_id":"ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1"}
+{"id":"evt_40607791","kind":"ticket.submitted","at":"2026-09-16T02:12:52.462Z","goal_id":"goal_double-click-course-connections-escape-back_d248","ticket_id":"ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1"}
+{"id":"evt_99ffbf52","kind":"wiki.page.created","at":"2026-09-16T02:21:12.777Z","payload":{"page_id":"work-2026-09-15-dblclick-connections","trigger":"decision"}}
