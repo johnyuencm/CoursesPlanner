@@ -148,6 +148,85 @@ export type UnlockArrow = {
 
 export const GRAPH_HIT_TARGET_WIDTH = 18;
 export const GRAPH_HIT_TARGET_GAP = 4;
+export const GRAPH_SELECTED_EDGE_Z = 4;
+export const GRAPH_NODE_Z = { dimmed: 5, emphasized: 6, focused: 12 } as const;
+export const GRAPH_READABLE_ZOOM = 1;
+export const GRAPH_MIN_ZOOM = 0.25;
+export const GRAPH_MAX_ZOOM = 2;
+export const GRAPH_FIT_MIN_ZOOM = 0.05;
+export const GRAPH_FIT_PADDING = 20;
+export const GRAPH_CARD_WIDTH = 224;
+export const GRAPH_CARD_HEIGHT = 116;
+
+export type GraphViewport = {
+  scrollLeft: number;
+  scrollTop: number;
+  clientWidth: number;
+  clientHeight: number;
+};
+
+export function clampGraphZoom(zoom: number, min = GRAPH_MIN_ZOOM, max = GRAPH_MAX_ZOOM): number {
+  if (!Number.isFinite(zoom)) return GRAPH_READABLE_ZOOM;
+  return Math.min(max, Math.max(min, zoom));
+}
+
+export function graphZoomPercent(zoom: number): number {
+  return Math.round((Number.isFinite(zoom) ? zoom : GRAPH_READABLE_ZOOM) * 100);
+}
+
+export function graphCourseZIndex(input: { focused: boolean; emphasized: boolean }): number {
+  if (input.focused) return GRAPH_NODE_Z.focused;
+  if (input.emphasized) return GRAPH_NODE_Z.emphasized;
+  return GRAPH_NODE_Z.dimmed;
+}
+
+export function graphFitZoom(
+  container: { width: number; height: number },
+  map: { width: number; height: number },
+  padding = GRAPH_FIT_PADDING,
+): number {
+  if (container.width <= padding || container.height <= padding || map.width <= 0 || map.height <= 0) return GRAPH_READABLE_ZOOM;
+  const fit = Math.min((container.width - padding) / map.width, (container.height - padding) / map.height);
+  return Math.min(GRAPH_READABLE_ZOOM, Math.max(GRAPH_FIT_MIN_ZOOM, fit));
+}
+
+// The acknowledgment belongs to the workspace, so remounting the map cannot
+// swallow a pending request or replay one that was already applied.
+export function consumeGraphFitRequest(
+  request: number,
+  acknowledged: { current: number },
+  container: { width: number; height: number },
+  map: { width: number; height: number },
+): number | null {
+  if (request <= acknowledged.current || container.width <= 0 || container.height <= 0) return null;
+  acknowledged.current = request;
+  return graphFitZoom(container, map);
+}
+
+export function centeredGraphZoomScroll(viewport: GraphViewport, previousZoom: number, nextZoom: number): { left: number; top: number } {
+  const ratio = nextZoom / Math.max(GRAPH_FIT_MIN_ZOOM, previousZoom);
+  return {
+    left: Math.max(0, (viewport.scrollLeft + viewport.clientWidth / 2) * ratio - viewport.clientWidth / 2),
+    top: Math.max(0, (viewport.scrollTop + viewport.clientHeight / 2) * ratio - viewport.clientHeight / 2),
+  };
+}
+
+export function selectedGraphScroll(
+  point: { x: number; y: number },
+  zoom: number,
+  viewport: GraphViewport,
+): { left: number; top: number } {
+  const left = (point.x + 32) * zoom;
+  const top = (point.y + 32) * zoom;
+  const width = GRAPH_CARD_WIDTH * zoom;
+  const height = GRAPH_CARD_HEIGHT * zoom;
+  const outsideX = left < viewport.scrollLeft || left + width > viewport.scrollLeft + viewport.clientWidth;
+  const outsideY = top < viewport.scrollTop || top + height > viewport.scrollTop + viewport.clientHeight;
+  return {
+    left: outsideX ? Math.max(0, left - (viewport.clientWidth - width) / 2) : viewport.scrollLeft,
+    top: outsideY ? Math.max(0, top - (viewport.clientHeight - height) / 2) : viewport.scrollTop,
+  };
+}
 
 const GRAPH_NODE_WIDTH = 224;
 const GRAPH_HANDLE_Y = 58;
@@ -677,6 +756,22 @@ function shouldClearGraphFindOnEscape(
   return isGraphFindEscapeScope(target);
 }
 
+export function shouldClearLineFocusOnEscape(
+  event: { key: string; target?: EventTarget | null },
+  input: { active: boolean; findQuery: string; fullscreen: boolean },
+): boolean {
+  const target = event.target ?? null;
+  if (event.key !== "Escape") return false;
+  if (!input.active || input.fullscreen) return false;
+  if (isGraphFindSkipTarget(target)) return false;
+  if (shouldClearGraphFindOnEscape(event.key, input.findQuery, target)) return false;
+  const tag = tagNameOf(target);
+  if (tag === "input" || tag === "select" || tag === "textarea" || tag === "option") return false;
+  const element = elementWithClosest(target);
+  if (!element) return true;
+  return Boolean(element.closest(".graph-layout"));
+}
+
 export type MapFindKeyEvent = {
   key: string;
   ctrlKey?: boolean;
@@ -722,4 +817,48 @@ export const mapFind = {
 
 export function compactGraphStatusLabel(fullLabel: string): string {
   return fullLabel === "Prerequisite eligible" ? "Eligible" : fullLabel;
+}
+
+export type GraphNavigationEntry = {
+  selectedCode: string;
+  focusCode: string;
+  depth: GraphScope;
+};
+
+export type GraphNavigation = {
+  entries: GraphNavigationEntry[];
+  index: number;
+};
+
+export function sameGraphNavigationEntry(a: GraphNavigationEntry, b: GraphNavigationEntry): boolean {
+  return a.selectedCode === b.selectedCode && a.focusCode === b.focusCode && a.depth === b.depth;
+}
+
+export function initialGraphNavigation(code = "CS 5010"): GraphNavigation {
+  return { entries: [{ selectedCode: code, focusCode: code, depth: "course" }], index: 0 };
+}
+
+export function recordGraphNavigation(
+  navigation: GraphNavigation,
+  live: GraphNavigationEntry,
+  next: GraphNavigationEntry,
+): GraphNavigation {
+  const current = navigation.entries[navigation.index];
+  if (current && sameGraphNavigationEntry(live, next) && sameGraphNavigationEntry(current, live)) return navigation;
+  const entries = navigation.entries.slice(0, navigation.index + 1);
+  entries[navigation.index] = live;
+  if (sameGraphNavigationEntry(live, next)) return { entries, index: navigation.index };
+  return { entries: [...entries, next], index: navigation.index + 1 };
+}
+
+export function restoreGraphNavigation(
+  navigation: GraphNavigation,
+  live: GraphNavigationEntry,
+  index: number,
+): { navigation: GraphNavigation; entry: GraphNavigationEntry } | undefined {
+  const entry = navigation.entries[index];
+  if (!entry || index === navigation.index) return undefined;
+  const entries = navigation.entries.slice();
+  entries[navigation.index] = live;
+  return { navigation: { entries, index }, entry };
 }

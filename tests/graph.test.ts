@@ -4,10 +4,19 @@ import path from "node:path";
 import test from "node:test";
 
 import {
+  consumeGraphFitRequest,
   catalogRelations,
+  centeredGraphZoomScroll,
+  clampGraphZoom,
   compactGraphStatusLabel,
   directedCourseChain,
+  graphCourseZIndex,
+  graphFitZoom,
+  graphZoomPercent,
+  GRAPH_SELECTED_EDGE_Z,
+  shouldClearLineFocusOnEscape,
   layoutProgramFlow,
+  initialGraphNavigation,
   mapFind,
   mapScene,
   PROGRAM_ROW,
@@ -15,9 +24,12 @@ import {
   prerequisiteBusMeta,
   prerequisiteConnector,
   prerequisiteHitPaths,
+  recordGraphNavigation,
   relationshipControlGroups,
   relationshipSelection,
+  restoreGraphNavigation,
   GRAPH_HIT_TARGET_WIDTH,
+  selectedGraphScroll,
   stableDestinationColor,
   unlockArrowView,
   visibleGraphDistances,
@@ -609,6 +621,47 @@ test("compact graph cards shorten Prerequisite eligible without clipping other s
   assert.equal(compactGraphStatusLabel("Completed"), "Completed");
 });
 
+test("a pending Fit survives Table to Map and is consumed once across remounts", () => {
+  const acknowledged = { current: 0 };
+  const container = { width: 800, height: 600 };
+  const map = { width: 4000, height: 1000 };
+  assert.equal(consumeGraphFitRequest(1, acknowledged, { width: 0, height: 0 }, map), null);
+  assert.equal(consumeGraphFitRequest(1, acknowledged, container, map), 0.195);
+  assert.equal(consumeGraphFitRequest(1, acknowledged, container, map), null);
+  // The parent retains this acknowledgment while the canvas is unmounted.
+  assert.equal(consumeGraphFitRequest(1, acknowledged, { width: 1200, height: 900 }, map), null);
+  assert.equal(consumeGraphFitRequest(2, acknowledged, { width: 1200, height: 900 }, map), 0.295);
+});
+
+test("fit zoom uses the limiting dimension and can go below manual zoom minimum", () => {
+  assert.equal(graphFitZoom({ width: 800, height: 600 }, { width: 4000, height: 1000 }), 0.195);
+  assert.equal(graphFitZoom({ width: 800, height: 600 }, { width: 1000, height: 5000 }), 0.116);
+  assert.equal(graphFitZoom({ width: 800, height: 600 }, { width: 200, height: 120 }), 1);
+  assert.equal(graphFitZoom({ width: 800, height: 600 }, { width: 50000, height: 50000 }), 0.05);
+});
+
+test("zoom readout reports actual fit scale while manual zoom remains bounded", () => {
+  assert.equal(graphZoomPercent(0.08), 8);
+  assert.equal(graphZoomPercent(Number.NaN), 100);
+  assert.equal(clampGraphZoom(0.08), 0.25);
+  assert.equal(clampGraphZoom(0.08 + 0.25), 0.33);
+});
+
+test("manual graph zoom preserves the viewport center", () => {
+  const next = centeredGraphZoomScroll(
+    { scrollLeft: 300, scrollTop: 120, clientWidth: 400, clientHeight: 300 },
+    1,
+    1.5,
+  );
+  assert.deepEqual(next, { left: 550, top: 255 });
+});
+
+test("selected course reveal uses the current zoomed card geometry", () => {
+  const current = { scrollLeft: 0, scrollTop: 0, clientWidth: 500, clientHeight: 360 };
+  assert.deepEqual(selectedGraphScroll({ x: 50, y: 40 }, 0.5, current), { left: 0, top: 0 });
+  assert.deepEqual(selectedGraphScroll({ x: 1000, y: 700 }, 0.5, current), { left: 322, top: 215 });
+});
+
 test("mapScene seats CS 5011 beside CS 5010 and draws no corequisite arrows", () => {
   const { courses, requirements } = seattleGraph();
   const scene = mapScene({
@@ -680,4 +733,72 @@ test("mapScene highlights only directed prerequisite chains, not corequisite nei
   assert.equal(selected5500.chain.has("CS 5011"), false);
   assert.equal(selected5500.chain.has("CS 5004"), true);
   assert.equal(selected5500.chain.has("CS 5010"), true);
+});
+
+test("dimmed course cards stack above selected edges so line-focus does not steal clicks", () => {
+  assert.ok(graphCourseZIndex({ focused: false, emphasized: false }) > GRAPH_SELECTED_EDGE_Z);
+  assert.ok(graphCourseZIndex({ focused: false, emphasized: true }) > GRAPH_SELECTED_EDGE_Z);
+  assert.ok(graphCourseZIndex({ focused: true, emphasized: true }) > graphCourseZIndex({ focused: false, emphasized: true }));
+});
+
+test("Escape clears line focus from the inspector and empty map, not from find text or fullscreen", () => {
+  const inspector = new FakeElement("h2", {}, new FakeElement("aside", { class: "graph-inspector", id: "graph-inspector" }, new FakeElement("div", { class: "graph-layout" })));
+  const pane = new FakeElement("div", { class: "react-flow__pane" }, new FakeElement("div", { class: "flow-canvas" }, new FakeElement("div", { class: "graph-layout" })));
+  const dialog = new FakeElement("button", {}, new FakeElement("div", { role: "dialog" }));
+  const semesterSelect = new FakeElement("select", { id: "line-focus-semester" }, new FakeElement("div", { class: "graph-layout" }));
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: false }), true);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(pane) }, { active: true, findQuery: "", fullscreen: false }), true);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: null }, { active: true, findQuery: "", fullscreen: false }), true);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(inspector) }, { active: false, findQuery: "", fullscreen: false }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(pane) }, { active: true, findQuery: "cs55", fullscreen: false }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: true }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Enter", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: false }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(dialog) }, { active: true, findQuery: "", fullscreen: false }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(semesterSelect) }, { active: true, findQuery: "", fullscreen: false }), false);
+});
+
+test("graph navigation restores locate-origin focus and inspect-origin Show depth", () => {
+  let nav = initialGraphNavigation("CS 5010");
+  const home = nav.entries[0]!;
+  const programHome = { ...home, depth: "program" as const };
+  const inspected = { selectedCode: "CS 5500", focusCode: "CS 5010", depth: "program" as const };
+  nav = recordGraphNavigation(nav, programHome, inspected);
+  assert.deepEqual(nav.entries[0], programHome);
+  assert.deepEqual(nav.entries[nav.index], inspected);
+
+  const backFromInspect = restoreGraphNavigation(nav, inspected, nav.index - 1);
+  assert.ok(backFromInspect);
+  assert.deepEqual(backFromInspect.entry, programHome);
+  nav = backFromInspect.navigation;
+
+  const forwardInspect = restoreGraphNavigation(nav, programHome, nav.index + 1);
+  assert.ok(forwardInspect);
+  assert.deepEqual(forwardInspect.entry, inspected);
+  nav = forwardInspect.navigation;
+
+  const located = { selectedCode: "CS 6200", focusCode: "CS 6200", depth: "course" as const };
+  nav = recordGraphNavigation(nav, inspected, located);
+  const backFromLocate = restoreGraphNavigation(nav, located, nav.index - 1);
+  assert.ok(backFromLocate);
+  assert.deepEqual(backFromLocate.entry, inspected);
+  assert.equal(backFromLocate.entry.selectedCode, "CS 5500");
+  assert.equal(backFromLocate.entry.focusCode, "CS 5010");
+  assert.equal(backFromLocate.entry.depth, "program");
+
+  nav = backFromLocate.navigation;
+  const forwardLocate = restoreGraphNavigation(nav, inspected, nav.index + 1);
+  assert.ok(forwardLocate);
+  assert.deepEqual(forwardLocate.entry, located);
+});
+
+test("graph navigation records Focus map here when selectedCode is unchanged", () => {
+  let nav = initialGraphNavigation("CS 5010");
+  const inspected = { selectedCode: "CS 5500", focusCode: "CS 5010", depth: "course" as const };
+  nav = recordGraphNavigation(nav, nav.entries[0]!, inspected);
+  const focused = { selectedCode: "CS 5500", focusCode: "CS 5500", depth: "course" as const };
+  nav = recordGraphNavigation(nav, inspected, focused);
+  assert.equal(nav.index, 2);
+  assert.equal(recordGraphNavigation(nav, focused, focused), nav);
+  const back = restoreGraphNavigation(nav, focused, 1);
+  assert.deepEqual(back?.entry, inspected);
 });

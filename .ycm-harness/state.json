@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-14T06:37:53.998Z",
+  "updated_at": "2026-09-15T22:26:32.167Z",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
       "id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
@@ -17,6 +17,21 @@
       "stop_enforcement": false,
       "created_at": "2026-09-12T06:05:27.486Z",
       "updated_at": "2026-09-13T08:07:06.584Z"
+    },
+    "goal_graph-line-focus-details-and-plan-from-line_705e": {
+      "id": "goal_graph-line-focus-details-and-plan-from-line_705e",
+      "title": "Graph line-focus, details, and plan-from-line",
+      "description": "Users can leave a selected graph line and return to the current map, see the clicked course in the inspector, and add that line's catalog courses to a semester.",
+      "status": "done",
+      "assurance": "standard",
+      "backend": {
+        "kind": "local"
+      },
+      "active_ticket_id": "ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75",
+      "worktree_status": "pending",
+      "stop_enforcement": false,
+      "created_at": "2026-09-15T21:52:48.208Z",
+      "updated_at": "2026-09-15T22:26:32.165Z"
     }
   },
   "local_tickets": {
@@ -126,6 +141,23 @@
       "order": 5,
       "created_at": "2026-09-13T07:14:41.168Z",
       "updated_at": "2026-09-13T08:01:50.959Z"
+    },
+    "ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75": {
+      "id": "ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75",
+      "goal_id": "goal_graph-line-focus-details-and-plan-from-line_705e",
+      "title": "Exit line-focus, show course details, add line to plan",
+      "brief": "After selecting a colored graph line, users can return to the current map, see the clicked course in the inspector, and add that line's catalog courses to a chosen semester without changing map scope.",
+      "acceptance": [
+        "With a relationship selected, a visible Exit line focus control, Escape from the graph layout (including the inspector), and a click on empty map all clear the selection and restore the previous map scope and zoom; they do not switch depth to This course's full chain.",
+        "Clicking a course card updates the inspector heading, title, credits, and description for that course even while a line is selected; it does not require Full course details. Dimmed cards remain clickable.",
+        "With a line selected, Add this line to a semester lists the line's program courses, skips externals and already-recorded codes, and addCourse-equivalent inserts the rest into the chosen term without exceeding 32 courses; npm test and npm run typecheck pass."
+      ],
+      "blocked_by": [],
+      "status": "done",
+      "code_changed": true,
+      "order": 0,
+      "created_at": "2026-09-15T21:53:33.503Z",
+      "updated_at": "2026-09-15T22:26:16.508Z"
     }
   },
   "checkpoints": {
@@ -626,6 +658,78 @@
         "submitted_at": "2026-09-13T08:01:50.958Z"
       },
       "recorded_at": "2026-09-13T08:01:50.959Z"
+    },
+    "submission-ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75-2eea33": {
+      "id": "submission-ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75-2eea33",
+      "goal_id": "goal_graph-line-focus-details-and-plan-from-line_705e",
+      "ticket_id": "ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75",
+      "kind": "other",
+      "submission_digest": "2c6519192738d8a68172fc97c66e9a0586980d368c6bb81cee51b06a1036dc7a",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-15T22:12:43.589Z"
+      },
+      "recorded_at": "2026-09-15T22:12:43.589Z"
+    },
+    "submission-ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75-bc2975": {
+      "id": "submission-ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75-bc2975",
+      "goal_id": "goal_graph-line-focus-details-and-plan-from-line_705e",
+      "ticket_id": "ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75",
+      "kind": "other",
+      "submission_digest": "b7d1663a1f91916948843737ef0ec9948def1e26cce6ea07e618c2ae6e6ed99a",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-15T22:14:02.005Z"
+      },
+      "recorded_at": "2026-09-15T22:14:02.005Z"
+    },
+    "evidence-ff71d93c": {
+      "id": "evidence-ff71d93c",
+      "goal_id": "goal_graph-line-focus-details-and-plan-from-line_705e",
+      "ticket_id": "ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75",
+      "kind": "verification",
+      "submission_digest": "b7d1663a1f91916948843737ef0ec9948def1e26cce6ea07e618c2ae6e6ed99a",
+      "evidence_digest": "8c93be82d65a99393dcd24cc1ad5d9d74246929321e9e36096726970267d72eb",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-ff71d93c.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "impl-e88c60f",
+        "verifier_run": "ver-c55b85c",
+        "knowledge": "none",
+        "submitted_at": "2026-09-15T22:14:06.895Z"
+      },
+      "recorded_at": "2026-09-15T22:14:06.896Z"
+    },
+    "submission-ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75-bd2478": {
+      "id": "submission-ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75-bd2478",
+      "goal_id": "goal_graph-line-focus-details-and-plan-from-line_705e",
+      "ticket_id": "ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75",
+      "kind": "other",
+      "submission_digest": "a54f1dfb9a6bd662fcd02e68f32d421e13a4d7f98a9cb5a439ba594d79bd7970",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-15T22:25:56.449Z"
+      },
+      "recorded_at": "2026-09-15T22:25:56.449Z"
+    },
+    "evidence-c13a8e1b": {
+      "id": "evidence-c13a8e1b",
+      "goal_id": "goal_graph-line-focus-details-and-plan-from-line_705e",
+      "ticket_id": "ticket-exit-line-focus-show-course-details-add-line-to-plan-72333a75",
+      "kind": "verification",
+      "submission_digest": "a54f1dfb9a6bd662fcd02e68f32d421e13a4d7f98a9cb5a439ba594d79bd7970",
+      "evidence_digest": "87e4e8a1f23eaee65f17ea86a863886c888cbac09927a7b6f36d930c3e916f0a",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-c13a8e1b.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "impl-arch-54f9fba",
+        "verifier_run": "ver-arch-ac17f32",
+        "knowledge": "none",
+        "submitted_at": "2026-09-15T22:26:15.887Z"
+      },
+      "recorded_at": "2026-09-15T22:26:15.888Z"
     }
   },
   "wiki": {
@@ -676,6 +780,17 @@
         "body_path": "pages/work-lite-2026-09-13-colored-course-lines.md",
         "created_at": "2026-09-14T06:37:53.997Z",
         "updated_at": "2026-09-14T06:37:53.997Z"
+      },
+      "work-2026-09-15-line-focus-plan": {
+        "id": "work-2026-09-15-line-focus-plan",
+        "title": "Graph line-focus, inspector details, and plan-from-line",
+        "source_ids": [],
+        "tags": [
+          "decision"
+        ],
+        "body_path": "pages/work-2026-09-15-line-focus-plan.md",
+        "created_at": "2026-09-15T22:24:40.214Z",
+        "updated_at": "2026-09-15T22:24:40.214Z"
       }
     },
     "log": [
@@ -706,6 +821,13 @@
         "ref": "work-lite-2026-09-13-colored-course-lines",
         "note": "durable decision",
         "at": "2026-09-14T06:37:53.998Z"
+      },
+      {
+        "id": "wlg_fff9930b",
+        "kind": "page.upserted",
+        "ref": "work-2026-09-15-line-focus-plan",
+        "note": "durable decision",
+        "at": "2026-09-15T22:24:40.215Z"
       }
     ]
   },
