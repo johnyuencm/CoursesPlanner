@@ -5,6 +5,28 @@ export interface PageSource {
   required: boolean;
 }
 
+export type UniversityRegion = "us" | "world";
+export type UniversitySupport = "unverified" | "supported" | "unsupported";
+
+export interface UniversityCrawlConfig {
+  adapter: string;
+  discoverySource: PageSource;
+  requestDelayMs: number;
+  robotsUrl?: string;
+  allowedOrigins: string[];
+}
+
+export interface UniversityDirectoryEntry {
+  id: string;
+  university: string;
+  region: UniversityRegion;
+  priority: number;
+  catalogUrl: string;
+  support: UniversitySupport;
+  enabled: boolean;
+  crawl?: UniversityCrawlConfig;
+}
+
 export interface CatalogSourceDefinition {
   id: string;
   university: string;

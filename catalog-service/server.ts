@@ -4,10 +4,10 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { validateCatalog } from "../lib/catalog";
 import type { Catalog } from "../lib/types";
-import { defaultCatalogId, enabledSources, findSource, loadRegistry } from "./registry";
+import { defaultCatalogId, enabledSources, findSource, loadRegistry, loadUniversityDirectory } from "./registry";
 import { refreshSource, storagePaths } from "./refresh";
 import { startScheduler, type SourceStatus } from "./scheduler";
-import type { CatalogSourceDefinition } from "./source-types";
+import type { CatalogSourceDefinition, UniversityDirectoryEntry } from "./source-types";
 
 const HOST = process.env.CATALOG_SERVICE_HOST ?? "127.0.0.1";
 const PORT = Number(process.env.CATALOG_SERVICE_PORT ?? 8787);
@@ -50,6 +50,7 @@ export async function handleCatalogRequest(
   body: Buffer,
   context: {
     sources: CatalogSourceDefinition[];
+    universities: UniversityDirectoryEntry[];
     rootDir: string;
     refresh: (
       definition: CatalogSourceDefinition,
@@ -64,6 +65,19 @@ export async function handleCatalogRequest(
       service: "catalog-service",
       defaultCatalog: defaultCatalogId(),
       adapters: [...new Set(context.sources.map((source) => source.adapter))],
+    });
+  }
+  if (method === "GET" && url.pathname === "/universities") {
+    return json({
+      universities: context.universities.map((entry) => ({
+        id: entry.id,
+        university: entry.university,
+        region: entry.region,
+        priority: entry.priority,
+        catalogUrl: entry.catalogUrl,
+        support: entry.support,
+        enabled: entry.enabled,
+      })),
     });
   }
   if (method === "GET" && url.pathname === "/catalogs") {
@@ -113,7 +127,7 @@ export async function handleCatalogRequest(
 async function main() {
   assertLoopbackHost(HOST);
   const rootDir = process.cwd();
-  const sources = await loadRegistry();
+  const [sources, universities] = await Promise.all([loadRegistry(), loadUniversityDirectory()]);
   const latestStatus: Record<string, SourceStatus> = {};
   const refresh = (definition: CatalogSourceDefinition, force = false) =>
     refreshSource(definition, { rootDir, force, checkOnly: !force });
@@ -138,6 +152,7 @@ async function main() {
         const body = await readBody(request);
         const result = await handleCatalogRequest(request.method ?? "GET", url, body, {
           sources,
+          universities,
           rootDir,
           refresh,
           statuses: () => latestStatus,

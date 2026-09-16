@@ -1,0 +1,374 @@
+[
+  {
+    "id": "mit",
+    "university": "MIT",
+    "region": "us",
+    "priority": 1,
+    "catalogUrl": "https://catalog.mit.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "stanford",
+    "university": "Stanford",
+    "region": "us",
+    "priority": 2,
+    "catalogUrl": "https://bulletin.stanford.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "carnegie-mellon",
+    "university": "Carnegie Mellon",
+    "region": "us",
+    "priority": 3,
+    "catalogUrl": "https://coursecatalog.web.cmu.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "uc-berkeley",
+    "university": "UC Berkeley",
+    "region": "us",
+    "priority": 4,
+    "catalogUrl": "https://registrar.berkeley.edu/catalog/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "uiuc",
+    "university": "UIUC",
+    "region": "us",
+    "priority": 5,
+    "catalogUrl": "https://catalog.illinois.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "georgia-tech",
+    "university": "Georgia Tech",
+    "region": "us",
+    "priority": 6,
+    "catalogUrl": "https://catalog.gatech.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "washington",
+    "university": "University of Washington",
+    "region": "us",
+    "priority": 7,
+    "catalogUrl": "https://www.washington.edu/students/gencat/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "cornell",
+    "university": "Cornell",
+    "region": "us",
+    "priority": 8,
+    "catalogUrl": "https://courses.cornell.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "princeton",
+    "university": "Princeton",
+    "region": "us",
+    "priority": 9,
+    "catalogUrl": "https://ua.princeton.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "ut-austin",
+    "university": "UT Austin",
+    "region": "us",
+    "priority": 10,
+    "catalogUrl": "https://catalog.utexas.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "uc-san-diego",
+    "university": "UC San Diego",
+    "region": "us",
+    "priority": 11,
+    "catalogUrl": "https://catalog.ucsd.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "michigan",
+    "university": "University of Michigan",
+    "region": "us",
+    "priority": 12,
+    "catalogUrl": "https://atlas.ai.umich.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "ucla",
+    "university": "UCLA",
+    "region": "us",
+    "priority": 13,
+    "catalogUrl": "https://catalog.registrar.ucla.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "columbia",
+    "university": "Columbia",
+    "region": "us",
+    "priority": 14,
+    "catalogUrl": "https://bulletin.columbia.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "harvard",
+    "university": "Harvard",
+    "region": "us",
+    "priority": 15,
+    "catalogUrl": "https://courses.my.harvard.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "caltech",
+    "university": "Caltech",
+    "region": "us",
+    "priority": 16,
+    "catalogUrl": "https://catalog.caltech.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "penn",
+    "university": "University of Pennsylvania",
+    "region": "us",
+    "priority": 17,
+    "catalogUrl": "https://catalog.upenn.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "yale",
+    "university": "Yale",
+    "region": "us",
+    "priority": 18,
+    "catalogUrl": "https://catalog.yale.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "purdue",
+    "university": "Purdue",
+    "region": "us",
+    "priority": 19,
+    "catalogUrl": "https://catalog.purdue.edu/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "northeastern",
+    "university": "Northeastern",
+    "region": "us",
+    "priority": 20,
+    "catalogUrl": "https://catalog.northeastern.edu/",
+    "support": "supported",
+    "enabled": true,
+    "crawl": {
+      "adapter": "northeastern-acalog",
+      "discoverySource": {
+        "key": "programs",
+        "url": "https://catalog.northeastern.edu/programs/",
+        "fileName": "programs.html",
+        "required": true
+      },
+      "requestDelayMs": 750,
+      "robotsUrl": "https://catalog.northeastern.edu/robots.txt",
+      "allowedOrigins": ["https://catalog.northeastern.edu"]
+    }
+  },
+  {
+    "id": "oxford",
+    "university": "Oxford",
+    "region": "world",
+    "priority": 1,
+    "catalogUrl": "https://www.ox.ac.uk/courses",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "cambridge",
+    "university": "Cambridge",
+    "region": "world",
+    "priority": 2,
+    "catalogUrl": "https://www.undergraduate.study.cam.ac.uk/courses",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "eth-zurich",
+    "university": "ETH Zurich",
+    "region": "world",
+    "priority": 3,
+    "catalogUrl": "https://ethz.ch/en/studies/bachelor/bachelors-degree-programmes.html",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "imperial",
+    "university": "Imperial College London",
+    "region": "world",
+    "priority": 4,
+    "catalogUrl": "https://www.imperial.ac.uk/study/courses/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "toronto",
+    "university": "University of Toronto",
+    "region": "world",
+    "priority": 5,
+    "catalogUrl": "https://future.utoronto.ca/programs/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "nus",
+    "university": "National University of Singapore",
+    "region": "world",
+    "priority": 6,
+    "catalogUrl": "https://www.nus.edu.sg/oam/programmes",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "tsinghua",
+    "university": "Tsinghua",
+    "region": "world",
+    "priority": 7,
+    "catalogUrl": "https://www.tsinghua.edu.cn/en/Admissions/Undergraduate/Overview.htm",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "epfl",
+    "university": "EPFL",
+    "region": "world",
+    "priority": 8,
+    "catalogUrl": "https://www.epfl.ch/education/bachelor/programs/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "waterloo",
+    "university": "University of Waterloo",
+    "region": "world",
+    "priority": 9,
+    "catalogUrl": "https://uwaterloo.ca/future-students/programs",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "ucl",
+    "university": "UCL",
+    "region": "world",
+    "priority": 10,
+    "catalogUrl": "https://www.ucl.ac.uk/prospective-students/undergraduate/degrees",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "edinburgh",
+    "university": "University of Edinburgh",
+    "region": "world",
+    "priority": 11,
+    "catalogUrl": "https://study.ed.ac.uk/programmes",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "ntu",
+    "university": "Nanyang Technological University",
+    "region": "world",
+    "priority": 12,
+    "catalogUrl": "https://www.ntu.edu.sg/education/degree-programmes",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "peking",
+    "university": "Peking University",
+    "region": "world",
+    "priority": 13,
+    "catalogUrl": "https://english.pku.edu.cn/about.html#ab6",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "ubc",
+    "university": "University of British Columbia",
+    "region": "world",
+    "priority": 14,
+    "catalogUrl": "https://you.ubc.ca/programs/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "tokyo",
+    "university": "University of Tokyo",
+    "region": "world",
+    "priority": 15,
+    "catalogUrl": "https://www.u-tokyo.ac.jp/en/academics/faculties.html",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "kaist",
+    "university": "KAIST",
+    "region": "world",
+    "priority": 16,
+    "catalogUrl": "https://www.kaist.ac.kr/en/html/edu/03100101.html",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "seoul-national",
+    "university": "Seoul National University",
+    "region": "world",
+    "priority": 17,
+    "catalogUrl": "https://en.snu.ac.kr/academics/programs/undergraduate",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "tum",
+    "university": "Technical University of Munich",
+    "region": "world",
+    "priority": 18,
+    "catalogUrl": "https://www.tum.de/en/studies/degree-programs",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "melbourne",
+    "university": "University of Melbourne",
+    "region": "world",
+    "priority": 19,
+    "catalogUrl": "https://study.unimelb.edu.au/find/courses/",
+    "support": "unverified",
+    "enabled": false
+  },
+  {
+    "id": "hkust",
+    "university": "HKUST",
+    "region": "world",
+    "priority": 20,
+    "catalogUrl": "https://hkust.edu.hk/directory/academic-programs",
+    "support": "unverified",
+    "enabled": false
+  }
+]

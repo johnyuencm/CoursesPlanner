@@ -6,7 +6,14 @@ import path from "node:path";
 import test from "node:test";
 
 import { assertAllowedUrl, createTurnWaiter, fetchOfficialHtml } from "../catalog-service/crawler";
-import { defaultCatalogId, loadRegistry, parseSourceDefinition } from "../catalog-service/registry";
+import {
+  defaultCatalogId,
+  enabledUniversities,
+  loadRegistry,
+  loadUniversityDirectory,
+  parseSourceDefinition,
+  parseUniversityDirectory,
+} from "../catalog-service/registry";
 import { refreshSource } from "../catalog-service/refresh";
 import { parseRobots, pathDisallowed } from "../catalog-service/robots";
 import { isDue, runDueSources } from "../catalog-service/scheduler";
@@ -25,6 +32,42 @@ function sourceFor(id: string): CatalogSourceDefinition {
   raw.id = id;
   delete raw.storage;
   return parseSourceDefinition(raw, `${id}.json`);
+}
+
+function universityEntry(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: "mit",
+    university: "MIT",
+    region: "us",
+    priority: 1,
+    catalogUrl: "https://catalog.mit.edu/",
+    support: "unverified",
+    enabled: false,
+    ...overrides,
+  };
+}
+
+function supportedUniversity(): Record<string, unknown> {
+  return universityEntry({
+    id: "northeastern",
+    university: "Northeastern",
+    priority: 20,
+    catalogUrl: "https://catalog.northeastern.edu/",
+    support: "supported",
+    enabled: true,
+    crawl: {
+      adapter: "northeastern-acalog",
+      discoverySource: {
+        key: "programs",
+        url: "https://catalog.northeastern.edu/programs/",
+        fileName: "programs.html",
+        required: true,
+      },
+      requestDelayMs: 750,
+      robotsUrl: "https://catalog.northeastern.edu/robots.txt",
+      allowedOrigins: ["https://catalog.northeastern.edu"],
+    },
+  });
 }
 
 function htmlResponse(html: string, etag: string) {
@@ -58,6 +101,166 @@ test("registry loads the enabled Northeastern source and ignores example templat
   assert.equal(sources[0].adapter, "northeastern-acalog");
   assert.equal(sources[0].enabled, true);
   assert.equal(defaultCatalogId(), "neu-mscs-seattle");
+});
+
+test("university directory loads the approved 20 US and 20 world entries", async () => {
+  const raw = JSON.parse(
+    readFileSync(path.join(process.cwd(), "catalog-service", "universities.json"), "utf8"),
+  ) as Array<{ id: string; university: string; catalogUrl: string }>;
+  const universities = await loadUniversityDirectory();
+  const expected = [
+    ["mit", "MIT", "https://catalog.mit.edu/"],
+    ["stanford", "Stanford", "https://bulletin.stanford.edu/"],
+    ["carnegie-mellon", "Carnegie Mellon", "https://coursecatalog.web.cmu.edu/"],
+    ["uc-berkeley", "UC Berkeley", "https://registrar.berkeley.edu/catalog/"],
+    ["uiuc", "UIUC", "https://catalog.illinois.edu/"],
+    ["georgia-tech", "Georgia Tech", "https://catalog.gatech.edu/"],
+    ["washington", "University of Washington", "https://www.washington.edu/students/gencat/"],
+    ["cornell", "Cornell", "https://courses.cornell.edu/"],
+    ["princeton", "Princeton", "https://ua.princeton.edu/"],
+    ["ut-austin", "UT Austin", "https://catalog.utexas.edu/"],
+    ["uc-san-diego", "UC San Diego", "https://catalog.ucsd.edu/"],
+    ["michigan", "University of Michigan", "https://atlas.ai.umich.edu/"],
+    ["ucla", "UCLA", "https://catalog.registrar.ucla.edu/"],
+    ["columbia", "Columbia", "https://bulletin.columbia.edu/"],
+    ["harvard", "Harvard", "https://courses.my.harvard.edu/"],
+    ["caltech", "Caltech", "https://catalog.caltech.edu/"],
+    ["penn", "University of Pennsylvania", "https://catalog.upenn.edu/"],
+    ["yale", "Yale", "https://catalog.yale.edu/"],
+    ["purdue", "Purdue", "https://catalog.purdue.edu/"],
+    ["northeastern", "Northeastern", "https://catalog.northeastern.edu/"],
+    ["oxford", "Oxford", "https://www.ox.ac.uk/courses"],
+    ["cambridge", "Cambridge", "https://www.undergraduate.study.cam.ac.uk/courses"],
+    ["eth-zurich", "ETH Zurich", "https://ethz.ch/en/studies/bachelor/bachelors-degree-programmes.html"],
+    ["imperial", "Imperial College London", "https://www.imperial.ac.uk/study/courses/"],
+    ["toronto", "University of Toronto", "https://future.utoronto.ca/programs/"],
+    ["nus", "National University of Singapore", "https://www.nus.edu.sg/oam/programmes"],
+    ["tsinghua", "Tsinghua", "https://www.tsinghua.edu.cn/en/Admissions/Undergraduate/Overview.htm"],
+    ["epfl", "EPFL", "https://www.epfl.ch/education/bachelor/programs/"],
+    ["waterloo", "University of Waterloo", "https://uwaterloo.ca/future-students/programs"],
+    ["ucl", "UCL", "https://www.ucl.ac.uk/prospective-students/undergraduate/degrees"],
+    ["edinburgh", "University of Edinburgh", "https://study.ed.ac.uk/programmes"],
+    ["ntu", "Nanyang Technological University", "https://www.ntu.edu.sg/education/degree-programmes"],
+    ["peking", "Peking University", "https://english.pku.edu.cn/about.html#ab6"],
+    ["ubc", "University of British Columbia", "https://you.ubc.ca/programs/"],
+    ["tokyo", "University of Tokyo", "https://www.u-tokyo.ac.jp/en/academics/faculties.html"],
+    ["kaist", "KAIST", "https://www.kaist.ac.kr/en/html/edu/03100101.html"],
+    ["seoul-national", "Seoul National University", "https://en.snu.ac.kr/academics/programs/undergraduate"],
+    ["tum", "Technical University of Munich", "https://www.tum.de/en/studies/degree-programs"],
+    ["melbourne", "University of Melbourne", "https://study.unimelb.edu.au/find/courses/"],
+    ["hkust", "HKUST", "https://hkust.edu.hk/directory/academic-programs"],
+  ];
+
+  assert.deepEqual(
+    raw.map(({ id, university, catalogUrl }) => [id, university, catalogUrl]),
+    expected,
+  );
+  assert.equal(universities.length, 40);
+  assert.deepEqual(
+    universities.map(({ id, university, catalogUrl }) => [id, university, catalogUrl]),
+    expected,
+  );
+  assert.deepEqual(universities.slice(0, 20).map(({ region, priority }) => [region, priority]), [
+    ...Array.from({ length: 20 }, (_, index) => ["us", index + 1]),
+  ]);
+  assert.deepEqual(universities.slice(20).map(({ region, priority }) => [region, priority]), [
+    ...Array.from({ length: 20 }, (_, index) => ["world", index + 1]),
+  ]);
+  assert.deepEqual(
+    enabledUniversities(universities).map((entry) => entry.id),
+    ["northeastern"],
+  );
+  assert.equal(universities.filter((entry) => entry.support === "unverified").length, 39);
+});
+
+test("university directory sorts US before world and skips metadata-only entries", () => {
+  const universities = parseUniversityDirectory(
+    [
+      universityEntry({
+        id: "oxford",
+        university: "Oxford",
+        region: "world",
+        catalogUrl: "https://www.ox.ac.uk/courses",
+      }),
+      universityEntry({
+        id: "stanford",
+        university: "Stanford",
+        priority: 2,
+        catalogUrl: "https://bulletin.stanford.edu/",
+      }),
+      universityEntry(),
+    ],
+    "test universities",
+  );
+
+  assert.deepEqual(
+    universities.map((entry) => entry.id),
+    ["mit", "stanford", "oxford"],
+  );
+  assert.deepEqual(enabledUniversities(universities), []);
+});
+
+test("enabled universities require supported adapter and discovery crawl config", () => {
+  const supported = supportedUniversity();
+
+  const [parsed] = parseUniversityDirectory([supported], "test universities");
+  assert.equal(parsed.crawl?.adapter, "northeastern-acalog");
+  assert.throws(
+    () => parseUniversityDirectory([{ ...supported, support: "unverified" }], "test universities"),
+    /enabled only when support is supported/,
+  );
+  const { crawl: _crawl, ...withoutCrawl } = supported;
+  assert.throws(
+    () => parseUniversityDirectory([withoutCrawl], "test universities"),
+    /enabled requires crawl config/,
+  );
+});
+
+test("university directory rejects duplicate IDs", () => {
+  const university = universityEntry();
+
+  assert.throws(
+    () => parseUniversityDirectory([university, { ...university, region: "world" }], "test universities"),
+    /Duplicate university id: mit/,
+  );
+});
+
+test("university directory rejects duplicate priorities within a region", () => {
+  const university = universityEntry();
+
+  assert.throws(
+    () => parseUniversityDirectory([university, { ...university, id: "stanford" }], "test universities"),
+    /Duplicate university priority: us 1/,
+  );
+});
+
+test("university directory validates metadata fields", async (t) => {
+  const university = universityEntry();
+
+  await t.test("ID", () => {
+    assert.throws(
+      () => parseUniversityDirectory([{ ...university, id: "MIT!" }], "test universities"),
+      /invalid id/,
+    );
+  });
+  await t.test("HTTPS catalog URL", () => {
+    assert.throws(
+      () => parseUniversityDirectory([{ ...university, catalogUrl: "http://catalog.mit.edu/" }], "test universities"),
+      /catalogUrl must be HTTPS/,
+    );
+  });
+  await t.test("support status", () => {
+    assert.throws(
+      () => parseUniversityDirectory([{ ...university, support: "maybe" }], "test universities"),
+      /support must be unverified, supported, or unsupported/,
+    );
+  });
+  await t.test("regional priority range", () => {
+    assert.throws(
+      () => parseUniversityDirectory([{ ...university, priority: 21 }], "test universities"),
+      /priority must be an integer from 1 through 20/,
+    );
+  });
 });
 
 test("crawler refuses robots-disallowed catalog search paths", async () => {
@@ -215,40 +418,56 @@ test("two registered sources refresh independently from the same fixtures", { ti
   }
 });
 
-test("catalog service HTTP handlers list sources and reject unsafe refresh bodies", async () => {
+test("catalog service HTTP handlers list sources and universities without changing refresh behavior", async () => {
   const sources = await loadRegistry();
+  const universities = await loadUniversityDirectory();
   const catalog = readCatalog();
-  const health = await handleCatalogRequest("GET", new URL("http://127.0.0.1/health"), Buffer.alloc(0), {
+  const context = {
     sources,
+    universities,
     rootDir: process.cwd(),
     refresh: async () => ({ catalog, changed: false }),
     statuses: () => ({}),
-  });
+  };
+  const health = await handleCatalogRequest("GET", new URL("http://127.0.0.1/health"), Buffer.alloc(0), context);
   assert.equal(health.status, 200);
   assert.match(health.body, /"ok":true/);
 
-  const listed = await handleCatalogRequest("GET", new URL("http://127.0.0.1/catalogs"), Buffer.alloc(0), {
-    sources,
-    rootDir: process.cwd(),
-    refresh: async () => ({ catalog, changed: false }),
-    statuses: () => ({}),
-  });
+  const listed = await handleCatalogRequest("GET", new URL("http://127.0.0.1/catalogs"), Buffer.alloc(0), context);
   assert.equal(listed.status, 200);
   assert.match(listed.body, /neu-mscs-seattle/);
 
-  const missing = await handleCatalogRequest("POST", new URL("http://127.0.0.1/catalogs/missing-source/refresh"), Buffer.alloc(0), {
-    sources,
-    rootDir: process.cwd(),
-    refresh: async () => ({ catalog, changed: false }),
-    statuses: () => ({}),
+  const directory = await handleCatalogRequest("GET", new URL("http://127.0.0.1/universities"), Buffer.alloc(0), context);
+  assert.equal(directory.status, 200);
+  const payload = JSON.parse(directory.body) as { universities: Array<Record<string, unknown>> };
+  assert.equal(payload.universities.length, 40);
+  assert.deepEqual(payload.universities[0], {
+    id: "mit",
+    university: "MIT",
+    region: "us",
+    priority: 1,
+    catalogUrl: "https://catalog.mit.edu/",
+    support: "unverified",
+    enabled: false,
   });
+  assert.equal(payload.universities[19].id, "northeastern");
+  assert.equal(payload.universities[19].support, "supported");
+  assert.equal(payload.universities[20].id, "oxford");
+  assert.equal("crawl" in payload.universities[19], false);
+
+  const missing = await handleCatalogRequest(
+    "POST",
+    new URL("http://127.0.0.1/catalogs/missing-source/refresh"),
+    Buffer.alloc(0),
+    context,
+  );
   assert.equal(missing.status, 404);
 
-  const withBody = await handleCatalogRequest("POST", new URL("http://127.0.0.1/catalogs/neu-mscs-seattle/refresh"), Buffer.from("{}"), {
-    sources,
-    rootDir: process.cwd(),
-    refresh: async () => ({ catalog, changed: false }),
-    statuses: () => ({}),
-  });
+  const withBody = await handleCatalogRequest(
+    "POST",
+    new URL("http://127.0.0.1/catalogs/neu-mscs-seattle/refresh"),
+    Buffer.from("{}"),
+    context,
+  );
   assert.equal(withBody.status, 400);
 });
