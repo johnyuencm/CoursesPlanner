@@ -1,8 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-16T02:21:23.198Z",
-  "active_goal_id": "goal_double-click-course-connections-escape-back_d248",
+  "updated_at": "2026-09-16T02:22:40.552Z",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
       "id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
@@ -38,7 +37,7 @@
       "id": "goal_double-click-course-connections-escape-back_d248",
       "title": "Double-click course connections, Escape back",
       "description": "Double-clicking a course card enters that course's connections view. Escape restores the previous map view, including Entire program.",
-      "status": "verifying",
+      "status": "done",
       "assurance": "standard",
       "backend": {
         "kind": "local"
@@ -47,7 +46,7 @@
       "worktree_status": "pending",
       "stop_enforcement": false,
       "created_at": "2026-09-16T01:51:23.122Z",
-      "updated_at": "2026-09-16T02:21:23.197Z"
+      "updated_at": "2026-09-16T02:22:40.552Z"
     }
   },
   "local_tickets": {
@@ -191,7 +190,7 @@
       "code_changed": true,
       "order": 0,
       "created_at": "2026-09-16T01:51:37.524Z",
-      "updated_at": "2026-09-16T02:12:55.516Z"
+      "updated_at": "2026-09-16T02:22:40.217Z"
     }
   },
   "checkpoints": {
@@ -830,6 +829,36 @@
         "submitted_at": "2026-09-16T02:12:55.515Z"
       },
       "recorded_at": "2026-09-16T02:12:55.516Z"
+    },
+    "submission-ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1-234f6d": {
+      "id": "submission-ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1-234f6d",
+      "goal_id": "goal_double-click-course-connections-escape-back_d248",
+      "ticket_id": "ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1",
+      "kind": "other",
+      "submission_digest": "ccae28f84d4ee1848eb2c2d19c04685518156bccff924408a389e2d95b695329",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-16T02:22:36.666Z"
+      },
+      "recorded_at": "2026-09-16T02:22:36.666Z"
+    },
+    "evidence-4e89b4bf": {
+      "id": "evidence-4e89b4bf",
+      "goal_id": "goal_double-click-course-connections-escape-back_d248",
+      "ticket_id": "ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1",
+      "kind": "verification",
+      "submission_digest": "ccae28f84d4ee1848eb2c2d19c04685518156bccff924408a389e2d95b695329",
+      "evidence_digest": "3dc1aea2625664febc4fb8e149ba14e6019e43205f8fa279dd72d921a6c5adb1",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-4e89b4bf.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "impl-dblclick-520fab8",
+        "verifier_run": "ver-dblclick-3344b8d",
+        "knowledge": "none",
+        "submitted_at": "2026-09-16T02:22:39.868Z"
+      },
+      "recorded_at": "2026-09-16T02:22:39.869Z"
     }
   },
   "wiki": {
