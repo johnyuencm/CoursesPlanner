@@ -165,10 +165,11 @@ test("planned CS 6510 in Spring 2027 does not place CS 5500 in the same term", (
   assert.ok(snapshot.path.remainingCodes.includes("CS 5500"));
   assert.equal(snapshot.earliest.reason, "cannot-place-before-target");
   assert.equal(snapshot.earliest.summary, "3 prerequisites remaining · cannot fit before Spring 2027");
-  assert.deepEqual(snapshot.earliest.placements, []);
-  assert.ok(
-    !snapshot.earliest.placements.some((item) => item.code === "CS 5500" && item.termName === "Spring 2027"),
+  assert.equal(
+    snapshot.earliest.placements.filter((item) => item.code === "CS 5500" && item.termName === "Spring 2027").length,
+    0,
   );
+  assert.equal(snapshot.earliest.placements.length, 0);
 });
 
 test("waived prerequisite is labeled waived, not completed", () => {
