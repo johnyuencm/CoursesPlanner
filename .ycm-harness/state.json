@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-16T02:27:44.707Z",
+  "updated_at": "2026-09-16T02:58:48.039Z",
   "active_goal_id": "goal_seat-unlock-targets-beside-their-sources_2aad",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -219,11 +219,11 @@
         "Sole-prerequisite pairs still share a row; CS 5004 and CS 5010 stay left of CS 5500; npm test and npm run typecheck pass."
       ],
       "blocked_by": [],
-      "status": "in_progress",
+      "status": "done",
       "code_changed": true,
       "order": 0,
       "created_at": "2026-09-16T02:27:36.245Z",
-      "updated_at": "2026-09-16T02:27:44.706Z"
+      "updated_at": "2026-09-16T02:40:37.813Z"
     }
   },
   "checkpoints": {
@@ -892,6 +892,36 @@
         "submitted_at": "2026-09-16T02:22:39.868Z"
       },
       "recorded_at": "2026-09-16T02:22:39.869Z"
+    },
+    "submission-ticket-place-unlock-targets-beside-sources-and-center-high-fan-ae8bdb7f-ba7253": {
+      "id": "submission-ticket-place-unlock-targets-beside-sources-and-center-high-fan-ae8bdb7f-ba7253",
+      "goal_id": "goal_seat-unlock-targets-beside-their-sources_2aad",
+      "ticket_id": "ticket-place-unlock-targets-beside-sources-and-center-high-fan--ae8bdb7f",
+      "kind": "other",
+      "submission_digest": "56783cc17380c2aa86abaaf8126fa1c6e63e4621ac3f430f2eb7072ffc782489",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-16T02:39:56.569Z"
+      },
+      "recorded_at": "2026-09-16T02:39:56.569Z"
+    },
+    "evidence-0bc6f5c0": {
+      "id": "evidence-0bc6f5c0",
+      "goal_id": "goal_seat-unlock-targets-beside-their-sources_2aad",
+      "ticket_id": "ticket-place-unlock-targets-beside-sources-and-center-high-fan--ae8bdb7f",
+      "kind": "verification",
+      "submission_digest": "56783cc17380c2aa86abaaf8126fa1c6e63e4621ac3f430f2eb7072ffc782489",
+      "evidence_digest": "0f41b33b49fc93ffc4f02b1d86c4208cf5a0e6f3ef0cb1006d3de9a3a6e80d16",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-0bc6f5c0.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "layout-impl-b1825c1",
+        "verifier_run": "layout-verify-b1825c1",
+        "knowledge": "none",
+        "submitted_at": "2026-09-16T02:40:37.812Z"
+      },
+      "recorded_at": "2026-09-16T02:40:37.813Z"
     }
   },
   "wiki": {
@@ -964,6 +994,17 @@
         "body_path": "pages/work-2026-09-15-dblclick-connections.md",
         "created_at": "2026-09-16T02:21:12.777Z",
         "updated_at": "2026-09-16T02:21:12.777Z"
+      },
+      "work-2026-09-15-seat-unlock-targets": {
+        "id": "work-2026-09-15-seat-unlock-targets",
+        "title": "Seat unlock targets beside their sources",
+        "source_ids": [],
+        "tags": [
+          "decision"
+        ],
+        "body_path": "pages/work-2026-09-15-seat-unlock-targets.md",
+        "created_at": "2026-09-16T02:58:48.038Z",
+        "updated_at": "2026-09-16T02:58:48.038Z"
       }
     },
     "log": [
@@ -1008,6 +1049,13 @@
         "ref": "work-2026-09-15-dblclick-connections",
         "note": "durable decision",
         "at": "2026-09-16T02:21:12.777Z"
+      },
+      {
+        "id": "wlg_502efc8c",
+        "kind": "page.upserted",
+        "ref": "work-2026-09-15-seat-unlock-targets",
+        "note": "durable decision",
+        "at": "2026-09-16T02:58:48.039Z"
       }
     ]
   },
