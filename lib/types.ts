@@ -23,6 +23,8 @@ export interface Course {
   topics: string[];
   officialUrl: string;
   uncertainties: string[];
+  /** Catalog term offerings when a source provides them; omitted means unknown. */
+  termOfferings?: string[];
 }
 
 export interface BreadthCategory {

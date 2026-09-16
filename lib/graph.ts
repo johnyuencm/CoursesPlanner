@@ -1,5 +1,7 @@
 import type { Course, DegreeRequirement } from "./types";
 
+export { prerequisitePathToTarget, type TargetPath, type TargetPathNode } from "./target-path";
+
 export type ClassifiableCourse = Pick<Course, "code" | "requirementType" | "prerequisites">;
 
 export type GraphRelation = { source: string; target: string; corequisite: boolean };

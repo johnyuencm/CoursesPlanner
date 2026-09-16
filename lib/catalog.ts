@@ -118,7 +118,8 @@ export function validateCatalog(value: unknown): asserts value is Catalog {
       !isStringArray(rawCourse.uncertainties) ||
       typeof rawCourse.electiveEligible !== "boolean" ||
       !["core", "breadth", "elective", "external"].includes(String(rawCourse.requirementType)) ||
-      !isOfficialUrl(rawCourse.officialUrl, officialHosts)
+      !isOfficialUrl(rawCourse.officialUrl, officialHosts) ||
+      (rawCourse.termOfferings !== undefined && !isStringArray(rawCourse.termOfferings))
     ) {
       throw new Error(`Invalid course record: ${code}`);
     }
