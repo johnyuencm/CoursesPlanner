@@ -16,6 +16,7 @@ import {
   GRAPH_SELECTED_EDGE_Z,
   shouldClearLineFocusOnEscape,
   layoutProgramFlow,
+  initialGraphNavigation,
   mapFind,
   mapScene,
   PROGRAM_ROW,
@@ -23,8 +24,10 @@ import {
   prerequisiteBusMeta,
   prerequisiteConnector,
   prerequisiteHitPaths,
+  recordGraphNavigation,
   relationshipControlGroups,
   relationshipSelection,
+  restoreGraphNavigation,
   GRAPH_HIT_TARGET_WIDTH,
   selectedGraphScroll,
   stableDestinationColor,
@@ -752,4 +755,50 @@ test("Escape clears line focus from the inspector and empty map, not from find t
   assert.equal(shouldClearLineFocusOnEscape({ key: "Enter", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: false }), false);
   assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(dialog) }, { active: true, findQuery: "", fullscreen: false }), false);
   assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(semesterSelect) }, { active: true, findQuery: "", fullscreen: false }), false);
+});
+
+test("graph navigation restores locate-origin focus and inspect-origin Show depth", () => {
+  let nav = initialGraphNavigation("CS 5010");
+  const home = nav.entries[0]!;
+  const programHome = { ...home, depth: "program" as const };
+  const inspected = { selectedCode: "CS 5500", focusCode: "CS 5010", depth: "program" as const };
+  nav = recordGraphNavigation(nav, programHome, inspected);
+  assert.deepEqual(nav.entries[0], programHome);
+  assert.deepEqual(nav.entries[nav.index], inspected);
+
+  const backFromInspect = restoreGraphNavigation(nav, inspected, nav.index - 1);
+  assert.ok(backFromInspect);
+  assert.deepEqual(backFromInspect.entry, programHome);
+  nav = backFromInspect.navigation;
+
+  const forwardInspect = restoreGraphNavigation(nav, programHome, nav.index + 1);
+  assert.ok(forwardInspect);
+  assert.deepEqual(forwardInspect.entry, inspected);
+  nav = forwardInspect.navigation;
+
+  const located = { selectedCode: "CS 6200", focusCode: "CS 6200", depth: "course" as const };
+  nav = recordGraphNavigation(nav, inspected, located);
+  const backFromLocate = restoreGraphNavigation(nav, located, nav.index - 1);
+  assert.ok(backFromLocate);
+  assert.deepEqual(backFromLocate.entry, inspected);
+  assert.equal(backFromLocate.entry.selectedCode, "CS 5500");
+  assert.equal(backFromLocate.entry.focusCode, "CS 5010");
+  assert.equal(backFromLocate.entry.depth, "program");
+
+  nav = backFromLocate.navigation;
+  const forwardLocate = restoreGraphNavigation(nav, inspected, nav.index + 1);
+  assert.ok(forwardLocate);
+  assert.deepEqual(forwardLocate.entry, located);
+});
+
+test("graph navigation records Focus map here when selectedCode is unchanged", () => {
+  let nav = initialGraphNavigation("CS 5010");
+  const inspected = { selectedCode: "CS 5500", focusCode: "CS 5010", depth: "course" as const };
+  nav = recordGraphNavigation(nav, nav.entries[0]!, inspected);
+  const focused = { selectedCode: "CS 5500", focusCode: "CS 5500", depth: "course" as const };
+  nav = recordGraphNavigation(nav, inspected, focused);
+  assert.equal(nav.index, 2);
+  assert.equal(recordGraphNavigation(nav, focused, focused), nav);
+  const back = restoreGraphNavigation(nav, focused, 1);
+  assert.deepEqual(back?.entry, inspected);
 });

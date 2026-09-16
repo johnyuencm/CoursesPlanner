@@ -12,14 +12,18 @@ import {
   GRAPH_MIN_ZOOM,
   GRAPH_READABLE_ZOOM,
   GRAPH_SELECTED_EDGE_Z,
+  initialGraphNavigation,
   mapFind,
   mapScene,
   PROGRAM_COL,
   programMapCodes,
   prerequisiteBusMeta,
+  recordGraphNavigation,
   relationshipControlGroups,
   relationshipSelection,
+  restoreGraphNavigation,
   shouldClearLineFocusOnEscape,
+  type GraphNavigationEntry,
   type GraphScope,
   type RelationshipSelection,
 } from "@/lib/graph";
@@ -112,7 +116,7 @@ function GraphWorkspace() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenSupported, setFullscreenSupported] = useState(false);
   const [fullscreenMessage, setFullscreenMessage] = useState("");
-  const [navigation, setNavigation] = useState({ codes: ["CS 5010"], index: 0 });
+  const [navigation, setNavigation] = useState(initialGraphNavigation);
   const graphLayoutRef = useRef<HTMLDivElement>(null);
   const fullscreenButtonRef = useRef<HTMLButtonElement>(null);
   const wasFullscreenRef = useRef(false);
@@ -310,10 +314,20 @@ function GraphWorkspace() {
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [selectedRelationship, isFullscreen]);
-  const locate = (code: string, keepFind = false, record = true) => {
-    if (record && code !== selectedCode) {
-      setNavigation((previous) => ({ codes: [...previous.codes.slice(0, previous.index + 1), code], index: previous.index + 1 }));
+  const liveNavigation = (): GraphNavigationEntry => ({ selectedCode, focusCode, depth });
+  const applyNavigation = (entry: GraphNavigationEntry) => {
+    setSelectedCode(entry.selectedCode);
+    setFocusCode(entry.focusCode);
+    setDepth(entry.depth);
+    setSelectedRelationship(null);
+    if (view === "table") {
+      requestAnimationFrame(() => document.getElementById(tableRowId(entry.selectedCode))?.scrollIntoView({ block: "nearest" }));
     }
+    requestAnimationFrame(() => document.getElementById("graph-inspector")?.focus({ preventScroll: true }));
+  };
+  const locate = (code: string, keepFind = false) => {
+    const next: GraphNavigationEntry = { selectedCode: code, focusCode: code, depth: "course" };
+    setNavigation((previous) => recordGraphNavigation(previous, liveNavigation(), next));
     setFocusCode(code);
     setSelectedCode(code);
     setSelectedRelationship(null);
@@ -331,13 +345,18 @@ function GraphWorkspace() {
     }
     requestAnimationFrame(() => findInputRef.current?.focus());
   };
-  const inspectCourse = (code: string, record = true) => {
-    if (record && code !== selectedCode) {
-      setNavigation((previous) => ({ codes: [...previous.codes.slice(0, previous.index + 1), code], index: previous.index + 1 }));
-    }
+  const inspectCourse = (code: string) => {
+    const next: GraphNavigationEntry = { selectedCode: code, focusCode, depth };
+    setNavigation((previous) => recordGraphNavigation(previous, liveNavigation(), next));
     setSelectedCode(code);
     setSelectedRelationship(null);
     requestAnimationFrame(() => document.getElementById("graph-inspector")?.focus({ preventScroll: true }));
+  };
+  const goNavigation = (index: number) => {
+    const restored = restoreGraphNavigation(navigation, liveNavigation(), index);
+    if (!restored) return;
+    setNavigation(restored.navigation);
+    applyNavigation(restored.entry);
   };
   const cycle = (step: number) => {
     if (!matches.length) return;
@@ -464,8 +483,8 @@ function GraphWorkspace() {
             </div> : null}
           </div>
           <div className="graph-history" aria-label="Course navigation">
-            <button type="button" className="button button-secondary button-small" aria-label="Previous course" disabled={navigation.index === 0} onClick={() => { const index = navigation.index - 1; inspectCourse(navigation.codes[index]!, false); setNavigation({ ...navigation, index }); }}><ArrowLeft size={14} /> Back</button>
-            <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.codes.length - 1} onClick={() => { const index = navigation.index + 1; inspectCourse(navigation.codes[index]!, false); setNavigation({ ...navigation, index }); }}><ArrowRight size={14} /></button>
+            <button type="button" className="button button-secondary button-small" aria-label="Previous course" disabled={navigation.index === 0} onClick={() => goNavigation(navigation.index - 1)}><ArrowLeft size={14} /> Back</button>
+            <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.entries.length - 1} onClick={() => goNavigation(navigation.index + 1)}><ArrowRight size={14} /></button>
           </div>
           <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
           <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode}{selectedRelationship ? ` · ${selectedRelationship.kind === "branch" ? `${selectedRelationship.source} unlocks ${selectedRelationship.target}` : `${selectedRelationship.sources.join(", ")} unlock ${selectedRelationship.target}`}` : ""}.</span>

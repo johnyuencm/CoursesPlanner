@@ -818,3 +818,47 @@ export const mapFind = {
 export function compactGraphStatusLabel(fullLabel: string): string {
   return fullLabel === "Prerequisite eligible" ? "Eligible" : fullLabel;
 }
+
+export type GraphNavigationEntry = {
+  selectedCode: string;
+  focusCode: string;
+  depth: GraphScope;
+};
+
+export type GraphNavigation = {
+  entries: GraphNavigationEntry[];
+  index: number;
+};
+
+export function sameGraphNavigationEntry(a: GraphNavigationEntry, b: GraphNavigationEntry): boolean {
+  return a.selectedCode === b.selectedCode && a.focusCode === b.focusCode && a.depth === b.depth;
+}
+
+export function initialGraphNavigation(code = "CS 5010"): GraphNavigation {
+  return { entries: [{ selectedCode: code, focusCode: code, depth: "course" }], index: 0 };
+}
+
+export function recordGraphNavigation(
+  navigation: GraphNavigation,
+  live: GraphNavigationEntry,
+  next: GraphNavigationEntry,
+): GraphNavigation {
+  const current = navigation.entries[navigation.index];
+  if (current && sameGraphNavigationEntry(live, next) && sameGraphNavigationEntry(current, live)) return navigation;
+  const entries = navigation.entries.slice(0, navigation.index + 1);
+  entries[navigation.index] = live;
+  if (sameGraphNavigationEntry(live, next)) return { entries, index: navigation.index };
+  return { entries: [...entries, next], index: navigation.index + 1 };
+}
+
+export function restoreGraphNavigation(
+  navigation: GraphNavigation,
+  live: GraphNavigationEntry,
+  index: number,
+): { navigation: GraphNavigation; entry: GraphNavigationEntry } | undefined {
+  const entry = navigation.entries[index];
+  if (!entry || index === navigation.index) return undefined;
+  const entries = navigation.entries.slice();
+  entries[navigation.index] = live;
+  return { navigation: { entries, index }, entry };
+}
