@@ -176,16 +176,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPlan(emptyPlan());
     setStorageBlocked(false);
     setBlockedRawStorage(null);
+    setPersistence("saved");
     setStorageError(null);
     announce("Your plan has been reset. No courses are marked completed or waived.");
   };
   const exportPlanBackup = useCallback(
     () => createPlanBackupDownload({
-      blocked: persistence === "blocked" || storageBlocked,
+      blocked: storageBlocked,
       plan,
       rawStored: blockedRawStorage,
     }),
-    [blockedRawStorage, persistence, plan, storageBlocked],
+    [blockedRawStorage, plan, storageBlocked],
   );
   const restorePlanBackup = useCallback((candidate: StudentPlan) => {
     try {
