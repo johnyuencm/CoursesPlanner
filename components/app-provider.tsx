@@ -2,7 +2,28 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { Catalog, DegreeProgress, StudentPlan } from "@/lib/types";
-import { addableLineCourses, appendCoursesToSemester, applyRemainingPathToPlan, createPlanBackupDownload, emptyPlan, loadPlan, parsePlan, recordedCourseCodes, restorePlan, STORAGE_KEY, type PlanBackupDownload } from "@/lib/plan";
+import {
+  DEFAULT_WORKSPACE_SELECTION,
+  parseWorkspaceSelection,
+  sameWorkspaceSelection,
+  WORKSPACE_SELECTION_KEY,
+  type WorkspaceSelection,
+} from "@/lib/graph";
+import {
+  addableLineCourses,
+  addableProgramCodes,
+  appendCoursesToSemester,
+  applyRemainingPathToPlan,
+  createPlanBackupDownload,
+  emptyPlan,
+  loadPlan,
+  parsePlan,
+  recordedCourseCodes,
+  restorePlan,
+  STORAGE_KEY,
+  suggestedPrerequisiteFix,
+  type PlanBackupDownload,
+} from "@/lib/plan";
 import { targetPathSnapshot } from "@/lib/target-path";
 import { validatePlan } from "@/lib/validation";
 
@@ -39,6 +60,8 @@ interface AppContextValue {
   courseTargetCode: string | null;
   setCourseTargetCode: (code: string | null) => void;
   addTargetChain: () => void;
+  workspaceSelection: WorkspaceSelection;
+  setWorkspaceSelection: (next: WorkspaceSelection) => void;
   notice: string;
   announce: (message: string) => void;
 }
@@ -107,6 +130,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notice, announce] = useState("");
   const [careerTargetId, setCareerTargetIdState] = useState<string | null>(null);
   const [courseTargetCode, setCourseTargetCodeState] = useState<string | null>(null);
+  // Graph/plan selection is independent of course-level My Target (`courseTargetCode`).
+  const [workspaceSelection, setWorkspaceSelectionState] = useState<WorkspaceSelection>(DEFAULT_WORKSPACE_SELECTION);
 
   const fetchCatalog = useCallback(async (refresh: boolean) => {
     setCatalogBusy(true);
@@ -158,6 +183,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch {
       /* Course target is optional; plan persistence is separate. */
     }
+    try {
+      const saved = window.localStorage.getItem(WORKSPACE_SELECTION_KEY);
+      if (saved) setWorkspaceSelectionState(parseWorkspaceSelection(JSON.parse(saved)));
+    } catch {
+      /* Graph/plan selection is optional; plan persistence is separate. */
+    }
   }, []);
   const setCareerTargetId = useCallback((id: string | null) => {
     setCareerTargetIdState(id);
@@ -173,6 +204,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       if (code) window.localStorage.setItem(COURSE_TARGET_KEY, code);
       else window.localStorage.removeItem(COURSE_TARGET_KEY);
+    } catch {
+      /* Ignore optional preference write failures. */
+    }
+  }, []);
+  const setWorkspaceSelection = useCallback((next: WorkspaceSelection) => {
+    setWorkspaceSelectionState((current) => (sameWorkspaceSelection(current, next) ? current : next));
+    try {
+      window.localStorage.setItem(WORKSPACE_SELECTION_KEY, JSON.stringify(next));
     } catch {
       /* Ignore optional preference write failures. */
     }
@@ -262,7 +301,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       else announce(`${code} is already recorded in your plan or history.`);
       return;
     }
-    announce(`${result.added.join(" and ")} added to your plan. Check the live audit for prerequisites and corequisites.`);
+    announce(additionNotice(result.plan, result.added, result.semesterName));
   };
   const addCourses = (codes: Iterable<string>, semesterId: string) => {
     if (!catalog) {
@@ -284,7 +323,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       else announce("Every course on this line is already in your plan or history, or is an external catalog reference.");
       return;
     }
-    announce(`${result.added.join(", ")} added to ${result.semesterName}. Check the live audit for prerequisites and corequisites.`);
+    announce(additionNotice(result.plan, result.added, result.semesterName));
+  };
+  const additionNotice = (nextPlan: StudentPlan, added: string[], semesterName: string) => {
+    const addedLabel = added.join(added.length === 2 ? " and " : ", ");
+    if (!catalog) return `${addedLabel} added to ${semesterName}. Check the live audit for prerequisites and corequisites.`;
+    const issue = validatePlan(nextPlan, catalog).issues.find(
+      (item) => added.includes(item.courseCode) && (item.kind === "prerequisite" || item.kind === "corequisite"),
+    );
+    if (!issue) return `${addedLabel} added to ${semesterName}.`;
+    const fix = suggestedPrerequisiteFix(issue, nextPlan, addableProgramCodes(catalog.courses));
+    return `${addedLabel} added to ${semesterName}. ${issue.kind === "prerequisite" ? "Prerequisites not met" : "Corequisite not met"}${fix ? ` — ${fix.suggestion}` : ""}. Open Plan to apply a fix.`;
   };
   const addTargetChain = () => {
     if (!catalog) {
@@ -326,7 +375,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     announce(`${added.join(", ")} added along the path to ${courseTargetCode}${createdTerms.length ? `. Created ${createdTerms.join(", ")}` : ""}. Check the live audit for prerequisites and corequisites.`);
   };
 
-  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId, courseTargetCode, setCourseTargetCode, addTargetChain, notice, announce }}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId, courseTargetCode, setCourseTargetCode, addTargetChain, workspaceSelection, setWorkspaceSelection, notice, announce }}>{children}</AppContext.Provider>;
 }
 
 export function useApp() {
