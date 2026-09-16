@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-16T01:57:27.435Z",
+  "updated_at": "2026-09-16T02:10:45.448Z",
   "active_goal_id": "goal_double-click-course-connections-escape-back_d248",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -191,7 +191,7 @@
       "code_changed": true,
       "order": 0,
       "created_at": "2026-09-16T01:51:37.524Z",
-      "updated_at": "2026-09-16T01:57:27.434Z"
+      "updated_at": "2026-09-16T02:10:45.447Z"
     }
   },
   "checkpoints": {
@@ -776,6 +776,18 @@
         "submitted_at": "2026-09-16T01:57:27.435Z"
       },
       "recorded_at": "2026-09-16T01:57:27.435Z"
+    },
+    "submission-ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1-8ee4fe": {
+      "id": "submission-ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1-8ee4fe",
+      "goal_id": "goal_double-click-course-connections-escape-back_d248",
+      "ticket_id": "ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1",
+      "kind": "other",
+      "submission_digest": "93db68ba2a8dcf716c10e06d288776ed37b77a6e3867c7f0049c0a820d623f3f",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-16T02:10:45.448Z"
+      },
+      "recorded_at": "2026-09-16T02:10:45.448Z"
     }
   },
   "wiki": {
