@@ -4,9 +4,17 @@ import path from "node:path";
 import test from "node:test";
 
 import {
+  consumeGraphFitRequest,
   catalogRelations,
+  centeredGraphZoomScroll,
+  clampGraphZoom,
   compactGraphStatusLabel,
   directedCourseChain,
+  graphCourseZIndex,
+  graphFitZoom,
+  graphZoomPercent,
+  GRAPH_SELECTED_EDGE_Z,
+  shouldClearLineFocusOnEscape,
   layoutProgramFlow,
   mapFind,
   mapScene,
@@ -18,6 +26,7 @@ import {
   relationshipControlGroups,
   relationshipSelection,
   GRAPH_HIT_TARGET_WIDTH,
+  selectedGraphScroll,
   stableDestinationColor,
   unlockArrowView,
   visibleGraphDistances,
@@ -609,6 +618,47 @@ test("compact graph cards shorten Prerequisite eligible without clipping other s
   assert.equal(compactGraphStatusLabel("Completed"), "Completed");
 });
 
+test("a pending Fit survives Table to Map and is consumed once across remounts", () => {
+  const acknowledged = { current: 0 };
+  const container = { width: 800, height: 600 };
+  const map = { width: 4000, height: 1000 };
+  assert.equal(consumeGraphFitRequest(1, acknowledged, { width: 0, height: 0 }, map), null);
+  assert.equal(consumeGraphFitRequest(1, acknowledged, container, map), 0.195);
+  assert.equal(consumeGraphFitRequest(1, acknowledged, container, map), null);
+  // The parent retains this acknowledgment while the canvas is unmounted.
+  assert.equal(consumeGraphFitRequest(1, acknowledged, { width: 1200, height: 900 }, map), null);
+  assert.equal(consumeGraphFitRequest(2, acknowledged, { width: 1200, height: 900 }, map), 0.295);
+});
+
+test("fit zoom uses the limiting dimension and can go below manual zoom minimum", () => {
+  assert.equal(graphFitZoom({ width: 800, height: 600 }, { width: 4000, height: 1000 }), 0.195);
+  assert.equal(graphFitZoom({ width: 800, height: 600 }, { width: 1000, height: 5000 }), 0.116);
+  assert.equal(graphFitZoom({ width: 800, height: 600 }, { width: 200, height: 120 }), 1);
+  assert.equal(graphFitZoom({ width: 800, height: 600 }, { width: 50000, height: 50000 }), 0.05);
+});
+
+test("zoom readout reports actual fit scale while manual zoom remains bounded", () => {
+  assert.equal(graphZoomPercent(0.08), 8);
+  assert.equal(graphZoomPercent(Number.NaN), 100);
+  assert.equal(clampGraphZoom(0.08), 0.25);
+  assert.equal(clampGraphZoom(0.08 + 0.25), 0.33);
+});
+
+test("manual graph zoom preserves the viewport center", () => {
+  const next = centeredGraphZoomScroll(
+    { scrollLeft: 300, scrollTop: 120, clientWidth: 400, clientHeight: 300 },
+    1,
+    1.5,
+  );
+  assert.deepEqual(next, { left: 550, top: 255 });
+});
+
+test("selected course reveal uses the current zoomed card geometry", () => {
+  const current = { scrollLeft: 0, scrollTop: 0, clientWidth: 500, clientHeight: 360 };
+  assert.deepEqual(selectedGraphScroll({ x: 50, y: 40 }, 0.5, current), { left: 0, top: 0 });
+  assert.deepEqual(selectedGraphScroll({ x: 1000, y: 700 }, 0.5, current), { left: 322, top: 215 });
+});
+
 test("mapScene seats CS 5011 beside CS 5010 and draws no corequisite arrows", () => {
   const { courses, requirements } = seattleGraph();
   const scene = mapScene({
@@ -680,4 +730,26 @@ test("mapScene highlights only directed prerequisite chains, not corequisite nei
   assert.equal(selected5500.chain.has("CS 5011"), false);
   assert.equal(selected5500.chain.has("CS 5004"), true);
   assert.equal(selected5500.chain.has("CS 5010"), true);
+});
+
+test("dimmed course cards stack above selected edges so line-focus does not steal clicks", () => {
+  assert.ok(graphCourseZIndex({ focused: false, emphasized: false }) > GRAPH_SELECTED_EDGE_Z);
+  assert.ok(graphCourseZIndex({ focused: false, emphasized: true }) > GRAPH_SELECTED_EDGE_Z);
+  assert.ok(graphCourseZIndex({ focused: true, emphasized: true }) > graphCourseZIndex({ focused: false, emphasized: true }));
+});
+
+test("Escape clears line focus from the inspector and empty map, not from find text or fullscreen", () => {
+  const inspector = new FakeElement("h2", {}, new FakeElement("aside", { class: "graph-inspector", id: "graph-inspector" }, new FakeElement("div", { class: "graph-layout" })));
+  const pane = new FakeElement("div", { class: "react-flow__pane" }, new FakeElement("div", { class: "flow-canvas" }, new FakeElement("div", { class: "graph-layout" })));
+  const dialog = new FakeElement("button", {}, new FakeElement("div", { role: "dialog" }));
+  const semesterSelect = new FakeElement("select", { id: "line-focus-semester" }, new FakeElement("div", { class: "graph-layout" }));
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: false }), true);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(pane) }, { active: true, findQuery: "", fullscreen: false }), true);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: null }, { active: true, findQuery: "", fullscreen: false }), true);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(inspector) }, { active: false, findQuery: "", fullscreen: false }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(pane) }, { active: true, findQuery: "cs55", fullscreen: false }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: true }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Enter", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: false }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(dialog) }, { active: true, findQuery: "", fullscreen: false }), false);
+  assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(semesterSelect) }, { active: true, findQuery: "", fullscreen: false }), false);
 });

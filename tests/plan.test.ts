@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { emptyPlan, loadPlan, parsePlan, parsePlanBackup, restorePlan, serializePlanBackup, STORAGE_KEY } from "../lib/plan";
+import { addableLineCourses, appendCoursesToSemester, emptyPlan, loadPlan, parsePlan, parsePlanBackup, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY } from "../lib/plan";
 
 test("emptyPlan starts in Fall 2026 with five fresh terms and one co-op", () => {
   const first = emptyPlan();
@@ -186,4 +186,45 @@ test("restore writes the validated replacement before returning it to the UI", (
   restorePlan(storage, { ...replacement, completedCourses: ["CS 5010"] });
   assert.equal(saved.length, 2);
   assert.deepEqual(JSON.parse(saved[1]).completedCourses, ["CS 5010"]);
+});
+
+test("addableLineCourses keeps program courses and skips externals, unknowns, and recorded codes", () => {
+  const courses = [
+    { code: "CS 5010", requirementType: "core", credits: 4 },
+    { code: "CS 5500", requirementType: "core", credits: 4 },
+    { code: "CS 5004", requirementType: "external", credits: 4 },
+  ];
+  assert.deepEqual(
+    addableLineCourses(["CS 5010", "CS 5500", "CS 5004", "CS 9999", "CS 5500"], courses, ["CS 5010"]),
+    [{ code: "CS 5500", credits: 4 }],
+  );
+});
+
+test("appendCoursesToSemester inserts remaining line courses and refuses a missing or full term", () => {
+  const plan = emptyPlan();
+  plan.semesters[0] = { ...plan.semesters[0], courses: [{ code: "CS 5800" }] };
+  const added = appendCoursesToSemester(plan, "fall-2026", [{ code: "CS 5500", credits: 4 }]);
+  assert.equal(added.ok, true);
+  if (added.ok) {
+    assert.deepEqual(added.added, ["CS 5500"]);
+    assert.equal(added.semesterName, "Fall 2026");
+    assert.deepEqual(added.plan.semesters[0].courses, [{ code: "CS 5800" }, { code: "CS 5500", credits: 4 }]);
+    assert.deepEqual(plan.semesters[0].courses, [{ code: "CS 5800" }]);
+  }
+
+  const recorded = recordedCourseCodes(added.ok ? added.plan : plan);
+  assert.equal(recorded.has("CS 5800"), true);
+  assert.equal(recorded.has("CS 5500"), true);
+
+  assert.equal(appendCoursesToSemester(plan, "missing-term", [{ code: "CS 5500", credits: 4 }]).ok, false);
+  assert.equal(appendCoursesToSemester(plan, "fall-2026", []).ok, false);
+
+  const full = emptyPlan();
+  full.semesters[0] = {
+    ...full.semesters[0],
+    courses: Array.from({ length: 32 }, (_, index) => ({ code: `CS ${String(5000 + index).padStart(4, "0")}` })),
+  };
+  const capacity = appendCoursesToSemester(full, "fall-2026", [{ code: "CS 5800", credits: 4 }]);
+  assert.equal(capacity.ok, false);
+  if (!capacity.ok) assert.equal(capacity.reason, "capacity");
 });
