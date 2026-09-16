@@ -1,4 +1,4 @@
-import type { PlannedCourse, Semester, StudentPlan } from "./types";
+import type { PlannedCourse, PlanIssue, Semester, StudentPlan } from "./types";
 import type { TermPlacement } from "./target-path";
 import { termSlug } from "./target-path";
 
@@ -130,6 +130,144 @@ export function applyRemainingPathToPlan(
     added.push(...result.added);
   }
   return { ok: true, plan: next, added, createdTerms };
+}
+
+export type MoveCourseResult =
+  | { ok: true; plan: StudentPlan; semesterName: string }
+  | { ok: false; reason: "same-term" | "missing-source" | "missing-term" | "capacity" | "duplicate" };
+
+export function moveCourseToSemester(
+  plan: StudentPlan,
+  code: string,
+  fromId: string,
+  targetId: string,
+): MoveCourseResult {
+  if (fromId === targetId) return { ok: false, reason: "same-term" };
+  const source = plan.semesters.find((semester) => semester.id === fromId);
+  const target = plan.semesters.find((semester) => semester.id === targetId);
+  if (!source) return { ok: false, reason: "missing-source" };
+  if (!target) return { ok: false, reason: "missing-term" };
+  const item = source.courses.find((course) => course.code === code);
+  if (!item) return { ok: false, reason: "missing-source" };
+  if (target.courses.some((course) => course.code === code)) return { ok: false, reason: "duplicate" };
+  if (target.courses.length >= MAX_COURSES_PER_SEMESTER) return { ok: false, reason: "capacity" };
+  return {
+    ok: true,
+    semesterName: target.name,
+    plan: {
+      ...plan,
+      semesters: plan.semesters.map((semester) =>
+        semester.id === fromId
+          ? { ...semester, courses: semester.courses.filter((course) => course.code !== code) }
+          : semester.id === targetId
+            ? { ...semester, courses: [...semester.courses, item] }
+            : semester,
+      ),
+    },
+  };
+}
+
+function lastAcademicBefore(plan: StudentPlan, semesterId: string): Semester | undefined {
+  const index = plan.semesters.findIndex((semester) => semester.id === semesterId);
+  if (index <= 0) return undefined;
+  return plan.semesters.slice(0, index).findLast((semester) => semester.type === "academic");
+}
+
+function plannedSemesterOf(plan: StudentPlan, code: string): { semester: Semester; index: number } | undefined {
+  const index = plan.semesters.findIndex((semester) => semester.courses.some((course) => course.code === code));
+  if (index < 0) return undefined;
+  return { semester: plan.semesters[index]!, index };
+}
+
+export type PrerequisiteFix = {
+  issueCourseCode: string;
+  issueSemesterId: string;
+  relatedCode: string;
+  suggestion: string;
+  detail: string;
+  action: { type: "move"; fromId: string; toId: string } | { type: "add"; toId: string };
+};
+
+export type ApplyFixResult =
+  | { ok: true; plan: StudentPlan; message: string }
+  | { ok: false; reason: Extract<MoveCourseResult, { ok: false }>["reason"] | Extract<AppendCoursesResult, { ok: false }>["reason"] };
+
+function pickRelatedCode(
+  relatedCourses: readonly string[],
+  plan: StudentPlan,
+  issueIndex: number,
+  addable: ReadonlySet<string>,
+): string | undefined {
+  const ranked = relatedCourses.map((code) => ({
+    code,
+    index: plan.semesters.findIndex((semester) => semester.courses.some((course) => course.code === code)),
+  }));
+  const plannedLater = ranked.find((item) => item.index >= issueIndex);
+  if (plannedLater) return plannedLater.code;
+  const unplanned = ranked.find((item) => item.index < 0 && (!addable.size || addable.has(item.code)));
+  if (unplanned) return unplanned.code;
+  return ranked.find((item) => !addable.size || addable.has(item.code))?.code ?? relatedCourses[0];
+}
+
+/** Suggested semester repair for a catalog prereq/coreq issue. Null when no earlier (or same-term coreq) academic term exists. */
+export function suggestedPrerequisiteFix(
+  issue: Pick<PlanIssue, "kind" | "courseCode" | "semesterId" | "relatedCourses">,
+  plan: StudentPlan,
+  addableCodes: Iterable<string> = [],
+): PrerequisiteFix | null {
+  if ((issue.kind !== "prerequisite" && issue.kind !== "corequisite") || !issue.semesterId || !issue.relatedCourses.length) {
+    return null;
+  }
+  const issueIndex = plan.semesters.findIndex((semester) => semester.id === issue.semesterId);
+  if (issueIndex < 0) return null;
+  const issueTerm = plan.semesters[issueIndex]!;
+  const resolutionTerm = issue.kind === "corequisite" ? issueTerm : lastAcademicBefore(plan, issue.semesterId);
+  if (!resolutionTerm) return null;
+  const addable = addableCodes instanceof Set ? addableCodes : new Set(addableCodes);
+  const relatedCode = pickRelatedCode(issue.relatedCourses, plan, issueIndex, addable);
+  if (!relatedCode) return null;
+  const current = plannedSemesterOf(plan, relatedCode);
+  if (current) {
+    const needsMove = issue.kind === "corequisite" ? current.semester.id !== resolutionTerm.id : current.index >= issueIndex;
+    if (!needsMove || current.semester.id === resolutionTerm.id) return null;
+    return {
+      issueCourseCode: issue.courseCode,
+      issueSemesterId: issue.semesterId,
+      relatedCode,
+      suggestion: `move ${relatedCode} earlier`,
+      detail: `Move ${relatedCode} to ${resolutionTerm.name}`,
+      action: { type: "move", fromId: current.semester.id, toId: resolutionTerm.id },
+    };
+  }
+  if (addable.size && !addable.has(relatedCode)) return null;
+  return {
+    issueCourseCode: issue.courseCode,
+    issueSemesterId: issue.semesterId,
+    relatedCode,
+    suggestion: `add ${relatedCode} to ${resolutionTerm.name}`,
+    detail: `Add ${relatedCode} to ${resolutionTerm.name}`,
+    action: { type: "add", toId: resolutionTerm.id },
+  };
+}
+
+export function applyPrerequisiteFix(
+  plan: StudentPlan,
+  fix: PrerequisiteFix,
+  courses: Iterable<{ code: string; requirementType: string; credits: number }>,
+): ApplyFixResult {
+  if (fix.action.type === "move") {
+    const moved = moveCourseToSemester(plan, fix.relatedCode, fix.action.fromId, fix.action.toId);
+    if (!moved.ok) return moved;
+    return { ok: true, plan: moved.plan, message: `${fix.detail}.` };
+  }
+  const items = addableLineCourses([fix.relatedCode], courses, recordedCourseCodes(plan));
+  const added = appendCoursesToSemester(plan, fix.action.toId, items);
+  if (!added.ok) return added;
+  return { ok: true, plan: added.plan, message: `${fix.detail}.` };
+}
+
+export function addableProgramCodes(courses: Iterable<{ code: string; requirementType: string }>): string[] {
+  return [...courses].filter((course) => course.requirementType !== "external").map((course) => course.code);
 }
 
 export function emptyPlan(): StudentPlan {

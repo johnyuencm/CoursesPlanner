@@ -24,7 +24,10 @@ import {
   initialGraphNavigation,
   mapFind,
   mapScene,
+  parseWorkspaceSelection,
   pathwayRelevance,
+  plannedOnlyKeep,
+  restrictVisibleDistances,
   PROGRAM_ROW,
   programMapCodes,
   prerequisiteBusMeta,
@@ -976,4 +979,31 @@ test("pathway relevance prefers the current career target", () => {
   assert.equal(preferred.summary, "Machine Learning · Foundation");
   const other = pathwayRelevance("CS 5800", pathways, "robotics-software-engineer");
   assert.match(other.summary, /Not on your current target/);
+});
+
+test("workspace selection parses saved graph/plan context and ignores junk", () => {
+  assert.deepEqual(parseWorkspaceSelection({ selectedCode: "CS 6140", focusCode: "CS 5800" }), {
+    selectedCode: "CS 6140",
+    focusCode: "CS 5800",
+  });
+  assert.equal(parseWorkspaceSelection(null).selectedCode, "CS 5010");
+  assert.equal(parseWorkspaceSelection({ selectedCode: "CS 6140" }).focusCode, "CS 6140");
+});
+
+test("Only my planned keep intersects the program map with recorded courses plus the current selection", () => {
+  const { courses, requirements } = seattleGraph();
+  const keep = plannedOnlyKeep(["CS 5800"], ["CS 5010"]);
+  const scene = mapScene({
+    courses,
+    requirements,
+    scope: "program",
+    focusCode: "CS 5010",
+    selectedCode: "CS 5010",
+    keep,
+  });
+  assert.equal(scene.visible.has("CS 5800"), true);
+  assert.equal(scene.visible.has("CS 5010"), true);
+  assert.equal(scene.visible.has("CS 5100"), false);
+  const distances = restrictVisibleDistances(new Map([["A", 0], ["B", 1]]), ["A"]);
+  assert.deepEqual([...distances.keys()], ["A"]);
 });
