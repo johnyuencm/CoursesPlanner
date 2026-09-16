@@ -410,7 +410,7 @@ function GraphWorkspace() {
     : selectedRelationship ? `${selectedRelationship.target} shared prerequisite bus` : "";
   const clearLineFocus = () => setSelectedRelationship(null);
   return <>
-    <PageHeading title="Prerequisite Graph" description="See what a course needs and what it unlocks. Select a course to explore its connections." />
+    <PageHeading title="Explore the course map" description="Understand what every course unlocks. Select a course to see what it needs and what it opens next." />
     <div className="graph-legend" aria-label="Map legend">
       <span><i className="legend-node core" /> Core</span>
       <span><i className="legend-node breadth" /> Breadth</span>

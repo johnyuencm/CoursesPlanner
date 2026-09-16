@@ -8,6 +8,7 @@ import { useApp } from "@/components/app-provider";
 import { CatalogState } from "@/components/catalog-state";
 import { CourseCard } from "@/components/course-card";
 import { EmptyState, LoadingState, PageHeading } from "@/components/ui";
+import { routes } from "@/lib/routes";
 import { getEligibility } from "@/lib/validation";
 
 const topics = ["Robotics", "AI / ML", "Systems", "Software Engineering", "Data", "Networks / Security"];
@@ -60,7 +61,7 @@ function Explorer() {
   const looksLikeCode = /^[A-Z]{2,}\d{3,4}[A-Z]?$/.test(codeNeedle);
   const knownCode = catalog.courses.some((course) => course.code.replace(/\s/g, "") === codeNeedle);
   return <>
-    <PageHeading title="Course Explorer" description="Official MSCS Seattle courses from the program requirements page. Search a course code to also find cataloged prerequisites those courses name." />
+    <PageHeading title="Courses" description="Official MSCS Seattle courses. Search a code to see cataloged prerequisites and what those courses unlock." />
     <div className="page-with-rail">
       <div className="page-main">
         <section className="explorer-toolbar" aria-label="Course filters">
@@ -101,9 +102,9 @@ function Explorer() {
         </section>
         <section className="rail-card">
           <h3>Not sure what to take?</h3>
-          <p>Check modeled degree progress or browse recommended pathways. Neither changes official requirements.</p>
-          <Link className="text-link" href="/">Go to Degree Overview</Link>
-          <Link className="text-link" href="/pathways">View suggested pathways</Link>
+          <p>Open the course map to see what each course unlocks, or browse recommended paths. Neither is a degree audit.</p>
+          <Link className="text-link" href={routes.explore}>Explore the course map</Link>
+          <Link className="text-link" href={routes.paths}>View suggested paths</Link>
         </section>
       </aside>
     </div>
