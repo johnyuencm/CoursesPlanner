@@ -66,6 +66,12 @@ function parseUniversityCrawlConfig(value: unknown, label: string): UniversityCr
   const allowedOrigins = parseAllowedOrigins(value.allowedOrigins, `${label}.allowedOrigins`);
   const robotsUrl =
     value.robotsUrl === undefined ? undefined : requiredHttpsUrl(value.robotsUrl, `${label}.robotsUrl`);
+  if (!allowedOrigins.includes(new URL(discoverySource.url).origin)) {
+    throw new Error(`${label}.discoverySource.url origin must be listed in ${label}.allowedOrigins`);
+  }
+  if (robotsUrl !== undefined && !allowedOrigins.includes(new URL(robotsUrl).origin)) {
+    throw new Error(`${label}.robotsUrl origin must be listed in ${label}.allowedOrigins`);
+  }
   return {
     adapter: value.adapter,
     discoverySource,
@@ -204,10 +210,25 @@ export function parseSourceDefinition(value: unknown, fileName: string): Catalog
   };
 }
 
+function validateProductionUniversityDirectory(
+  universities: UniversityDirectoryEntry[],
+  label: string,
+): void {
+  for (const region of ["us", "world"] as const) {
+    const priorities = universities.filter((entry) => entry.region === region).map((entry) => entry.priority);
+    if (priorities.length !== 20 || priorities.some((priority, index) => priority !== index + 1)) {
+      throw new Error(`${label} must contain exactly 20 ${region} entries with priorities exactly 1 through 20`);
+    }
+  }
+}
+
 export async function loadUniversityDirectory(
   filePath = path.join(process.cwd(), "catalog-service", "universities.json"),
 ): Promise<UniversityDirectoryEntry[]> {
-  return parseUniversityDirectory(JSON.parse(await readFile(filePath, "utf8")), path.basename(filePath));
+  const label = path.basename(filePath);
+  const universities = parseUniversityDirectory(JSON.parse(await readFile(filePath, "utf8")), label);
+  validateProductionUniversityDirectory(universities, label);
+  return universities;
 }
 
 export async function loadRegistry(

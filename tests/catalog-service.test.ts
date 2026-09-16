@@ -166,11 +166,36 @@ test("university directory loads the approved 20 US and 20 world entries", async
   assert.deepEqual(universities.slice(20).map(({ region, priority }) => [region, priority]), [
     ...Array.from({ length: 20 }, (_, index) => ["world", index + 1]),
   ]);
-  assert.deepEqual(
-    enabledUniversities(universities).map((entry) => entry.id),
-    ["northeastern"],
-  );
-  assert.equal(universities.filter((entry) => entry.support === "unverified").length, 39);
+  assert.deepEqual(enabledUniversities(universities), []);
+  assert.equal(universities.filter((entry) => entry.support === "unverified").length, 40);
+});
+
+test("production university directory rejects incomplete and sparse regions", async () => {
+  const directory = JSON.parse(
+    readFileSync(path.join(process.cwd(), "catalog-service", "universities.json"), "utf8"),
+  ) as Array<Record<string, unknown>>;
+  const rootDir = await mkdtemp(path.join(tmpdir(), "university-directory-"));
+  const incompletePath = path.join(rootDir, "incomplete.json");
+  const sparsePath = path.join(rootDir, "sparse.json");
+  try {
+    await writeFile(
+      incompletePath,
+      `${JSON.stringify(directory.filter((entry) => entry.id !== "northeastern"), null, 2)}\n`,
+    );
+    await assert.rejects(() => loadUniversityDirectory(incompletePath), {
+      message: "incomplete.json must contain exactly 20 us entries with priorities exactly 1 through 20",
+    });
+
+    await writeFile(
+      sparsePath,
+      `${JSON.stringify(directory.filter((entry) => entry.id !== "cambridge"), null, 2)}\n`,
+    );
+    await assert.rejects(() => loadUniversityDirectory(sparsePath), {
+      message: "sparse.json must contain exactly 20 world entries with priorities exactly 1 through 20",
+    });
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
 });
 
 test("university directory sorts US before world and skips metadata-only entries", () => {
@@ -213,6 +238,43 @@ test("enabled universities require supported adapter and discovery crawl config"
   assert.throws(
     () => parseUniversityDirectory([withoutCrawl], "test universities"),
     /enabled requires crawl config/,
+  );
+});
+
+test("university crawl URLs must use allowed origins", () => {
+  const supported = supportedUniversity();
+  const crawl = supported.crawl as Record<string, unknown>;
+  const discoverySource = crawl.discoverySource as Record<string, unknown>;
+
+  assert.throws(
+    () =>
+      parseUniversityDirectory(
+        [
+          {
+            ...supported,
+            crawl: {
+              ...crawl,
+              discoverySource: { ...discoverySource, url: "https://example.com/programs/" },
+            },
+          },
+        ],
+        "test universities",
+      ),
+    {
+      message:
+        "test universities[0].crawl.discoverySource.url origin must be listed in test universities[0].crawl.allowedOrigins",
+    },
+  );
+  assert.throws(
+    () =>
+      parseUniversityDirectory(
+        [{ ...supported, crawl: { ...crawl, robotsUrl: "https://example.com/robots.txt" } }],
+        "test universities",
+      ),
+    {
+      message:
+        "test universities[0].crawl.robotsUrl origin must be listed in test universities[0].crawl.allowedOrigins",
+    },
   );
 });
 
@@ -451,7 +513,8 @@ test("catalog service HTTP handlers list sources and universities without changi
     enabled: false,
   });
   assert.equal(payload.universities[19].id, "northeastern");
-  assert.equal(payload.universities[19].support, "supported");
+  assert.equal(payload.universities[19].support, "unverified");
+  assert.equal(payload.universities[19].enabled, false);
   assert.equal(payload.universities[20].id, "oxford");
   assert.equal("crawl" in payload.universities[19], false);
 
