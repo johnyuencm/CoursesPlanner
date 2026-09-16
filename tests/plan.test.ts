@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { addableLineCourses, appendCoursesToSemester, canRestorePlanBackup, createPlanBackupDownload, emptyPlan, loadPlan, parsePlan, parsePlanBackup, PLAN_BACKUP_FILENAME, PLAN_RECOVERY_FILENAME, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY, summarizePlan } from "../lib/plan";
+import { addableLineCourses, appendCoursesToSemester, canRestorePlanBackup, createPlanBackupDownload, emptyPlan, isCatalogOutage, loadPlan, parsePlan, parsePlanBackup, PLAN_BACKUP_FILENAME, PLAN_RECOVERY_FILENAME, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY, summarizePlan } from "../lib/plan";
 
 test("emptyPlan starts in Fall 2026 with five fresh terms and one co-op", () => {
   const first = emptyPlan();
@@ -194,11 +194,77 @@ test("healthy persistence still exports a validated in-memory plan backup", () =
   assert.match(download.message, /Backup downloaded/);
 });
 
+test("catalog loading is not an outage and keeps Restore disabled without an ack card", () => {
+  assert.equal(isCatalogOutage({ hydrated: true, catalogAvailable: false, catalogBusy: true }), false);
+  assert.equal(
+    canRestorePlanBackup({
+      hydrated: true,
+      catalogAvailable: false,
+      catalogBusy: true,
+      acknowledgedOutageRestore: false,
+    }),
+    false,
+  );
+  assert.equal(
+    canRestorePlanBackup({
+      hydrated: true,
+      catalogAvailable: false,
+      catalogBusy: true,
+      acknowledgedOutageRestore: true,
+    }),
+    false,
+  );
+});
+
 test("catalog-outage restore stays gated until the current plan is acknowledged", () => {
-  assert.equal(canRestorePlanBackup({ hydrated: true, catalogAvailable: true, acknowledgedOutageRestore: false }), true);
-  assert.equal(canRestorePlanBackup({ hydrated: true, catalogAvailable: false, acknowledgedOutageRestore: false }), false);
-  assert.equal(canRestorePlanBackup({ hydrated: true, catalogAvailable: false, acknowledgedOutageRestore: true }), true);
-  assert.equal(canRestorePlanBackup({ hydrated: false, catalogAvailable: true, acknowledgedOutageRestore: true }), false);
+  assert.equal(isCatalogOutage({ hydrated: true, catalogAvailable: false, catalogBusy: false }), true);
+  assert.equal(isCatalogOutage({ hydrated: true, catalogAvailable: true, catalogBusy: false }), false);
+  assert.equal(isCatalogOutage({ hydrated: false, catalogAvailable: false, catalogBusy: false }), false);
+  assert.equal(
+    canRestorePlanBackup({
+      hydrated: true,
+      catalogAvailable: true,
+      catalogBusy: false,
+      acknowledgedOutageRestore: false,
+    }),
+    true,
+  );
+  assert.equal(
+    canRestorePlanBackup({
+      hydrated: true,
+      catalogAvailable: true,
+      catalogBusy: true,
+      acknowledgedOutageRestore: false,
+    }),
+    true,
+  );
+  assert.equal(
+    canRestorePlanBackup({
+      hydrated: true,
+      catalogAvailable: false,
+      catalogBusy: false,
+      acknowledgedOutageRestore: false,
+    }),
+    false,
+  );
+  assert.equal(
+    canRestorePlanBackup({
+      hydrated: true,
+      catalogAvailable: false,
+      catalogBusy: false,
+      acknowledgedOutageRestore: true,
+    }),
+    true,
+  );
+  assert.equal(
+    canRestorePlanBackup({
+      hydrated: false,
+      catalogAvailable: true,
+      catalogBusy: false,
+      acknowledgedOutageRestore: true,
+    }),
+    false,
+  );
 });
 
 test("plan summary lists terms and recorded courses for outage restore visibility", () => {

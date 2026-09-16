@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Download, Upload } from "lucide-react";
-import { canRestorePlanBackup, MAX_PLAN_BACKUP_BYTES, parsePlanBackup, summarizePlan } from "@/lib/plan";
+import { canRestorePlanBackup, isCatalogOutage, MAX_PLAN_BACKUP_BYTES, parsePlanBackup, summarizePlan } from "@/lib/plan";
 import type { StudentPlan } from "@/lib/types";
 import { useApp } from "./app-provider";
 
@@ -12,19 +12,36 @@ function errorMessage(error: unknown): string {
 
 function CurrentPlanSummary({ plan }: { plan: StudentPlan }) {
   const summary = summarizePlan(plan);
-  return <div className="plan-backup-summary" aria-label="Current plan summary">
-    <p>
-      <strong>Current plan on this device.</strong>{" "}
-      {summary.termCount} term{summary.termCount === 1 ? "" : "s"}, {summary.plannedCourseCount} planned course{summary.plannedCourseCount === 1 ? "" : "s"}, {summary.completedCount} completed, {summary.waivedCount} waived.
-    </p>
-    {summary.terms.length > 0 && <ul>{summary.terms.map((term) => <li key={term.id}><strong>{term.name}</strong>{term.courseCodes.length ? `: ${term.courseCodes.join(", ")}` : " (empty)"}</li>)}</ul>}
-    {summary.completedCourses.length > 0 && <p>Completed: {summary.completedCourses.join(", ")}</p>}
-    {summary.waivedCourses.length > 0 && <p>Waived: {summary.waivedCourses.join(", ")}</p>}
-  </div>;
+  return (
+    <div className="plan-backup-summary" aria-label="Current plan summary">
+      <p>
+        <strong>Current plan on this device.</strong>{" "}
+        {summary.termCount} term{summary.termCount === 1 ? "" : "s"},{" "}
+        {summary.plannedCourseCount} planned course{summary.plannedCourseCount === 1 ? "" : "s"},{" "}
+        {summary.completedCount} completed, {summary.waivedCount} waived.
+      </p>
+      {summary.terms.length > 0 && (
+        <ul>
+          {summary.terms.map((term) => (
+            <li key={term.id}>
+              <strong>{term.name}</strong>
+              {term.courseCodes.length ? `: ${term.courseCodes.join(", ")}` : " (empty)"}
+            </li>
+          ))}
+        </ul>
+      )}
+      {summary.completedCourses.length > 0 && (
+        <p>Completed: {summary.completedCourses.join(", ")}</p>
+      )}
+      {summary.waivedCourses.length > 0 && (
+        <p>Waived: {summary.waivedCourses.join(", ")}</p>
+      )}
+    </div>
+  );
 }
 
 export function PlanBackup() {
-  const { catalog, exportPlanBackup, restorePlanBackup, hydrated, persistence, plan } = useApp();
+  const { catalog, catalogBusy, exportPlanBackup, restorePlanBackup, hydrated, persistence, plan } = useApp();
   const fileInput = useRef<HTMLInputElement>(null);
   const reading = useRef(false);
   const mounted = useRef(true);
@@ -32,10 +49,12 @@ export function PlanBackup() {
   const [message, setMessage] = useState("");
   const [acknowledgedOutageRestore, setAcknowledgedOutageRestore] = useState(false);
   const catalogAvailable = catalog !== null;
+  const catalogOutage = isCatalogOutage({ hydrated, catalogAvailable, catalogBusy });
   const storageBlocked = persistence === "blocked";
   const restoreEnabled = !isReading && canRestorePlanBackup({
     hydrated,
     catalogAvailable,
+    catalogBusy,
     acknowledgedOutageRestore,
   });
 
@@ -45,8 +64,8 @@ export function PlanBackup() {
   }, []);
 
   useEffect(() => {
-    if (catalogAvailable) setAcknowledgedOutageRestore(false);
-  }, [catalogAvailable]);
+    if (!catalogOutage) setAcknowledgedOutageRestore(false);
+  }, [catalogOutage]);
 
   const exportBackup = () => {
     try {
@@ -92,9 +111,9 @@ export function PlanBackup() {
     }
   };
 
-  return <div className={`planner-backup${catalogAvailable ? "" : " planner-backup-outage"}`} aria-label="Plan backup">
+  return <div className={`planner-backup${catalogOutage ? " planner-backup-outage" : ""}`} aria-label="Plan backup">
     {storageBlocked && <p className="plan-backup-banner" role="status">Saving is blocked. Download saves a recovery copy of the unreadable browser data, not the empty on-screen plan.</p>}
-    {!catalogAvailable && hydrated && <>
+    {catalogOutage && <>
       <p className="plan-backup-banner" role="status">The catalog is unavailable, so the semester board is hidden. Review the current plan below before restoring a backup over it.</p>
       <CurrentPlanSummary plan={plan} />
       <label className="plan-backup-ack">
@@ -104,7 +123,21 @@ export function PlanBackup() {
     </>}
     <div className="planner-backup-actions">
       <button className="button button-secondary" type="button" disabled={!hydrated || isReading} onClick={exportBackup}><Download size={16} /> {storageBlocked ? "Download recovery copy" : "Download backup"}</button>
-      <button className="button button-secondary" type="button" disabled={!restoreEnabled} title={!catalogAvailable && !acknowledgedOutageRestore ? "Review the current plan and confirm before restoring." : undefined} onClick={() => fileInput.current?.click()}><Upload size={16} /> {isReading ? "Reading backup…" : "Restore backup"}</button>
+      <button
+        className="button button-secondary"
+        type="button"
+        disabled={!restoreEnabled}
+        title={
+          catalogOutage && !acknowledgedOutageRestore
+            ? "Review the current plan and confirm before restoring."
+            : !catalogAvailable && catalogBusy
+              ? "Wait for the catalog to finish loading before restoring."
+              : undefined
+        }
+        onClick={() => fileInput.current?.click()}
+      >
+        <Upload size={16} /> {isReading ? "Reading backup…" : "Restore backup"}
+      </button>
     </div>
     <input ref={fileInput} hidden aria-label="Choose a plan backup JSON file" type="file" accept="application/json,.json" onChange={importBackup} />
     <p className="muted" role="status">{message}</p>

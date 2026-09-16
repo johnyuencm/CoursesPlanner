@@ -274,14 +274,24 @@ export function summarizePlan(plan: StudentPlan): PlanBackupSummary {
   };
 }
 
+export function isCatalogOutage(input: {
+  hydrated: boolean;
+  catalogAvailable: boolean;
+  catalogBusy: boolean;
+}): boolean {
+  return input.hydrated && !input.catalogAvailable && !input.catalogBusy;
+}
+
 export function canRestorePlanBackup(input: {
   hydrated: boolean;
   catalogAvailable: boolean;
+  catalogBusy: boolean;
   acknowledgedOutageRestore: boolean;
 }): boolean {
   if (!input.hydrated) return false;
-  if (!input.catalogAvailable && !input.acknowledgedOutageRestore) return false;
-  return true;
+  if (input.catalogAvailable) return true;
+  if (input.catalogBusy) return false;
+  return input.acknowledgedOutageRestore;
 }
 
 export function parsePlanBackup(text: string): StudentPlan {
