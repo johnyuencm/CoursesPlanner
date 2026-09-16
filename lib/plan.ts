@@ -191,12 +191,107 @@ function backupSize(text: string): number {
   return new TextEncoder().encode(text).byteLength;
 }
 
+export const PLAN_BACKUP_FILENAME = "course-plan-backup.json";
+export const PLAN_RECOVERY_FILENAME = "course-plan-storage-recovery.txt";
+
+export type PlanBackupDownload =
+  | {
+      kind: "backup";
+      filename: typeof PLAN_BACKUP_FILENAME;
+      body: string;
+      mimeType: "application/json";
+      message: string;
+    }
+  | {
+      kind: "recovery";
+      filename: typeof PLAN_RECOVERY_FILENAME;
+      body: string;
+      mimeType: "text/plain";
+      message: string;
+    };
+
+export interface PlanBackupSummary {
+  termCount: number;
+  plannedCourseCount: number;
+  completedCount: number;
+  waivedCount: number;
+  terms: { id: string; name: string; type: Semester["type"]; courseCodes: string[] }[];
+  completedCourses: string[];
+  waivedCourses: string[];
+}
+
 export function serializePlanBackup(plan: StudentPlan): string {
   const backup = JSON.stringify(parsePlan(plan));
   if (backupSize(backup) > MAX_PLAN_BACKUP_BYTES) {
     throw new Error("Plan backup is too large.");
   }
   return backup;
+}
+
+export function createPlanBackupDownload(input: {
+  blocked: boolean;
+  plan: StudentPlan;
+  rawStored: string | null;
+}): PlanBackupDownload {
+  if (input.blocked) {
+    if (input.rawStored == null || input.rawStored === "") {
+      throw new Error(
+        "Saved plan data is unreadable, so a backup was not created from the empty on-screen plan. The original browser data was not overwritten.",
+      );
+    }
+    return {
+      kind: "recovery",
+      filename: PLAN_RECOVERY_FILENAME,
+      body: input.rawStored,
+      mimeType: "text/plain",
+      message:
+        "Downloaded a recovery copy of the unreadable saved data. This is not a validated plan backup. Do not restore it unless you have inspected the file. The empty on-screen plan was not exported.",
+    };
+  }
+  return {
+    kind: "backup",
+    filename: PLAN_BACKUP_FILENAME,
+    body: serializePlanBackup(input.plan),
+    mimeType: "application/json",
+    message: "Backup downloaded. This is separate from the saved-on-this-device status.",
+  };
+}
+
+export function summarizePlan(plan: StudentPlan): PlanBackupSummary {
+  return {
+    termCount: plan.semesters.length,
+    plannedCourseCount: plan.semesters.reduce((count, semester) => count + semester.courses.length, 0),
+    completedCount: plan.completedCourses.length,
+    waivedCount: plan.waivedCourses.length,
+    terms: plan.semesters.map((semester) => ({
+      id: semester.id,
+      name: semester.name,
+      type: semester.type,
+      courseCodes: semester.courses.map((course) => course.code),
+    })),
+    completedCourses: [...plan.completedCourses],
+    waivedCourses: [...plan.waivedCourses],
+  };
+}
+
+export function isCatalogOutage(input: {
+  hydrated: boolean;
+  catalogAvailable: boolean;
+  catalogBusy: boolean;
+}): boolean {
+  return input.hydrated && !input.catalogAvailable && !input.catalogBusy;
+}
+
+export function canRestorePlanBackup(input: {
+  hydrated: boolean;
+  catalogAvailable: boolean;
+  catalogBusy: boolean;
+  acknowledgedOutageRestore: boolean;
+}): boolean {
+  if (!input.hydrated) return false;
+  if (input.catalogAvailable) return true;
+  if (input.catalogBusy) return false;
+  return input.acknowledgedOutageRestore;
 }
 
 export function parsePlanBackup(text: string): StudentPlan {
@@ -217,14 +312,20 @@ export function restorePlan(storage: Pick<Storage, "setItem">, candidate: unknow
   return restored;
 }
 
-export function loadPlan(storage: Pick<Storage, "getItem">): { plan: StudentPlan; error: string | null } {
+export function loadPlan(storage: Pick<Storage, "getItem">): {
+  plan: StudentPlan;
+  error: string | null;
+  raw: string | null;
+} {
+  let stored: string | null = null;
   try {
-    const stored = storage.getItem(STORAGE_KEY);
-    if (stored === null) return { plan: emptyPlan(), error: null };
-    if (typeof stored !== "string") throw new Error("storage returned a non-text value");
-    return { plan: parsePlan(JSON.parse(stored)), error: null };
+    const value = storage.getItem(STORAGE_KEY);
+    if (value === null) return { plan: emptyPlan(), error: null, raw: null };
+    if (typeof value !== "string") throw new Error("storage returned a non-text value");
+    stored = value;
+    return { plan: parsePlan(JSON.parse(stored)), error: null, raw: stored };
   } catch (error) {
     const detail = error instanceof Error ? error.message : "unknown storage error";
-    return { plan: emptyPlan(), error: `Could not load the saved plan: ${detail}` };
+    return { plan: emptyPlan(), error: `Could not load the saved plan: ${detail}`, raw: stored };
   }
 }
