@@ -709,6 +709,48 @@ export function shouldClearLineFocusOnEscape(
   return Boolean(element.closest(".graph-layout"));
 }
 
+export const COURSE_CONNECTIONS_SCOPE: GraphScope = "1";
+
+export type GraphViewSnapshot = {
+  depth: GraphScope;
+  focusCode: string;
+  zoom: number;
+};
+
+export function enterCourseConnectionsView(
+  current: GraphViewSnapshot,
+  code: string,
+  connectionsZoom = GRAPH_READABLE_ZOOM,
+): { next: GraphViewSnapshot; previous: GraphViewSnapshot | null } {
+  if (current.depth === COURSE_CONNECTIONS_SCOPE && current.focusCode === code) {
+    return { next: current, previous: null };
+  }
+  return {
+    next: { depth: COURSE_CONNECTIONS_SCOPE, focusCode: code, zoom: connectionsZoom },
+    previous: current,
+  };
+}
+
+export function popGraphView(stack: readonly GraphViewSnapshot[]): {
+  view: GraphViewSnapshot | null;
+  rest: GraphViewSnapshot[];
+} {
+  if (!stack.length) return { view: null, rest: [] };
+  return { view: stack[stack.length - 1]!, rest: stack.slice(0, -1) };
+}
+
+export function shouldRestoreGraphViewOnEscape(
+  event: { key: string; target?: EventTarget | null },
+  input: { canRestore: boolean; lineFocus: boolean; findQuery: string; fullscreen: boolean },
+): boolean {
+  if (!input.canRestore || input.lineFocus) return false;
+  return shouldClearLineFocusOnEscape(event, {
+    active: true,
+    findQuery: input.findQuery,
+    fullscreen: input.fullscreen,
+  });
+}
+
 export type MapFindKeyEvent = {
   key: string;
   ctrlKey?: boolean;

@@ -19,7 +19,11 @@ import {
   relationshipControlGroups,
   relationshipSelection,
   shouldClearLineFocusOnEscape,
+  shouldRestoreGraphViewOnEscape,
+  enterCourseConnectionsView,
+  popGraphView,
   type GraphScope,
+  type GraphViewSnapshot,
 } from "@/lib/graph";
 import type { Course } from "@/lib/types";
 import { expressionLabel } from "@/lib/validation";
@@ -49,6 +53,7 @@ type GraphData = {
   hasIncoming: boolean;
   hasOutgoing: boolean;
   selectCourse: (code: string) => void;
+  enterConnections: (code: string) => void;
 };
 type BandData = { label: string };
 type GraphNode = Node<GraphData, "course">;
@@ -60,7 +65,7 @@ const tableRowId = (code: string) => `graph-row-${code.replaceAll(" ", "-")}`;
 function CourseNode({ data }: NodeProps<GraphNode>) {
   return <div className={`graph-course-node ${data.core ? "core-course" : ""} ${data.locked ? "graph-locked" : ""} ${data.emphasized ? "graph-emphasized" : ""} ${data.dimmed ? "graph-dimmed" : ""} ${data.focused ? "graph-focused" : ""} ${data.compact ? "graph-compact" : ""}`}>
     <Handle type="target" position={Position.Left} className={data.hasIncoming ? undefined : "graph-handle-hidden"} />
-    <button type="button" className="graph-node-main nodrag" onClick={() => data.selectCourse(data.code)} aria-label={`Select ${data.code}, ${data.title}. ${data.badgeLabel}. ${data.statusLabel}.`}>
+    <button type="button" className="graph-node-main nodrag" onClick={() => data.selectCourse(data.code)} onDoubleClick={(event) => { event.preventDefault(); data.enterConnections(data.code); }} aria-label={`Select ${data.code}, ${data.title}. ${data.badgeLabel}. ${data.statusLabel}. Double-click to show this course's connections.`}>
       <span className="graph-node-meta">
         <span className={data.badgeClass}>{data.badgeLabel}</span>
         <span className={`status-pill ${data.statusClass}`}>{data.compact ? compactGraphStatusLabel(data.statusLabel) : data.statusLabel}</span>
@@ -111,6 +116,7 @@ function GraphWorkspace() {
   const [fullscreenSupported, setFullscreenSupported] = useState(false);
   const [fullscreenMessage, setFullscreenMessage] = useState("");
   const [navigation, setNavigation] = useState({ codes: ["CS 5010"], index: 0 });
+  const [viewStack, setViewStack] = useState<GraphViewSnapshot[]>([]);
   const graphLayoutRef = useRef<HTMLDivElement>(null);
   const fullscreenButtonRef = useRef<HTMLButtonElement>(null);
   const wasFullscreenRef = useRef(false);
@@ -120,6 +126,7 @@ function GraphWorkspace() {
   const [lineSemesterId, setLineSemesterId] = useState("");
   const locateRef = useRef<(code: string, keepFind?: boolean) => void>(() => {});
   const inspectRef = useRef<(code: string) => void>(() => {});
+  const enterConnectionsRef = useRef<(code: string) => void>(() => {});
   const cycleRef = useRef<(step: number) => void>(() => {});
   const matchesRef = useRef<{ code: string; title: string }[]>([]);
   const courseMap = useMemo(() => new Map(catalog?.courses.map((course) => [course.code, course]) ?? []), [catalog]);
@@ -182,6 +189,7 @@ function GraphWorkspace() {
           hasIncoming: incoming.has(code),
           hasOutgoing: outgoing.has(code),
           selectCourse: (code) => inspectRef.current(code),
+          enterConnections: (code) => enterConnectionsRef.current(code),
         },
         ariaLabel: `${code}: ${course?.title ?? "External reference"}`,
       };
@@ -318,17 +326,29 @@ function GraphWorkspace() {
   }, []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (!shouldClearLineFocusOnEscape(event, { active: Boolean(selectedRelationship), findQuery: searchRef.current, fullscreen: isFullscreen })) return;
+      if (shouldClearLineFocusOnEscape(event, { active: Boolean(selectedRelationship), findQuery: searchRef.current, fullscreen: isFullscreen })) {
+        event.preventDefault();
+        setSelectedRelationship(null);
+        return;
+      }
+      if (!shouldRestoreGraphViewOnEscape(event, { canRestore: viewStack.length > 0, lineFocus: Boolean(selectedRelationship), findQuery: searchRef.current, fullscreen: isFullscreen })) return;
       event.preventDefault();
+      const restored = popGraphView(viewStack);
+      if (!restored.view) return;
+      setViewStack(restored.rest);
       setSelectedRelationship(null);
+      setDepth(restored.view.depth);
+      setFocusCode(restored.view.focusCode);
+      setZoom(restored.view.zoom);
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [selectedRelationship, isFullscreen]);
+  }, [selectedRelationship, isFullscreen, viewStack]);
   const locate = (code: string, keepFind = false, record = true) => {
     if (record && code !== selectedCode) {
       setNavigation((previous) => ({ codes: [...previous.codes.slice(0, previous.index + 1), code], index: previous.index + 1 }));
     }
+    setViewStack([]);
     setFocusCode(code);
     setSelectedCode(code);
     setSelectedRelationship(null);
@@ -354,6 +374,35 @@ function GraphWorkspace() {
     setSelectedRelationship(null);
     requestAnimationFrame(() => document.getElementById("graph-inspector")?.focus({ preventScroll: true }));
   };
+  const enterConnections = (code: string) => {
+    const entered = enterCourseConnectionsView({ depth, focusCode, zoom }, code, GRAPH_READABLE_ZOOM);
+    const previousView = entered.previous;
+    if (previousView) setViewStack((stack) => [...stack, previousView]);
+    if (code !== selectedCode) {
+      setNavigation((previous) => ({ codes: [...previous.codes.slice(0, previous.index + 1), code], index: previous.index + 1 }));
+    }
+    setSelectedCode(code);
+    setSelectedRelationship(null);
+    setFocusCode(entered.next.focusCode);
+    setDepth(entered.next.depth);
+    setZoom(entered.next.zoom);
+    requestAnimationFrame(() => document.getElementById("graph-inspector")?.focus({ preventScroll: true }));
+  };
+  const chooseScope = (next: GraphScope, nextFocus?: string) => {
+    setViewStack([]);
+    setSelectedRelationship(null);
+    if (nextFocus) setFocusCode(nextFocus);
+    setDepth(next);
+  };
+  const restorePreviousView = () => {
+    const restored = popGraphView(viewStack);
+    if (!restored.view) return;
+    setViewStack(restored.rest);
+    setSelectedRelationship(null);
+    setDepth(restored.view.depth);
+    setFocusCode(restored.view.focusCode);
+    setZoom(restored.view.zoom);
+  };
   const cycle = (step: number) => {
     if (!matches.length) return;
     const next = mapFind.cycleIndex(findIndex, matches.length, step);
@@ -363,6 +412,7 @@ function GraphWorkspace() {
   };
   locateRef.current = locate;
   inspectRef.current = inspectCourse;
+  enterConnectionsRef.current = enterConnections;
   cycleRef.current = cycle;
   const focus = (code: string) => locate(code, false);
   const setManualZoom = useCallback((next: number) => setZoom(clampGraphZoom(next)), []);
@@ -482,14 +532,14 @@ function GraphWorkspace() {
             <button type="button" className="button button-secondary button-small" aria-label="Previous course" disabled={navigation.index === 0} onClick={() => { const index = navigation.index - 1; inspectCourse(navigation.codes[index]!, false); setNavigation({ ...navigation, index }); }}><ArrowLeft size={14} /> Back</button>
             <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.codes.length - 1} onClick={() => { const index = navigation.index + 1; inspectCourse(navigation.codes[index]!, false); setNavigation({ ...navigation, index }); }}><ArrowRight size={14} /></button>
           </div>
-          <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
+          <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : depth === "1" ? <><Crosshair size={15} /> Connections for <strong>{focusCode}</strong></> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
           <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode}{selectedRelationship ? ` · ${selectedRelationship.kind === "branch" ? `${selectedRelationship.source} unlocks ${selectedRelationship.target}` : `${selectedRelationship.sources.join(", ")} unlock ${selectedRelationship.target}`}` : ""}.</span>
           <div className="segmented-control" aria-label="Map display">
             <button type="button" aria-pressed={view === "graph"} className={view === "graph" ? "selected" : ""} onClick={() => setView("graph")}><Network size={15} /> Map</button>
             <button type="button" aria-pressed={view === "table"} className={view === "table" ? "selected" : ""} onClick={() => setView("table")}><List size={15} /> Table</button>
           </div>
           <label className="graph-depth-label">Show
-            <select value={depth} onChange={(event) => { setSelectedRelationship(null); setDepth(event.target.value as GraphScope); }}>
+            <select value={depth} onChange={(event) => chooseScope(event.target.value as GraphScope)}>
               <option value="course">This course’s full chain</option>
               <option value="program">Entire program</option>
               <option value="1">This course’s connections</option>
@@ -526,7 +576,7 @@ function GraphWorkspace() {
             <tbody>{graph.courseNodes.map((node) => {
               const course = courseMap.get(node.id);
               return <tr key={node.id} id={tableRowId(node.id)} className={node.id === selectedCode ? "graph-find-current" : undefined}>
-                <th scope="row"><button className="text-button" onClick={() => inspectCourse(node.id)}>{node.id}</button><span>{course?.title ?? "External reference — unknown metadata"}</span></th>
+                <th scope="row"><button className="text-button" onClick={() => inspectCourse(node.id)} onDoubleClick={(event) => { event.preventDefault(); enterConnections(node.id); }}>{node.id}</button><span>{course?.title ?? "External reference — unknown metadata"}</span></th>
                 <td>{node.data.badgeLabel} · {node.data.statusLabel}</td>
                 <td>{node.data.prerequisites}<div className="detail-code-links"><CodeLinks codes={course?.prerequisiteCodes ?? []} limit={1000} /></div></td>
                 <td>{node.data.corequisites}<div className="detail-code-links"><CodeLinks codes={course?.corequisiteCodes ?? []} limit={1000} /></div></td>
@@ -534,7 +584,7 @@ function GraphWorkspace() {
             })}</tbody>
           </table>
         </div>}
-        {view === "graph" && <p className="graph-canvas-hint">Arrows point at the course that lists the prerequisite. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination. Click a course card for details, or click empty map / Exit line focus to show every relationship again.</p>}
+        {view === "graph" && <p className="graph-canvas-hint">Arrows point at the course that lists the prerequisite. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination. Click a course card for details. Double-click a course to show its connections, then press Escape to return to the previous view. Click empty map or Exit line focus to show every relationship again.</p>}
       </section>
       <aside className="graph-inspector" id="graph-inspector" tabIndex={-1}>
         {selectedRelationship ? <div className="line-focus-banner">
@@ -562,10 +612,11 @@ function GraphWorkspace() {
         <p className="inspector-course-title">{selected?.title ?? "External course reference"}</p>
         <p className="muted small-text">{selected ? `${creditLabel(selected)} credits` : "Credits unknown"}</p>
         {selected?.description ? <p className="inspector-description">{selected.description}</p> : <p className="muted small-text">No catalog description is cached for this code.</p>}
-        {depth !== "program" && <button className="text-button inspector-focus" onClick={() => { setSelectedRelationship(null); setDepth("program"); }}><Network size={14} /> Show entire program</button>}
-        {depth !== "1" && <button className="text-button inspector-focus" onClick={() => { setSelectedRelationship(null); setFocusCode(selectedCode); setDepth("1"); }}><Crosshair size={14} /> Show neighborhood</button>}
+        {depth !== "program" && <button className="text-button inspector-focus" onClick={() => chooseScope("program")}><Network size={14} /> Show entire program</button>}
+        {depth !== "1" && <button className="text-button inspector-focus" onClick={() => enterConnections(selectedCode)}><Crosshair size={14} /> Show neighborhood</button>}
         {depth !== "program" && focusCode !== selectedCode && <button className="text-button inspector-focus" onClick={() => focus(selectedCode)}><Crosshair size={14} /> Focus map here</button>}
-        <button className="text-button inspector-focus" onClick={() => { setSelectedRelationship(null); setFocusCode(selectedCode); setDepth("prerequisites"); }}><ArrowLeft size={14} /> Trace all prerequisites</button>
+        <button className="text-button inspector-focus" onClick={() => chooseScope("prerequisites", selectedCode)}><ArrowLeft size={14} /> Trace all prerequisites</button>
+        {viewStack.length ? <button type="button" className="text-button inspector-focus" aria-keyshortcuts="Escape" onClick={restorePreviousView}><ArrowLeft size={14} /> Return to previous view</button> : null}
         <div className="inspector-relationships">
           {selectedRelationship ? <div className="graph-relationship-explanation"><h3>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} → ${selectedRelationship.target}` : `${selectedRelationship.target} shared prerequisite bus`}</h3><p>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} is named as a prerequisite of ${selectedRelationship.target}.` : `Visible incoming prerequisites: ${selectedRelationship.sources.join(", ")}.`}</p><p><strong>{selectedRelationship.target} catalog rule:</strong> {nodeRequirementCopy(relationshipTarget, "prerequisites")}</p><p className="muted small-text">A line records a named catalog link; the rule above states whether prerequisites are AND, OR, or need review.</p></div> : null}
           {scene.arrows.length ? <><h3>Visible map relationships</h3><div className="graph-relationship-buttons">{relationshipGroups.map((group) => <Fragment key={group.target}>

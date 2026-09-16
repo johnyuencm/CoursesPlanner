@@ -15,6 +15,9 @@ import {
   graphZoomPercent,
   GRAPH_SELECTED_EDGE_Z,
   shouldClearLineFocusOnEscape,
+  shouldRestoreGraphViewOnEscape,
+  enterCourseConnectionsView,
+  popGraphView,
   layoutProgramFlow,
   mapFind,
   mapScene,
@@ -677,6 +680,46 @@ test("dimmed course cards stack above selected edges so line-focus does not stea
   assert.ok(graphCourseZIndex({ focused: false, emphasized: false }) > GRAPH_SELECTED_EDGE_Z);
   assert.ok(graphCourseZIndex({ focused: false, emphasized: true }) > GRAPH_SELECTED_EDGE_Z);
   assert.ok(graphCourseZIndex({ focused: true, emphasized: true }) > graphCourseZIndex({ focused: false, emphasized: true }));
+});
+
+test("double-click enters This course's connections and remembers the previous view", () => {
+  const program = { depth: "program" as const, focusCode: "CS 5010", zoom: 0.4 };
+  const entered = enterCourseConnectionsView(program, "CS 5500", 1);
+  assert.deepEqual(entered.next, { depth: "1", focusCode: "CS 5500", zoom: 1 });
+  assert.deepEqual(entered.previous, program);
+
+  const alreadyThere = enterCourseConnectionsView(entered.next, "CS 5500", 1);
+  assert.equal(alreadyThere.previous, null);
+  assert.deepEqual(alreadyThere.next, entered.next);
+
+  const stacked = enterCourseConnectionsView(entered.next, "CS 5004", 1);
+  assert.deepEqual(stacked.previous, entered.next);
+  assert.deepEqual(stacked.next, { depth: "1", focusCode: "CS 5004", zoom: 1 });
+
+  const [first, second] = [entered.previous, stacked.previous].filter((view) => view !== null);
+  const afterInner = popGraphView([first, second]);
+  assert.deepEqual(afterInner.view, entered.next);
+  const afterOuter = popGraphView(afterInner.rest);
+  assert.deepEqual(afterOuter.view, program);
+  assert.deepEqual(popGraphView([]).view, null);
+});
+
+test("Escape restores a drilled-in graph view after line focus, not over find or fullscreen", () => {
+  const inspector = new FakeElement("h2", {}, new FakeElement("aside", { class: "graph-inspector", id: "graph-inspector" }, new FakeElement("div", { class: "graph-layout" })));
+  const pane = new FakeElement("div", { class: "react-flow__pane" }, new FakeElement("div", { class: "flow-canvas" }, new FakeElement("div", { class: "graph-layout" })));
+  const dialog = new FakeElement("button", {}, new FakeElement("div", { role: "dialog" }));
+  const depth = new FakeElement("select", {}, new FakeElement("label", { class: "graph-depth-label" }, new FakeElement("div", { class: "graph-panel" })));
+  const restore = { canRestore: true, lineFocus: false, findQuery: "", fullscreen: false };
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(inspector) }, restore), true);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(pane) }, restore), true);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: null }, restore), true);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(inspector) }, { ...restore, canRestore: false }), false);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(inspector) }, { ...restore, lineFocus: true }), false);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(pane) }, { ...restore, findQuery: "cs55" }), false);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(inspector) }, { ...restore, fullscreen: true }), false);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(dialog) }, restore), false);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(depth) }, restore), false);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Enter", target: asTarget(inspector) }, restore), false);
 });
 
 test("Escape clears line focus from the inspector and empty map, not from find text or fullscreen", () => {
