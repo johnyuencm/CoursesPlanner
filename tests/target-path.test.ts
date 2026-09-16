@@ -130,7 +130,7 @@ test("completed CS 6510 target stays empty even though it has catalog prerequisi
 test("planned CS 6510 still expands remaining prerequisites so Add missing chain can backfill", () => {
   const withTarget = plan({
     semesters: emptyPlan().semesters.map((semester) =>
-      semester.id === "fall-2026" ? { ...semester, courses: [{ code: "CS 6510", credits: 4 }] } : semester,
+      semester.id === "fall-2027" ? { ...semester, courses: [{ code: "CS 6510", credits: 4 }] } : semester,
     ),
   });
   const snapshot = targetPathSnapshot("CS 6510", seattle.courses, withTarget);
@@ -139,15 +139,35 @@ test("planned CS 6510 still expands remaining prerequisites so Add missing chain
   assert.ok(snapshot.path.remainingCodes.includes("CS 5500"));
   assert.notEqual(snapshot.earliest.reason, "already-recorded");
   assert.equal(snapshot.earliest.reason, "ok");
-  assert.ok(snapshot.earliest.placements.some((item) => item.code === "CS 5010"));
-  assert.ok(snapshot.earliest.placements.some((item) => item.code === "CS 5500"));
+  assert.equal(snapshot.earliest.termName, "Fall 2027");
+  assert.equal(snapshot.earliest.summary, "3 prerequisites remaining · earliest Fall 2027");
+  assert.equal(snapshot.earliest.placements.find((item) => item.code === "CS 5010")?.termName, "Fall 2026");
+  assert.equal(snapshot.earliest.placements.find((item) => item.code === "CS 5500")?.termName, "Spring 2027");
   assert.ok(!snapshot.earliest.placements.some((item) => item.code === "CS 6510"));
   const applied = applyRemainingPathToPlan(withTarget, seattle.courses, snapshot.earliest.placements);
   assert.equal(applied.ok, true);
   assert.ok(applied.added.includes("CS 5010"));
   assert.ok(applied.added.includes("CS 5500"));
   assert.ok(
-    applied.plan.semesters.some((semester) => semester.courses.some((item) => item.code === "CS 6510")),
+    applied.plan.semesters.some(
+      (semester) => semester.id === "fall-2027" && semester.courses.some((item) => item.code === "CS 6510"),
+    ),
+  );
+});
+
+test("planned CS 6510 in Spring 2027 does not place CS 5500 in the same term", () => {
+  const withTarget = plan({
+    semesters: emptyPlan().semesters.map((semester) =>
+      semester.id === "spring-2027" ? { ...semester, courses: [{ code: "CS 6510", credits: 4 }] } : semester,
+    ),
+  });
+  const snapshot = targetPathSnapshot("CS 6510", seattle.courses, withTarget);
+  assert.ok(snapshot.path.remainingCodes.includes("CS 5500"));
+  assert.equal(snapshot.earliest.reason, "cannot-place-before-target");
+  assert.equal(snapshot.earliest.summary, "3 prerequisites remaining · cannot fit before Spring 2027");
+  assert.deepEqual(snapshot.earliest.placements, []);
+  assert.ok(
+    !snapshot.earliest.placements.some((item) => item.code === "CS 5500" && item.termName === "Spring 2027"),
   );
 });
 
@@ -256,6 +276,23 @@ test("concurrent prerequisite waits for non-concurrent dependencies and stays in
   assert.equal(snapshot.earliest.placements.find((item) => item.code === "B")?.termName, "Spring 2027");
   assert.equal(snapshot.earliest.placements.find((item) => item.code === "C")?.termName, "Spring 2027");
   assert.equal(snapshot.earliest.termName, "Spring 2027");
+});
+
+test("concurrent remaining of a planned target may share that term", () => {
+  const courses = [
+    course("B"),
+    course("C", { prerequisites: req("B", { concurrent: true }), prerequisiteCodes: ["B"] }),
+  ];
+  const withTarget = plan({
+    semesters: emptyPlan().semesters.map((semester) =>
+      semester.id === "fall-2026" ? { ...semester, courses: [{ code: "C", credits: 4 }] } : semester,
+    ),
+  });
+  const snapshot = targetPathSnapshot("C", courses, withTarget);
+  assert.equal(snapshot.earliest.reason, "ok");
+  assert.equal(snapshot.earliest.termName, "Fall 2026");
+  assert.equal(snapshot.earliest.summary, "1 prerequisite remaining · earliest Fall 2026");
+  assert.equal(snapshot.earliest.placements.find((item) => item.code === "B")?.termName, "Fall 2026");
 });
 
 test("concurrent partners with disjoint offerings fail closed instead of splitting terms", () => {

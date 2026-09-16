@@ -41,7 +41,8 @@ export interface EarliestTerm {
     | "missing-data"
     | "already-recorded"
     | "no-academic-term"
-    | "no-matching-offering";
+    | "no-matching-offering"
+    | "cannot-place-before-target";
   summary: string;
   placements: TermPlacement[];
   usedOfferings: boolean;
@@ -421,6 +422,11 @@ function summarize(reason: EarliestTerm["reason"], remainingCount: number, termN
   if (reason === "missing-data") return "Path includes courses missing from this catalog.";
   if (reason === "no-academic-term") return "Add an academic term to estimate an earliest semester.";
   if (reason === "no-matching-offering") return `${remainingLabel(remainingCount)} · no matching term offering`;
+  if (reason === "cannot-place-before-target") {
+    return termName
+      ? `${remainingLabel(remainingCount)} · cannot fit before ${termName}`
+      : `${remainingLabel(remainingCount)} · cannot fit before the planned target`;
+  }
   if (reason === "already-recorded") {
     return recordedLabel ?? (termName ? `Already on your plan · ${termName}` : "Already completed");
   }
@@ -485,6 +491,8 @@ export function earliestFeasibleTerm(
   const toPlace = unique([...path.remainingCodes, ...(targetPlanned ? [] : [path.target])]);
   const usedOfferings = unique([...toPlace, path.target]).some((code) => Boolean(catalog.get(code)?.termOfferings?.length));
   const assignment = new Map<string, number>();
+  const plannedTargetIndex = targetPlanned ? plannedAcademicIndex(path.target, plan, academic) : undefined;
+  if (plannedTargetIndex !== undefined) assignment.set(path.target, plannedTargetIndex);
   const order = topologicalOrder(toPlace, path.edges);
   const components = concurrentComponents(toPlace, path.edges);
 
@@ -499,43 +507,65 @@ export function earliestFeasibleTerm(
 
   const componentOf = (code: string): string[] => components.find((group) => group.includes(code)) ?? [code];
 
-  const raiseMinimum = (minimum: number, other: string, concurrent: boolean): number => {
-    if (history.has(other)) return minimum;
-    const plannedIndex = plannedAcademicIndex(other, plan, academic);
-    if (plannedIndex !== undefined) minimum = Math.max(minimum, plannedIndex + (concurrent ? 0 : 1));
-    const assigned = assignment.get(other);
-    if (assigned !== undefined) minimum = Math.max(minimum, assigned + (concurrent ? 0 : 1));
-    return minimum;
+  const termOf = (other: string): number | undefined => {
+    if (history.has(other)) return undefined;
+    if (assignment.has(other)) return assignment.get(other);
+    return plannedAcademicIndex(other, plan, academic);
   };
 
-  const findSharedTerm = (minimum: number, group: readonly string[]): number | null => {
-    for (let index = minimum; index < academic.length + 8; index++) {
+  const raiseMinimum = (minimum: number, other: string, concurrent: boolean): number => {
+    const at = termOf(other);
+    if (at === undefined) return minimum;
+    return Math.max(minimum, at + (concurrent ? 0 : 1));
+  };
+
+  const raiseMaximum = (maximum: number, other: string, concurrent: boolean): number => {
+    const at = termOf(other);
+    if (at === undefined) return maximum;
+    return Math.min(maximum, at - (concurrent ? 0 : 1));
+  };
+
+  const findSharedTerm = (minimum: number, group: readonly string[], maximum = Number.POSITIVE_INFINITY): number | null => {
+    if (minimum > maximum) return null;
+    const last = Number.isFinite(maximum) ? maximum : academic.length + 7;
+    for (let index = minimum; index <= last; index++) {
       const name = termAt(index).name;
       if (group.every((code) => termMatchesOffering(name, catalog.get(code)?.termOfferings))) return index;
     }
     return null;
   };
 
+  const missBeforeTarget = (): EarliestTerm =>
+    fail("cannot-place-before-target", targetSemester?.name ?? null, usedOfferings);
+
   const placed = new Set<string>();
   for (const code of order) {
     if (placed.has(code)) continue;
     const group = componentOf(code);
     let minimum = 0;
+    let maximum = Number.POSITIVE_INFINITY;
     for (const member of group) {
       placed.add(member);
       for (const edge of path.edges) {
         if (!edge.concurrent) {
-          if (edge.to !== member || group.includes(edge.from)) continue;
-          minimum = raiseMinimum(minimum, edge.from, false);
+          if (edge.to === member && !group.includes(edge.from)) {
+            minimum = raiseMinimum(minimum, edge.from, false);
+          }
+          if (edge.from === member && !group.includes(edge.to)) {
+            maximum = raiseMaximum(maximum, edge.to, false);
+          }
           continue;
         }
         const other = edge.to === member ? edge.from : edge.from === member ? edge.to : null;
         if (!other || group.includes(other)) continue;
         minimum = raiseMinimum(minimum, other, true);
+        maximum = raiseMaximum(maximum, other, true);
       }
     }
-    const index = findSharedTerm(minimum, group);
-    if (index === null) return { ...fail("no-matching-offering"), usedOfferings };
+    const index = findSharedTerm(minimum, group, maximum);
+    if (index === null) {
+      return Number.isFinite(maximum) ? missBeforeTarget() : { ...fail("no-matching-offering"), usedOfferings };
+    }
     for (const member of group) assignment.set(member, index);
   }
 
@@ -543,6 +573,18 @@ export function earliestFeasibleTerm(
     const term = termAt(assignment.get(code) ?? 0);
     return { code, termName: term.name, semesterId: term.id };
   });
+
+  if (targetPlanned && targetSemester) {
+    return {
+      remainingCount,
+      termName: targetSemester.name,
+      semesterId: targetSemester.id,
+      reason: "ok",
+      summary: summarize("ok", remainingCount, targetSemester.name),
+      placements,
+      usedOfferings,
+    };
+  }
 
   let targetIndex = assignment.get(path.target);
   if (targetIndex === undefined) {
@@ -557,7 +599,7 @@ export function earliestFeasibleTerm(
   return {
     remainingCount,
     termName: targetTerm.name,
-    semesterId: targetPlanned ? targetSemester?.id ?? null : targetTerm.id,
+    semesterId: targetTerm.id,
     reason: "ok",
     summary: summarize("ok", remainingCount, targetTerm.name),
     placements,
