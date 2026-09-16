@@ -451,6 +451,16 @@ textarea { resize: vertical; }
 .save-status > span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
 .save-status.saved > span { background: var(--green); }
 .save-status.error > span, .save-status.blocked > span { background: var(--amber); }
+.planner-backup { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.55rem; }
+.planner-backup-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.planner-backup > .muted { flex: 1 1 100%; margin: 0; font-size: 0.68rem; }
+.planner-backup-outage { display: grid; justify-content: stretch; gap: 0.75rem; margin-bottom: 1.15rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+.plan-backup-banner { margin: 0; padding: 0.55rem 0.65rem; border: 1px solid #ead6ac; border-radius: 9px; background: var(--amber-soft); color: #77470b; font-size: 0.76rem; }
+.plan-backup-summary { display: grid; gap: 0.35rem; color: var(--ink-soft); font-size: 0.76rem; }
+.plan-backup-summary p, .plan-backup-summary ul { margin: 0; }
+.plan-backup-summary ul { padding-left: 1.1rem; }
+.plan-backup-ack { display: flex; align-items: flex-start; gap: 0.45rem; color: var(--ink); font-size: 0.78rem; }
+.plan-backup-ack input { margin-top: 0.2rem; }
 .semester-board { display: flex; gap: 0.72rem; overflow-x: auto; padding-bottom: 0.35rem; }
 .semester-column { flex: 0 0 248px; min-width: 248px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; transition: border-color 140ms, box-shadow 140ms; }
 .semester-column.drop-target { border-color: var(--red); box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.1); }

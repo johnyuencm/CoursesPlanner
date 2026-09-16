@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import { addableLineCourses, appendCoursesToSemester, emptyPlan, loadPlan, parsePlan, parsePlanBackup, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY } from "../lib/plan";
+import { addableLineCourses, appendCoursesToSemester, canRestorePlanBackup, createPlanBackupDownload, emptyPlan, loadPlan, parsePlan, parsePlanBackup, PLAN_BACKUP_FILENAME, PLAN_RECOVERY_FILENAME, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY, summarizePlan } from "../lib/plan";
 
 test("emptyPlan starts in Fall 2026 with five fresh terms and one co-op", () => {
   const first = emptyPlan();
@@ -120,16 +120,19 @@ test("loadPlan returns parsed storage without writing or replacing it", () => {
   });
   assert.equal(requestedKey, STORAGE_KEY);
   assert.equal(loaded.error, null);
+  assert.equal(loaded.raw, saved);
   assert.deepEqual(loaded.plan, emptyPlan());
 });
 
 test("loadPlan safely recovers from absent, corrupt, and unavailable storage", () => {
   const absent = loadPlan({ getItem: (_key: string) => null });
   assert.equal(absent.error, null);
+  assert.equal(absent.raw, null);
   assert.deepEqual(absent.plan, emptyPlan());
 
   const corrupt = loadPlan({ getItem: (_key: string) => "{not-json" });
   assert.match(corrupt.error ?? "", /Could not load/);
+  assert.equal(corrupt.raw, "{not-json");
   assert.deepEqual(corrupt.plan, emptyPlan());
 
   const unavailable = loadPlan({
@@ -138,6 +141,7 @@ test("loadPlan safely recovers from absent, corrupt, and unavailable storage", (
     },
   });
   assert.match(unavailable.error ?? "", /storage denied/);
+  assert.equal(unavailable.raw, null);
   assert.deepEqual(unavailable.plan, emptyPlan());
 });
 
@@ -153,6 +157,70 @@ test("plan backup round-trips every version-1 plan field, including empty terms 
     ],
   };
   assert.deepEqual(parsePlanBackup(serializePlanBackup(plan)), plan);
+});
+
+test("blocked storage export downloads raw recovery data instead of an empty plan backup", () => {
+  const emptyBackup = serializePlanBackup(emptyPlan());
+  const corruptStored = "{not-json";
+  const recovery = createPlanBackupDownload({ blocked: true, plan: emptyPlan(), rawStored: corruptStored });
+  assert.equal(recovery.kind, "recovery");
+  assert.equal(recovery.filename, PLAN_RECOVERY_FILENAME);
+  assert.equal(recovery.mimeType, "text/plain");
+  assert.equal(recovery.body, corruptStored);
+  assert.notEqual(recovery.body, emptyBackup);
+  assert.match(recovery.message, /recovery copy|not a validated plan backup/i);
+
+  assert.throws(
+    () => createPlanBackupDownload({ blocked: true, plan: emptyPlan(), rawStored: null }),
+    /empty on-screen plan/i,
+  );
+  assert.throws(
+    () => createPlanBackupDownload({ blocked: true, plan: emptyPlan(), rawStored: "" }),
+    /empty on-screen plan/i,
+  );
+});
+
+test("healthy persistence still exports a validated in-memory plan backup", () => {
+  const plan = {
+    ...emptyPlan(),
+    completedCourses: ["CS 5010"],
+    semesters: [{ id: "fall-2026", name: "Fall 2026", type: "academic" as const, courses: [{ code: "CS 5800", credits: 4 }] }],
+  };
+  const download = createPlanBackupDownload({ blocked: false, plan, rawStored: "{ignored" });
+  assert.equal(download.kind, "backup");
+  assert.equal(download.filename, PLAN_BACKUP_FILENAME);
+  assert.equal(download.mimeType, "application/json");
+  assert.deepEqual(parsePlanBackup(download.body), plan);
+  assert.match(download.message, /Backup downloaded/);
+});
+
+test("catalog-outage restore stays gated until the current plan is acknowledged", () => {
+  assert.equal(canRestorePlanBackup({ hydrated: true, catalogAvailable: true, acknowledgedOutageRestore: false }), true);
+  assert.equal(canRestorePlanBackup({ hydrated: true, catalogAvailable: false, acknowledgedOutageRestore: false }), false);
+  assert.equal(canRestorePlanBackup({ hydrated: true, catalogAvailable: false, acknowledgedOutageRestore: true }), true);
+  assert.equal(canRestorePlanBackup({ hydrated: false, catalogAvailable: true, acknowledgedOutageRestore: true }), false);
+});
+
+test("plan summary lists terms and recorded courses for outage restore visibility", () => {
+  const plan = {
+    version: 1 as const,
+    completedCourses: ["CS 5010"],
+    waivedCourses: ["CS 5004"],
+    completedCredits: { "CS 5010": 4 },
+    semesters: [
+      { id: "fall-2026", name: "Fall 2026", type: "academic" as const, courses: [{ code: "CS 5800", credits: 4 }] },
+      { id: "spring-2027", name: "Spring 2027", type: "academic" as const, courses: [] },
+    ],
+  };
+  const summary = summarizePlan(plan);
+  assert.equal(summary.termCount, 2);
+  assert.equal(summary.plannedCourseCount, 1);
+  assert.equal(summary.completedCount, 1);
+  assert.equal(summary.waivedCount, 1);
+  assert.deepEqual(summary.terms[0].courseCodes, ["CS 5800"]);
+  assert.deepEqual(summary.terms[1].courseCodes, []);
+  assert.deepEqual(summary.completedCourses, ["CS 5010"]);
+  assert.deepEqual(summary.waivedCourses, ["CS 5004"]);
 });
 
 test("backup parsing rejects invalid JSON and oversized text before a restore can begin", () => {

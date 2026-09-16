@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { Catalog, DegreeProgress, StudentPlan } from "@/lib/types";
-import { addableLineCourses, appendCoursesToSemester, emptyPlan, loadPlan, parsePlan, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY } from "@/lib/plan";
+import { addableLineCourses, appendCoursesToSemester, createPlanBackupDownload, emptyPlan, loadPlan, parsePlan, recordedCourseCodes, restorePlan, STORAGE_KEY, type PlanBackupDownload } from "@/lib/plan";
 import { validatePlan } from "@/lib/validation";
 
 type PickerState = { semesterId?: string; courseCode?: string } | null;
@@ -23,7 +23,7 @@ interface AppContextValue {
   storageError: string | null;
   retrySave: () => void;
   resetPlan: () => void;
-  exportPlanBackup: () => string;
+  exportPlanBackup: () => PlanBackupDownload;
   restorePlanBackup: (candidate: StudentPlan) => boolean;
   detailCode: string | null;
   openCourse: (code: string | null) => void;
@@ -94,6 +94,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [plan, setPlan] = useState<StudentPlan>(() => emptyPlan());
   const [hydrated, setHydrated] = useState(false);
   const [storageBlocked, setStorageBlocked] = useState(false);
+  const [blockedRawStorage, setBlockedRawStorage] = useState<string | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [persistence, setPersistence] = useState<PersistenceStatus>("loading");
   const [detailCode, openCourse] = useState<string | null>(null);
@@ -126,11 +127,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setPlan(loaded.plan);
       if (loaded.error) {
         setStorageBlocked(true);
+        setBlockedRawStorage(loaded.raw);
         setStorageError(loaded.error);
         setPersistence("blocked");
       }
     } catch (error) {
       setStorageBlocked(true);
+      setBlockedRawStorage(null);
       setStorageError(error instanceof Error ? error.message : "Browser storage is unavailable.");
       setPersistence("blocked");
     }
@@ -172,16 +175,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!window.confirm("Reset your local plan? This permanently replaces all saved semesters, completed courses, and waivers in this browser. If saved data is unreadable, it will also be replaced. This cannot be undone.")) return;
     setPlan(emptyPlan());
     setStorageBlocked(false);
+    setBlockedRawStorage(null);
     setStorageError(null);
     announce("Your plan has been reset. No courses are marked completed or waived.");
   };
-  const exportPlanBackup = useCallback(() => serializePlanBackup(plan), [plan]);
+  const exportPlanBackup = useCallback(
+    () => createPlanBackupDownload({
+      blocked: persistence === "blocked" || storageBlocked,
+      plan,
+      rawStored: blockedRawStorage,
+    }),
+    [blockedRawStorage, persistence, plan, storageBlocked],
+  );
   const restorePlanBackup = useCallback((candidate: StudentPlan) => {
     try {
       // Persist first: a failed write must never replace the plan the user is viewing.
       const restored = restorePlan(window.localStorage, candidate);
       setPlan(restored);
       setStorageBlocked(false);
+      setBlockedRawStorage(null);
       setPersistence("saved");
       setStorageError(null);
       announce("Backup restored and saved on this device.");
