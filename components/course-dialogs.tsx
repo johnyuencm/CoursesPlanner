@@ -6,6 +6,7 @@ import type { RequirementExpression } from "@/lib/types";
 import { expressionLabel, getEligibility } from "@/lib/validation";
 import { useApp } from "./app-provider";
 import { CodeLinks } from "./course-card";
+import { SetAsTargetButton } from "./target-path";
 import { CreditSelect, EmptyState, Modal, OfficialLink, creditLabel } from "./ui";
 
 function RequirementTree({ expression }: { expression: RequirementExpression }) {
@@ -37,7 +38,7 @@ export function CourseDetail({ code }: { code: string }) {
     <details className="technical-details"><summary>View parsed requirement expressions</summary><p>AND and OR groups are preserved. A reference link alone does not imply every linked course is required.</p><pre>{JSON.stringify({ prerequisites: course.prerequisites, corequisites: course.corequisites }, null, 2)}</pre></details>
     <OfficialLink href={course.officialUrl} sources={catalog?.sources}>Read the official course description</OfficialLink>
     <section className="history-actions"><h3>Your course status</h3><p className="muted small-text">Marking a course completed attests that its minimum grades were met. A waiver satisfies a requirement, but earns no credits. Advisor approval is still needed.</p><CreditSelect course={course} value={credits} onChange={(value) => { setCredits(value); if (completed) setCourseStatus(code, "completed", value); }} /><div className="button-row">{completed || waived ? <button className="button button-secondary" onClick={() => setCourseStatus(code, "none")}><Undo2 size={15} /> Undo {waived ? "waiver" : "completion"}</button> : <><button className="button button-secondary" disabled={!hydrated} onClick={() => setCourseStatus(code, "completed", credits)}><Check size={15} /> Mark completed</button><button className="button button-secondary" disabled={!hydrated} onClick={() => setCourseStatus(code, "waived")}><ShieldCheck size={15} /> Mark waived</button></>}</div></section>
-  </div><footer className="modal-footer"><span className="muted small-text">{semester ? `Planned in ${semester.name}` : completed ? "In your completed history" : waived ? "Requirement waived · 0 earned credits" : "Build a plan around your interests."}</span>{!completed && !waived && !semester && <button className="button button-primary" disabled={!hydrated} onClick={() => openPicker(undefined, code)}><Plus size={16} /> Add to my plan</button>}</footer></Modal>;
+  </div><footer className="modal-footer"><span className="muted small-text">{semester ? `Planned in ${semester.name}` : completed ? "In your completed history" : waived ? "Requirement waived · 0 earned credits" : "Build a plan around your interests."}</span><SetAsTargetButton code={code} /><span className="button-row">{!completed && !waived && !semester && <button className="button button-primary" disabled={!hydrated} onClick={() => openPicker(undefined, code)}><Plus size={16} /> Add to my plan</button>}</span></footer></Modal>;
 }
 
 export function CoursePicker() {

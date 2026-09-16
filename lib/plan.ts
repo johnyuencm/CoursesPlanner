@@ -1,4 +1,6 @@
 import type { PlannedCourse, Semester, StudentPlan } from "./types";
+import type { TermPlacement } from "./target-path";
+import { termSlug } from "./target-path";
 
 export const STORAGE_KEY = "neu-mscs-planner-plan-v1";
 export const MAX_PLAN_BACKUP_BYTES = 1_000_000;
@@ -67,6 +69,67 @@ export function appendCoursesToSemester(
       ),
     },
   };
+}
+
+export type ApplyRemainingPathResult =
+  | { ok: true; plan: StudentPlan; added: string[]; createdTerms: string[] }
+  | { ok: false; reason: "capacity" | "missing-term"; plan: StudentPlan; added: []; createdTerms: []; semesterName?: string };
+
+export function applyRemainingPathToPlan(
+  plan: StudentPlan,
+  courses: Iterable<{ code: string; requirementType: string; credits: number }>,
+  placements: readonly TermPlacement[],
+): ApplyRemainingPathResult {
+  const original = plan;
+  const catalog = [...courses];
+  let next = plan;
+  const createdTerms: string[] = [];
+  const resolved = placements.map((placement) => {
+    if (placement.semesterId && next.semesters.some((semester) => semester.id === placement.semesterId)) {
+      return placement;
+    }
+    const existing = next.semesters.find((semester) => semester.name === placement.termName && semester.type === "academic");
+    if (existing) return { ...placement, semesterId: existing.id };
+    let id = termSlug(placement.termName);
+    if (next.semesters.some((semester) => semester.id === id)) id = `${id}-${next.semesters.length}`;
+    next = {
+      ...next,
+      semesters: [...next.semesters, { id, name: placement.termName, type: "academic", courses: [] }],
+    };
+    createdTerms.push(placement.termName);
+    return { ...placement, semesterId: id };
+  });
+  const added: string[] = [];
+  const byTerm = new Map<string, TermPlacement[]>();
+  for (const placement of resolved) {
+    if (!placement.semesterId) continue;
+    const group = byTerm.get(placement.semesterId) ?? [];
+    group.push(placement);
+    byTerm.set(placement.semesterId, group);
+  }
+  for (const [semesterId, group] of byTerm) {
+    const items = addableLineCourses(
+      group.map((item) => item.code),
+      catalog,
+      recordedCourseCodes(next),
+    );
+    if (!items.length) continue;
+    const result = appendCoursesToSemester(next, semesterId, items);
+    if (!result.ok) {
+      if (result.reason === "none") continue;
+      return {
+        ok: false,
+        reason: result.reason,
+        plan: original,
+        added: [],
+        createdTerms: [],
+        semesterName: next.semesters.find((semester) => semester.id === semesterId)?.name,
+      };
+    }
+    next = result.plan;
+    added.push(...result.added);
+  }
+  return { ok: true, plan: next, added, createdTerms };
 }
 
 export function emptyPlan(): StudentPlan {

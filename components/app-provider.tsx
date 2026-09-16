@@ -2,7 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { Catalog, DegreeProgress, StudentPlan } from "@/lib/types";
-import { addableLineCourses, appendCoursesToSemester, createPlanBackupDownload, emptyPlan, loadPlan, parsePlan, recordedCourseCodes, restorePlan, STORAGE_KEY, type PlanBackupDownload } from "@/lib/plan";
+import { addableLineCourses, appendCoursesToSemester, applyRemainingPathToPlan, createPlanBackupDownload, emptyPlan, loadPlan, parsePlan, recordedCourseCodes, restorePlan, STORAGE_KEY, type PlanBackupDownload } from "@/lib/plan";
+import { targetPathSnapshot } from "@/lib/target-path";
 import { validatePlan } from "@/lib/validation";
 
 type PickerState = { semesterId?: string; courseCode?: string } | null;
@@ -35,12 +36,16 @@ interface AppContextValue {
   addCourses: (codes: Iterable<string>, semesterId: string) => void;
   careerTargetId: string | null;
   setCareerTargetId: (id: string | null) => void;
+  courseTargetCode: string | null;
+  setCourseTargetCode: (code: string | null) => void;
+  addTargetChain: () => void;
   notice: string;
   announce: (message: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
 const CAREER_TARGET_KEY = "neu-mscs-career-target-v1";
+const COURSE_TARGET_KEY = "neu-mscs-course-target-v1";
 
 let sessionCatalog: Catalog | null = null;
 let catalogGetInflight: Promise<Catalog> | null = null;
@@ -101,6 +106,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [picker, setPicker] = useState<PickerState>(null);
   const [notice, announce] = useState("");
   const [careerTargetId, setCareerTargetIdState] = useState<string | null>(null);
+  const [courseTargetCode, setCourseTargetCodeState] = useState<string | null>(null);
 
   const fetchCatalog = useCallback(async (refresh: boolean) => {
     setCatalogBusy(true);
@@ -146,12 +152,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch {
       /* Career target is optional; plan persistence is separate. */
     }
+    try {
+      const saved = window.localStorage.getItem(COURSE_TARGET_KEY);
+      if (saved) setCourseTargetCodeState(saved);
+    } catch {
+      /* Course target is optional; plan persistence is separate. */
+    }
   }, []);
   const setCareerTargetId = useCallback((id: string | null) => {
     setCareerTargetIdState(id);
     try {
       if (id) window.localStorage.setItem(CAREER_TARGET_KEY, id);
       else window.localStorage.removeItem(CAREER_TARGET_KEY);
+    } catch {
+      /* Ignore optional preference write failures. */
+    }
+  }, []);
+  const setCourseTargetCode = useCallback((code: string | null) => {
+    setCourseTargetCodeState(code);
+    try {
+      if (code) window.localStorage.setItem(COURSE_TARGET_KEY, code);
+      else window.localStorage.removeItem(COURSE_TARGET_KEY);
     } catch {
       /* Ignore optional preference write failures. */
     }
@@ -265,8 +286,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     announce(`${result.added.join(", ")} added to ${result.semesterName}. Check the live audit for prerequisites and corequisites.`);
   };
+  const addTargetChain = () => {
+    if (!catalog) {
+      announce("Catalog is still loading. Try adding the path again in a moment.");
+      return;
+    }
+    if (!courseTargetCode) {
+      announce("Choose a target course before adding its prerequisite chain.");
+      return;
+    }
+    let added: string[] = [];
+    let createdTerms: string[] = [];
+    let capacityTerm: string | undefined;
+    let failed: "capacity" | "missing-term" | undefined;
+    setPlan((current) => {
+      const snapshot = targetPathSnapshot(courseTargetCode, catalog.courses, current);
+      const result = applyRemainingPathToPlan(current, catalog.courses, snapshot.earliest.placements);
+      if (!result.ok) {
+        failed = result.reason;
+        capacityTerm = result.semesterName;
+        return current;
+      }
+      added = result.added;
+      createdTerms = result.createdTerms;
+      return result.plan;
+    });
+    if (failed === "capacity") {
+      announce(`${capacityTerm ?? "That term"} supports up to 32 planned courses. The missing chain was not added.`);
+      return;
+    }
+    if (failed === "missing-term") {
+      announce("A planned term for this path is missing. The missing chain was not added.");
+      return;
+    }
+    if (!added.length) {
+      announce("Every course on this path is already in your plan or history, or cannot be added.");
+      return;
+    }
+    announce(`${added.join(", ")} added along the path to ${courseTargetCode}${createdTerms.length ? `. Created ${createdTerms.join(", ")}` : ""}. Check the live audit for prerequisites and corequisites.`);
+  };
 
-  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId, notice, announce }}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId, courseTargetCode, setCourseTargetCode, addTargetChain, notice, announce }}>{children}</AppContext.Provider>;
 }
 
 export function useApp() {

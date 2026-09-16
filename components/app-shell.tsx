@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, Bookmark, Check, CircleHelp, ListChecks, RefreshCw, Search, Share2, ShieldCheck, Target, TriangleAlert, X, type LucideIcon } from "lucide-react";
+import { BookOpen, Bookmark, Check, CircleHelp, ListChecks, RefreshCw, Search, Share2, ShieldCheck, TriangleAlert, X, type LucideIcon } from "lucide-react";
 import { FormEvent, useState } from "react";
 import pathwayConfig from "@/config/pathways.json";
 import { primaryNav, routes } from "@/lib/routes";
 import type { Pathway } from "@/lib/types";
 import { useApp } from "./app-provider";
 import { CourseDetail, CoursePicker } from "./course-dialogs";
+import { CourseTargetControl } from "./target-path";
 import { OfficialLink, dateLabel } from "./ui";
 
 const navIcons: Record<(typeof primaryNav)[number]["href"], LucideIcon> = {
@@ -61,9 +62,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <input aria-label="Search courses, topics, or keywords" type="search" placeholder="Search courses, topics, or keywords…" value={query} onChange={(event) => setQuery(event.target.value)} />
         </form>
         <div className="top-utilities">
-          <div className="target-control">
-            <Target size={16} aria-hidden="true" />
-            <label>My Target
+          <CourseTargetControl />
+          <div className="target-control path-direction">
+            <label>Direction
               <select aria-label="Career target" value={app.careerTargetId ?? ""} onChange={(event) => app.setCareerTargetId(event.target.value || null)}>
                 <option value="">Choose a direction</option>
                 {pathways.map((pathway) => <option key={pathway.id} value={pathway.id}>{pathway.name}</option>)}
