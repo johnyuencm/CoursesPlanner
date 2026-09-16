@@ -1,7 +1,8 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-15T22:26:32.167Z",
+  "updated_at": "2026-09-16T01:51:46.250Z",
+  "active_goal_id": "goal_double-click-course-connections-escape-back_d248",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
       "id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
@@ -32,6 +33,21 @@
       "stop_enforcement": false,
       "created_at": "2026-09-15T21:52:48.208Z",
       "updated_at": "2026-09-15T22:26:32.165Z"
+    },
+    "goal_double-click-course-connections-escape-back_d248": {
+      "id": "goal_double-click-course-connections-escape-back_d248",
+      "title": "Double-click course connections, Escape back",
+      "description": "Double-clicking a course card enters that course's connections view. Escape restores the previous map view, including Entire program.",
+      "status": "active",
+      "assurance": "standard",
+      "backend": {
+        "kind": "local"
+      },
+      "active_ticket_id": "ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1",
+      "worktree_status": "pending",
+      "stop_enforcement": false,
+      "created_at": "2026-09-16T01:51:23.122Z",
+      "updated_at": "2026-09-16T01:51:46.250Z"
     }
   },
   "local_tickets": {
@@ -158,6 +174,24 @@
       "order": 0,
       "created_at": "2026-09-15T21:53:33.503Z",
       "updated_at": "2026-09-15T22:26:16.508Z"
+    },
+    "ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1": {
+      "id": "ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1",
+      "goal_id": "goal_double-click-course-connections-escape-back_d248",
+      "title": "Double-click enters course connections; Escape restores previous view",
+      "brief": "Double-clicking a course card (or table course) switches the map to This course's connections for that code and remembers the prior scope. Escape restores that prior view after find-clear and line-focus, including Entire program.",
+      "acceptance": [
+        "Double-clicking a course while Entire program (or another scope) is showing enters GraphScope 1 for that course, focuses it, and records the previous depth/focus/zoom.",
+        "Escape from the graph layout restores the recorded previous view; a second drill-in stacks so Escape returns one level at a time. Escape still clears find text first, then line focus, and does not steal dialogs, selects, or fullscreen.",
+        "Double-clicking a course already shown as This course's connections does not push a duplicate view. Explicit Show dropdown, locate/search focus, and Show entire program start a new destination and clear the drill-in stack.",
+        "npm test and npm run typecheck pass."
+      ],
+      "blocked_by": [],
+      "status": "in_progress",
+      "code_changed": true,
+      "order": 0,
+      "created_at": "2026-09-16T01:51:37.524Z",
+      "updated_at": "2026-09-16T01:51:46.249Z"
     }
   },
   "checkpoints": {
