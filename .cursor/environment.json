@@ -1,0 +1,20 @@
+{
+  "name": "NEU MSCS Course Planner",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "next-dev",
+      "command": "npm run dev",
+      "description": "Next.js dev server on http://localhost:3000 (App Router UI + /api/catalog)."
+    },
+    {
+      "name": "catalog-service",
+      "command": "npm run catalog:serve",
+      "description": "Optional local catalog crawler on http://127.0.0.1:8787 for background snapshot refresh; the app also works without it."
+    }
+  ],
+  "ports": [
+    { "name": "web", "port": 3000 },
+    { "name": "catalog-service", "port": 8787 }
+  ]
+}
