@@ -110,7 +110,7 @@ Run the catalog service for continuous checks. It ticks once a minute and refres
 npm run catalog:serve
 ```
 
-The service binds `127.0.0.1:8787` with `GET /health`, `GET /catalogs`, `GET /catalogs/:id`, and `POST /catalogs/:id/refresh`. Keep it running in a second terminal next to `npm run dev` if you want background updates. The Next.js app still works without it: Refresh Catalog falls back to in-process refresh.
+The service binds `127.0.0.1:8787` with `GET /health`, `GET /universities`, `GET /catalogs`, `GET /catalogs/:id`, and `POST /catalogs/:id/refresh`. Keep it running in a second terminal next to `npm run dev` if you want background updates. The Next.js app still works without it: Refresh Catalog falls back to in-process refresh.
 
 The refresh pipeline:
 
