@@ -65,3 +65,6 @@
 {"id":"evt_a06dead8","kind":"ticket.started","at":"2026-09-16T02:27:44.719Z","goal_id":"goal_seat-unlock-targets-beside-their-sources_2aad","ticket_id":"ticket-place-unlock-targets-beside-sources-and-center-high-fan--ae8bdb7f"}
 {"id":"evt_a3f8eb81","kind":"ticket.submitted","at":"2026-09-16T02:39:56.581Z","goal_id":"goal_seat-unlock-targets-beside-their-sources_2aad","ticket_id":"ticket-place-unlock-targets-beside-sources-and-center-high-fan--ae8bdb7f"}
 {"id":"evt_d4de5c40","kind":"wiki.page.created","at":"2026-09-16T02:58:48.038Z","payload":{"page_id":"work-2026-09-15-seat-unlock-targets","trigger":"decision"}}
+{"id":"evt_931e8ca6","kind":"ticket.submitted","at":"2026-09-16T03:00:00.475Z","goal_id":"goal_seat-unlock-targets-beside-their-sources_2aad","ticket_id":"ticket-place-unlock-targets-beside-sources-and-center-high-fan--ae8bdb7f"}
+{"id":"evt_4edd16ad","kind":"ticket.done","at":"2026-09-16T03:00:26.173Z","goal_id":"goal_seat-unlock-targets-beside-their-sources_2aad","ticket_id":"ticket-place-unlock-targets-beside-sources-and-center-high-fan--ae8bdb7f"}
+{"id":"evt_e1bd1e1d","kind":"checkpoint.recorded","at":"2026-09-16T03:00:44.083Z","goal_id":"goal_seat-unlock-targets-beside-their-sources_2aad","ticket_id":"ticket-place-unlock-targets-beside-sources-and-center-high-fan--ae8bdb7f","checkpoint_id":"cp_manual_independent-review-pass_5b9b"}

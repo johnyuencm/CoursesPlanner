@@ -1,8 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-16T02:58:48.039Z",
-  "active_goal_id": "goal_seat-unlock-targets-beside-their-sources_2aad",
+  "updated_at": "2026-09-16T03:00:53.914Z",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
       "id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
@@ -53,7 +52,7 @@
       "id": "goal_seat-unlock-targets-beside-their-sources_2aad",
       "title": "Seat unlock targets beside their sources",
       "description": "Program map courses sit next to the courses that unlock them. A two-source target such as CS 6220 stays in that source band. A target with five or more sources sits on the median source row so the bus can surround those courses and point in.",
-      "status": "active",
+      "status": "done",
       "assurance": "standard",
       "backend": {
         "kind": "local"
@@ -62,7 +61,7 @@
       "worktree_status": "pending",
       "stop_enforcement": false,
       "created_at": "2026-09-16T02:27:22.629Z",
-      "updated_at": "2026-09-16T02:27:44.707Z"
+      "updated_at": "2026-09-16T03:00:53.913Z"
     }
   },
   "local_tickets": {
@@ -223,7 +222,7 @@
       "code_changed": true,
       "order": 0,
       "created_at": "2026-09-16T02:27:36.245Z",
-      "updated_at": "2026-09-16T02:40:37.813Z"
+      "updated_at": "2026-09-16T03:00:26.161Z"
     }
   },
   "checkpoints": {
@@ -266,6 +265,16 @@
       "decisions": [],
       "next_action": "goal verify then goal complete; do not merge to master",
       "created_at": "2026-09-13T08:06:28.605Z"
+    },
+    "cp_manual_independent-review-pass_5b9b": {
+      "id": "cp_manual_independent-review-pass_5b9b",
+      "goal_id": "goal_seat-unlock-targets-beside-their-sources_2aad",
+      "ticket_id": "ticket-place-unlock-targets-beside-sources-and-center-high-fan--ae8bdb7f",
+      "kind": "manual",
+      "title": "independent review PASS",
+      "notes": "Phase-1 tech_lead x project_manager PASS then user_advocate PASS. Fresh verify evidence-99880a29. CS 6220 sits in the CS 5800/CS 7800 band on Entire program.",
+      "decisions": [],
+      "created_at": "2026-09-16T03:00:44.083Z"
     }
   },
   "evidence": {
@@ -922,6 +931,36 @@
         "submitted_at": "2026-09-16T02:40:37.812Z"
       },
       "recorded_at": "2026-09-16T02:40:37.813Z"
+    },
+    "submission-ticket-place-unlock-targets-beside-sources-and-center-high-fan-ae8bdb7f-9da6eb": {
+      "id": "submission-ticket-place-unlock-targets-beside-sources-and-center-high-fan-ae8bdb7f-9da6eb",
+      "goal_id": "goal_seat-unlock-targets-beside-their-sources_2aad",
+      "ticket_id": "ticket-place-unlock-targets-beside-sources-and-center-high-fan--ae8bdb7f",
+      "kind": "other",
+      "submission_digest": "d6976d7ebc2d0baecf445832d8d72385b23a648069acddb5735faef6e507a5e1",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-16T03:00:00.465Z"
+      },
+      "recorded_at": "2026-09-16T03:00:00.465Z"
+    },
+    "evidence-99880a29": {
+      "id": "evidence-99880a29",
+      "goal_id": "goal_seat-unlock-targets-beside-their-sources_2aad",
+      "ticket_id": "ticket-place-unlock-targets-beside-sources-and-center-high-fan--ae8bdb7f",
+      "kind": "verification",
+      "submission_digest": "d6976d7ebc2d0baecf445832d8d72385b23a648069acddb5735faef6e507a5e1",
+      "evidence_digest": "eab0e34b34a88cc0ef63b7ec2f6da4b86fe40fd53e14a3fe6bc7ce2f05e4d0f9",
+      "evidence_path": ".ycm-harness\\smoke-logs\\evidence-99880a29.log",
+      "command": "npm test && npm run typecheck",
+      "outcome": "pass",
+      "provenance": {
+        "implementer_run": "layout-impl-b232848",
+        "verifier_run": "layout-verify-b232848",
+        "knowledge": "none",
+        "submitted_at": "2026-09-16T03:00:14.981Z"
+      },
+      "recorded_at": "2026-09-16T03:00:14.982Z"
     }
   },
   "wiki": {
