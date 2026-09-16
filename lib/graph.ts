@@ -233,6 +233,10 @@ export function selectedGraphScroll(
  * stop short / start at the junction. Their 18px hit strokes therefore never
  * overlap, regardless of edge render order or selection z-index.
  */
+export function isShortPrerequisiteSpan(sourceX: number, targetX: number): boolean {
+  return targetX > sourceX && targetX - sourceX <= PROGRAM_COL;
+}
+
 export function prerequisiteHitPaths(
   sourceX: number,
   sourceY: number,
@@ -244,8 +248,7 @@ export function prerequisiteHitPaths(
 ): { branch: string; bus: string } {
   const busX = targetX - busOffset;
   const branchEndX = busX - GRAPH_HIT_TARGET_WIDTH - GRAPH_HIT_TARGET_GAP;
-  const short = targetX - sourceX <= 180 && targetX > sourceX;
-  const branch = short
+  const branch = isShortPrerequisiteSpan(sourceX, targetX)
     ? `M ${sourceX} ${sourceY} H ${branchEndX}`
     : `M ${sourceX} ${sourceY} H ${sourceX + 20} V ${sourceY + 82} H ${branchEndX}`;
   return { branch, bus: `M ${busX} ${busStartY} V ${busEndY} M ${busX} ${targetY} H ${targetX}` };
@@ -465,7 +468,7 @@ export function mapScene(input: MapSceneInput): MapScene {
 /** Orthogonal incoming bus; long edges travel in the gutter below their source row. */
 export function prerequisiteConnector(sourceX: number, sourceY: number, targetX: number, targetY: number, busOffset = 36): string {
   const busX = targetX - busOffset;
-  if (targetX - sourceX <= 180 && targetX > sourceX) {
+  if (isShortPrerequisiteSpan(sourceX, targetX)) {
     return `M ${sourceX} ${sourceY} H ${busX} V ${targetY} H ${targetX}`;
   }
   const laneY = sourceY + 82;
@@ -543,52 +546,133 @@ export function layoutProgramFlow(
         if (!neighbors.length) return indexInRank(code);
         return neighbors.reduce((sum, neighbor) => sum + indexInRank(neighbor), 0) / neighbors.length;
       };
-      group.sort((left, right) => score(left) - score(right) || compare(left, right));
+      const childKey = (code: string) => (outgoing.get(code) ?? []).slice().sort(compare).join("|");
+      group.sort((left, right) => score(left) - score(right) || childKey(left).localeCompare(childKey(right)) || compare(left, right));
     }
   }
+  const consecutiveStart = (preferredY: number, rows: number, used: Set<number>) => {
+    const snapped = Math.max(0, Math.round(preferredY / nodeHeight) * nodeHeight);
+    const fits = (start: number) => {
+      for (let index = 0; index < rows; index++) {
+        if (used.has(start + index * nodeHeight)) return false;
+      }
+      return true;
+    };
+    if (fits(snapped)) return snapped;
+    for (let delta = nodeHeight; ; delta += nodeHeight) {
+      if (fits(snapped + delta)) return snapped + delta;
+      if (snapped - delta >= 0 && fits(snapped - delta)) return snapped - delta;
+    }
+  };
   const positions = new Map<string, { x: number; y: number }>();
   let flowBottom = 0;
-  for (let column = rankKeys.length - 1; column >= 0; column--) {
+  for (let column = 0; column < rankKeys.length; column++) {
     const rank = rankKeys[column]!;
     const group = order.get(rank)!;
     const x = column * nodeWidth;
     const used = new Set<number>();
-    const aligned = group
-      .map((code) => {
-        const children = (outgoing.get(code) ?? []).filter((child) => positions.has(child));
-        if (!children.length) return null;
-        const ys = children.map((child) => positions.get(child)!.y).sort((left, right) => left - right);
-        return { code, y: ys[Math.floor((ys.length - 1) / 2)]! };
-      })
-      .filter((item): item is { code: string; y: number } => item !== null)
-      .sort((left, right) => left.y - right.y || compare(left.code, right.code));
-    const childCount = (code: string) => (outgoing.get(code) ?? []).filter((child) => positions.has(child)).length;
-    const exclusive = aligned.filter((item) => childCount(item.code) === 1);
-    const multi = aligned.filter((item) => childCount(item.code) !== 1);
-    const occupy = (code: string, preferredY: number) => {
-      if (positions.has(code)) return;
-      let y = preferredY;
-      while (used.has(y)) y += nodeHeight;
-      used.add(y);
-      positions.set(code, { x, y });
-      flowBottom = Math.max(flowBottom, y + nodeHeight);
-      let partnerY = y + nodeHeight;
-      for (const partner of coreqPartners.get(code) ?? []) {
-        if (positions.has(partner)) continue;
-        if ((ranks.get(partner) ?? 0) !== rank) continue;
-        while (used.has(partnerY)) partnerY += nodeHeight;
-        used.add(partnerY);
-        positions.set(partner, { x, y: partnerY });
-        flowBottom = Math.max(flowBottom, partnerY + nodeHeight);
-        partnerY += nodeHeight;
+    const placedParents = (code: string) => (incoming.get(code) ?? []).filter((parent) => positions.has(parent));
+    const sameRankPartners = (code: string) =>
+      (coreqPartners.get(code) ?? []).filter((partner) => (ranks.get(partner) ?? 0) === rank);
+    const coreqCluster = (code: string) => {
+      const seen = new Set<string>([code]);
+      const queue = [code];
+      while (queue.length) {
+        const next = queue.pop()!;
+        for (const partner of sameRankPartners(next)) {
+          if (seen.has(partner)) continue;
+          seen.add(partner);
+          queue.push(partner);
+        }
       }
+      return [...seen];
     };
-    for (const item of [...exclusive, ...multi]) occupy(item.code, item.y);
-    let y = 0;
-    for (const code of group.filter((code) => !positions.has(code)).sort(compare)) {
-      if (positions.has(code)) continue;
-      occupy(code, y);
-      y = (positions.get(code)?.y ?? y) + nodeHeight;
+    const isHead = (code: string) => {
+      const cluster = coreqCluster(code);
+      cluster.sort(
+        (left, right) => placedParents(right).length - placedParents(left).length || compare(left, right),
+      );
+      return cluster[0] === code;
+    };
+    const occupyAt = (code: string, startY: number) => {
+      if (positions.has(code)) return startY;
+      const members = coreqCluster(code).filter((member) => !positions.has(member));
+      members.sort((left, right) => (left === code ? -1 : right === code ? 1 : compare(left, right)));
+      let y = startY;
+      for (const member of members) {
+        used.add(y);
+        positions.set(member, { x, y });
+        flowBottom = Math.max(flowBottom, y + nodeHeight);
+        y += nodeHeight;
+      }
+      return y;
+    };
+    const parentYs = (code: string) =>
+      placedParents(code)
+        .map((parent) => positions.get(parent)!.y)
+        .sort((left, right) => left - right);
+    const packBlock = (members: string[], preferredY: number, centerOnPreferred: boolean) => {
+      const pending = members.filter((code) => !positions.has(code));
+      if (!pending.length) return;
+      pending.sort(compare);
+      const rows = pending.reduce((sum, code) => sum + coreqCluster(code).filter((member) => !positions.has(member)).length, 0);
+      const start = consecutiveStart(
+        centerOnPreferred ? preferredY - Math.floor((rows - 1) / 2) * nodeHeight : preferredY,
+        rows,
+        used,
+      );
+      let y = start;
+      for (const code of pending) y = occupyAt(code, y);
+    };
+    const childrenInColumn = (parent: string) =>
+      (outgoing.get(parent) ?? []).filter((child) => (ranks.get(child) ?? 0) === rank);
+    const isExclusivePair = (code: string) => {
+      const parents = placedParents(code);
+      return parents.length === 1 && childrenInColumn(parents[0]!).length === 1;
+    };
+    const heads = () => group.filter((code) => !positions.has(code) && isHead(code));
+    for (const code of heads()
+      .filter(isExclusivePair)
+      .sort((left, right) => (parentYs(left)[0] ?? 0) - (parentYs(right)[0] ?? 0) || compare(left, right))) {
+      packBlock([code], parentYs(code)[0] ?? 0, false);
+    }
+    const blocks = new Map<string, string[]>();
+    for (const code of heads()) {
+      const parents = placedParents(code).slice().sort(compare);
+      if (!parents.length) continue;
+      const fingerprint = parents.join("|");
+      const block = blocks.get(fingerprint) ?? [];
+      block.push(code);
+      blocks.set(fingerprint, block);
+    }
+    const rankedBlocks = [...blocks.entries()].map(([fingerprint, members]) => {
+      const parents = fingerprint.split("|");
+      const ys = parents
+        .map((parent) => positions.get(parent)?.y)
+        .filter((value): value is number => value !== undefined)
+        .sort((left, right) => left - right);
+      return {
+        members,
+        parentCount: parents.length,
+        medianY: ys.length ? ys[Math.floor((ys.length - 1) / 2)]! : 0,
+      };
+    });
+    const multiBlocks = rankedBlocks.filter((block) => block.parentCount > 1);
+    const siblingBlocks = rankedBlocks.filter((block) => block.parentCount === 1);
+    multiBlocks.sort(
+      (left, right) =>
+        left.parentCount - right.parentCount || left.medianY - right.medianY || compare(left.members[0]!, right.members[0]!),
+    );
+    siblingBlocks.sort(
+      (left, right) => left.medianY - right.medianY || compare(left.members[0]!, right.members[0]!),
+    );
+    for (const block of multiBlocks) packBlock(block.members, block.medianY, true);
+    for (const block of siblingBlocks) packBlock(block.members, block.medianY, false);
+    let packY = 0;
+    for (const code of group) {
+      if (positions.has(code) || !isHead(code) || placedParents(code).length) continue;
+      const rows = coreqCluster(code).filter((member) => !positions.has(member)).length;
+      packY = occupyAt(code, consecutiveStart(packY, rows, used));
     }
   }
   const classified = classifyUnlinkedProgramCodes(keep, relations, courses);

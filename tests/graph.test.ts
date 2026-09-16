@@ -268,6 +268,41 @@ test("program flow puts prerequisites to the left of the courses they unlock", (
   assert.equal(new Set(spots).size, spots.length, "no two courses may share a cell");
 });
 
+test("a course unlocked by two neighbors sits in that source band", () => {
+  const { courses, requirements } = seattleGraph();
+  const positions = layoutProgramFlow(programMapCodes(courses, requirements), catalogRelations(courses), courses).positions;
+  const y = (code: string) => positions.get(code)!.y;
+  const x = (code: string) => positions.get(code)!.x;
+  const low = Math.min(y("CS 5800"), y("CS 7800"));
+  const high = Math.max(y("CS 5800"), y("CS 7800"));
+  assert.ok(x("CS 5800") < x("CS 6220"));
+  assert.ok(x("CS 7800") < x("CS 6220"));
+  assert.equal(high - low, PROGRAM_ROW, "CS 5800 and CS 7800 should occupy consecutive rows");
+  assert.ok(y("CS 6220") >= low && y("CS 6220") <= high, `CS 6220 y=${y("CS 6220")} should sit between ${low} and ${high}`);
+});
+
+test("a course with five same-column sources sits on the median source row", () => {
+  const none = { type: "none" as const };
+  const sources = ["SRC 1", "SRC 2", "SRC 3", "SRC 4", "SRC 5"];
+  const layout = layoutProgramFlow(
+    [...sources, "DST"],
+    sources.map((code) => ({ source: code, target: "DST", corequisite: false })),
+    [
+      ...sources.map((code) => ({ code, requirementType: "elective" as const, prerequisites: none })),
+      { code: "DST", requirementType: "elective", prerequisites: { type: "all" as const, items: sources.map((code) => ({ type: "course" as const, code })) } },
+    ],
+  ).positions;
+  const sourceYs = sources.map((code) => layout.get(code)!.y).sort((left, right) => left - right);
+  assert.equal(sourceYs[4]! - sourceYs[0]!, 4 * PROGRAM_ROW);
+  assert.equal(layout.get("DST")!.y, sourceYs[2]);
+  assert.ok(layout.get("DST")!.x > layout.get("SRC 1")!.x);
+});
+
+test("adjacent-column connectors join on a short bus instead of a row gutter", () => {
+  assert.equal(prerequisiteConnector(224, 58, 500, 218), "M 224 58 H 464 V 218 H 500");
+  assert.ok(prerequisiteConnector(224, 58, 800, 218).includes("V 140"));
+});
+
 test("a sole prerequisite sits on the same row immediately left of the course that names it", () => {
   const none = { type: "none" as const };
   const positions = layoutProgramFlow(

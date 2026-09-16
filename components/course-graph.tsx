@@ -22,6 +22,7 @@ import {
   shouldRestoreGraphViewOnEscape,
   enterCourseConnectionsView,
   popGraphView,
+  isShortPrerequisiteSpan,
   type GraphScope,
   type GraphViewSnapshot,
 } from "@/lib/graph";
@@ -228,7 +229,7 @@ function GraphWorkspace() {
       if (!source || !target) continue;
       const sourceX = source.x + 224;
       const targetX = target.x;
-      const entryY = targetX - sourceX <= 180 && targetX > sourceX ? source.y + 58 : source.y + 140;
+      const entryY = isShortPrerequisiteSpan(sourceX, targetX) ? source.y + 58 : source.y + 140;
       const previous = busBounds.get(edge.target);
       busBounds.set(edge.target, {
         start: Math.min(previous?.start ?? entryY, entryY, target.y + 58),

@@ -9,6 +9,7 @@ import {
   GRAPH_HIT_TARGET_WIDTH,
   GRAPH_MAX_ZOOM,
   GRAPH_READABLE_ZOOM,
+  isShortPrerequisiteSpan,
   prerequisiteConnector,
   prerequisiteHitPaths,
   selectedGraphScroll,
@@ -26,7 +27,7 @@ function PrerequisiteEdge({ sourceX, sourceY, targetX, targetY, markerEnd, style
     onSelectBranch?: () => void;
     onSelectBus?: () => void;
   } | undefined;
-  const short = targetX - sourceX <= 180 && targetX > sourceX;
+  const short = isShortPrerequisiteSpan(sourceX, targetX);
   const busStartY = edgeData?.busStartY ?? (short ? sourceY : sourceY + 82);
   const busEndY = edgeData?.busEndY ?? targetY;
   const hitPaths = prerequisiteHitPaths(sourceX, sourceY, targetX, targetY, busOffset, busStartY, busEndY);
