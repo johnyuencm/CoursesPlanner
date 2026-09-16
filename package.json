@@ -2,7 +2,7 @@
   "name": "neu-mscs-course-planner",
   "version": "1.0.0",
   "private": true,
-  "description": "A local-first Northeastern MSCS Seattle course and degree planner.",
+  "description": "A local-first Northeastern MSCS Seattle course map: understand what every course unlocks.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

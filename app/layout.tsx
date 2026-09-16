@@ -5,8 +5,8 @@ import "@xyflow/react/dist/style.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "NEU MSCS Course Planner", template: "%s · NEU MSCS Course Planner" },
-  description: "Find your direction through Northeastern's MSCS Seattle curriculum. Explore real catalog requirements, trace prerequisites, and build a local-first degree plan.",
+  title: { default: "NEU MSCS Course Map", template: "%s · NEU MSCS Course Map" },
+  description: "Understand what every course unlocks in Northeastern's MSCS Seattle curriculum. Explore the prerequisite map, then plan locally.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
