@@ -72,14 +72,15 @@ The crawler is an independent Node service. It does not import Next.js. The web 
 4. Reuse `northeastern-acalog` only when the HTML matches Acalog course blocks and program tables. Otherwise add an adapter in `catalog-service/adapters.ts` and point the source JSON at it.
 5. Refresh one source with `npm run catalog:refresh -- --id=<id> --force`, then enable polling.
 
-The service does not fetch a second live university until that source file exists and is enabled.
+The service does not fetch a second live university until that source file exists and is enabled. `catalog-service/universities.json` is the ordered 20-US / 20-world directory and `/universities` listing; enabled directory rows still need a matching source file and crawl config before refresh.
 
 ### Main directories
 
 | Path | Purpose |
 | --- | --- |
-| `catalog-service/` | Independent crawler, source registry, scheduler, and localhost HTTP API |
+| `catalog-service/` | Independent crawler, source registry, university directory, scheduler, and localhost HTTP API |
 | `catalog-service/sources/` | One JSON file per program; copy `.example.json` to add another |
+| `catalog-service/universities.json` | Ordered US/world university directory for listing; crawl still uses source JSON |
 | `app/` | Next.js App Router pages and catalog API route |
 | `components/` | Shared shell, dialogs, course cards, graph, and planner UI |
 | `scraper/parser.ts` | HTML parsing and prerequisite expression parsing |
