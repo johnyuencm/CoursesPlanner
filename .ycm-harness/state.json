@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-16T01:51:46.250Z",
+  "updated_at": "2026-09-16T01:57:27.435Z",
   "active_goal_id": "goal_double-click-course-connections-escape-back_d248",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
@@ -187,11 +187,11 @@
         "npm test and npm run typecheck pass."
       ],
       "blocked_by": [],
-      "status": "in_progress",
+      "status": "in_review",
       "code_changed": true,
       "order": 0,
       "created_at": "2026-09-16T01:51:37.524Z",
-      "updated_at": "2026-09-16T01:51:46.249Z"
+      "updated_at": "2026-09-16T01:57:27.434Z"
     }
   },
   "checkpoints": {
@@ -764,6 +764,18 @@
         "submitted_at": "2026-09-15T22:26:15.887Z"
       },
       "recorded_at": "2026-09-15T22:26:15.888Z"
+    },
+    "submission-ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1-aef442": {
+      "id": "submission-ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1-aef442",
+      "goal_id": "goal_double-click-course-connections-escape-back_d248",
+      "ticket_id": "ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1",
+      "kind": "other",
+      "submission_digest": "f05bcd0705e25872265e43838b8309a5588ae36426207ef0ea7d17e72ed5cf7c",
+      "provenance": {
+        "state": "submitted",
+        "submitted_at": "2026-09-16T01:57:27.435Z"
+      },
+      "recorded_at": "2026-09-16T01:57:27.435Z"
     }
   },
   "wiki": {

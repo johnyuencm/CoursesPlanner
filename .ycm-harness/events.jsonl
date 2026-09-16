@@ -53,3 +53,4 @@
 {"id":"evt_6d371df2","kind":"goal.created","at":"2026-09-16T01:51:23.122Z","goal_id":"goal_double-click-course-connections-escape-back_d248","payload":{"assurance":"standard","backend":"local"}}
 {"id":"evt_8db0c5fc","kind":"ticket.created","at":"2026-09-16T01:51:37.538Z","goal_id":"goal_double-click-course-connections-escape-back_d248","ticket_id":"ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1"}
 {"id":"evt_5b3cbb69","kind":"ticket.started","at":"2026-09-16T01:51:46.260Z","goal_id":"goal_double-click-course-connections-escape-back_d248","ticket_id":"ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1"}
+{"id":"evt_50cce386","kind":"ticket.submitted","at":"2026-09-16T01:57:27.449Z","goal_id":"goal_double-click-course-connections-escape-back_d248","ticket_id":"ticket-double-click-enters-course-connections-escape-restores-p-aca8f5a1"}
