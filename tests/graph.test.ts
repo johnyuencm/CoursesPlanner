@@ -19,6 +19,9 @@ import {
   graphZoomPercent,
   GRAPH_SELECTED_EDGE_Z,
   shouldClearLineFocusOnEscape,
+  shouldRestoreGraphViewOnEscape,
+  enterCourseConnectionsView,
+  popGraphView,
   isFocusNeighborhoodEdge,
   layoutProgramFlow,
   initialGraphNavigation,
@@ -351,6 +354,41 @@ test("a sole prerequisite sits on the same row immediately left of the course th
   assert.ok(positions.get("PHYS 5116")!.x < positions.get("CS 7332")!.x);
   assert.equal(positions.get("PHYS 5116")!.y, positions.get("CS 7332")!.y);
   assert.ok(positions.get("CS 5150")!.y > positions.get("CS 7332")!.y);
+});
+
+test("a course unlocked by two neighbors sits in that source band", () => {
+  const { courses, requirements } = seattleGraph();
+  const positions = layoutProgramFlow(programMapCodes(courses, requirements), catalogRelations(courses), courses).positions;
+  const y = (code: string) => positions.get(code)!.y;
+  const x = (code: string) => positions.get(code)!.x;
+  const low = Math.min(y("CS 5800"), y("CS 7800"));
+  const high = Math.max(y("CS 5800"), y("CS 7800"));
+  assert.ok(x("CS 5800") < x("CS 6220"));
+  assert.ok(x("CS 7800") < x("CS 6220"));
+  assert.equal(high - low, PROGRAM_ROW, "CS 5800 and CS 7800 should occupy consecutive rows");
+  assert.ok(y("CS 6220") >= low && y("CS 6220") <= high, `CS 6220 y=${y("CS 6220")} should sit between ${low} and ${high}`);
+});
+
+test("a course with five same-column sources sits on the median source row", () => {
+  const none = { type: "none" as const };
+  const sources = ["SRC 1", "SRC 2", "SRC 3", "SRC 4", "SRC 5"];
+  const layout = layoutProgramFlow(
+    [...sources, "DST"],
+    sources.map((code) => ({ source: code, target: "DST", corequisite: false })),
+    [
+      ...sources.map((code) => ({ code, requirementType: "elective" as const, prerequisites: none })),
+      { code: "DST", requirementType: "elective", prerequisites: { type: "all" as const, items: sources.map((code) => ({ type: "course" as const, code })) } },
+    ],
+  ).positions;
+  const sourceYs = sources.map((code) => layout.get(code)!.y).sort((left, right) => left - right);
+  assert.equal(sourceYs[4]! - sourceYs[0]!, 4 * PROGRAM_ROW);
+  assert.equal(layout.get("DST")!.y, sourceYs[2]);
+  assert.ok(layout.get("DST")!.x > layout.get("SRC 1")!.x);
+});
+
+test("adjacent-column connectors join on a short bus instead of a row gutter", () => {
+  assert.equal(prerequisiteConnector(224, 58, 500, 218), "M 224 58 H 464 V 218 H 500");
+  assert.ok(prerequisiteConnector(224, 58, 800, 218).includes("V 140"));
 });
 
 test("unlock arrows omit corequisites, off-map edges, and unselected chains", () => {
@@ -778,6 +816,46 @@ test("Escape clears line focus from the inspector and empty map, not from find t
   assert.equal(shouldClearLineFocusOnEscape({ key: "Enter", target: asTarget(inspector) }, { active: true, findQuery: "", fullscreen: false }), false);
   assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(dialog) }, { active: true, findQuery: "", fullscreen: false }), false);
   assert.equal(shouldClearLineFocusOnEscape({ key: "Escape", target: asTarget(semesterSelect) }, { active: true, findQuery: "", fullscreen: false }), false);
+});
+
+test("double-click enters This course's connections and remembers the previous view", () => {
+  const program = { depth: "program" as const, focusCode: "CS 5010", zoom: 0.4 };
+  const entered = enterCourseConnectionsView(program, "CS 5500", 1);
+  assert.deepEqual(entered.next, { depth: "1", focusCode: "CS 5500", zoom: 1 });
+  assert.deepEqual(entered.previous, program);
+
+  const alreadyThere = enterCourseConnectionsView(entered.next, "CS 5500", 1);
+  assert.equal(alreadyThere.previous, null);
+  assert.deepEqual(alreadyThere.next, entered.next);
+
+  const stacked = enterCourseConnectionsView(entered.next, "CS 5004", 1);
+  assert.deepEqual(stacked.previous, entered.next);
+  assert.deepEqual(stacked.next, { depth: "1", focusCode: "CS 5004", zoom: 1 });
+
+  const [first, second] = [entered.previous, stacked.previous].filter((view) => view !== null);
+  const afterInner = popGraphView([first, second]);
+  assert.deepEqual(afterInner.view, entered.next);
+  const afterOuter = popGraphView(afterInner.rest);
+  assert.deepEqual(afterOuter.view, program);
+  assert.deepEqual(popGraphView([]).view, null);
+});
+
+test("Escape restores a drilled-in graph view after line focus, not over find or fullscreen", () => {
+  const inspector = new FakeElement("h2", {}, new FakeElement("aside", { class: "graph-inspector", id: "graph-inspector" }, new FakeElement("div", { class: "graph-layout" })));
+  const pane = new FakeElement("div", { class: "react-flow__pane" }, new FakeElement("div", { class: "flow-canvas" }, new FakeElement("div", { class: "graph-layout" })));
+  const dialog = new FakeElement("button", {}, new FakeElement("div", { role: "dialog" }));
+  const depth = new FakeElement("select", {}, new FakeElement("label", { class: "graph-depth-label" }, new FakeElement("div", { class: "graph-panel" })));
+  const restore = { canRestore: true, lineFocus: false, findQuery: "", fullscreen: false };
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(inspector) }, restore), true);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(pane) }, restore), true);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: null }, restore), true);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(inspector) }, { ...restore, canRestore: false }), false);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(inspector) }, { ...restore, lineFocus: true }), false);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(pane) }, { ...restore, findQuery: "cs55" }), false);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(inspector) }, { ...restore, fullscreen: true }), false);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(dialog) }, restore), false);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Escape", target: asTarget(depth) }, restore), false);
+  assert.equal(shouldRestoreGraphViewOnEscape({ key: "Enter", target: asTarget(inspector) }, restore), false);
 });
 
 test("graph navigation restores locate-origin focus and inspect-origin Show depth", () => {

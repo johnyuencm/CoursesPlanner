@@ -32,9 +32,13 @@ import {
   relationshipControlGroups,
   relationshipSelection,
   restoreGraphNavigation,
+  enterCourseConnectionsView,
+  popGraphView,
   shouldClearLineFocusOnEscape,
+  shouldRestoreGraphViewOnEscape,
   type GraphNavigationEntry,
   type GraphScope,
+  type GraphViewSnapshot,
   type RelationshipSelection,
 } from "@/lib/graph";
 import type { Course, Pathway } from "@/lib/types";
@@ -69,6 +73,7 @@ type GraphData = {
   hasIncoming: boolean;
   hasOutgoing: boolean;
   selectCourse: (code: string) => void;
+  enterConnections: (code: string) => void;
 };
 type BandData = { label: string };
 type GraphNode = Node<GraphData, "course">;
@@ -80,7 +85,7 @@ const tableRowId = (code: string) => `graph-row-${code.replaceAll(" ", "-")}`;
 function CourseNode({ data }: NodeProps<GraphNode>) {
   return <div className={`graph-course-node ${data.core ? "core-course" : ""} ${data.locked ? "graph-locked" : ""} ${data.emphasized ? "graph-emphasized" : ""} ${data.dimmed ? "graph-dimmed" : ""} ${data.focused ? "graph-focused" : ""} ${data.compact ? "graph-compact" : ""}`}>
     <Handle type="target" position={Position.Left} className={data.hasIncoming ? undefined : "graph-handle-hidden"} />
-    <button type="button" className="graph-node-main nodrag" onClick={() => data.selectCourse(data.code)} aria-label={`Select ${data.code}, ${data.title}. ${data.badgeLabel}. ${data.statusLabel}.`}>
+    <button type="button" className="graph-node-main nodrag" onClick={() => data.selectCourse(data.code)} onDoubleClick={(event) => { event.preventDefault(); data.enterConnections(data.code); }} aria-label={`Select ${data.code}, ${data.title}. ${data.badgeLabel}. ${data.statusLabel}. Double-click to show this course's connections.`}>
       <span className="graph-node-meta">
         <span className={data.badgeClass}>{data.badgeLabel}</span>
         <span className={`status-pill ${data.statusClass}`}>{data.compact ? compactGraphStatusLabel(data.statusLabel) : data.statusLabel}</span>
@@ -146,6 +151,7 @@ function GraphWorkspace() {
   const [fullscreenSupported, setFullscreenSupported] = useState(false);
   const [fullscreenMessage, setFullscreenMessage] = useState("");
   const [navigation, setNavigation] = useState(() => initialGraphNavigation(workspaceSelection.selectedCode, workspaceSelection.focusCode));
+  const [viewStack, setViewStack] = useState<GraphViewSnapshot[]>([]);
   const graphLayoutRef = useRef<HTMLDivElement>(null);
   const fullscreenButtonRef = useRef<HTMLButtonElement>(null);
   const wasFullscreenRef = useRef(false);
@@ -155,6 +161,7 @@ function GraphWorkspace() {
   const [lineSemesterId, setLineSemesterId] = useState("");
   const locateRef = useRef<(code: string, keepFind?: boolean) => void>(() => {});
   const inspectRef = useRef<(code: string) => void>(() => {});
+  const enterConnectionsRef = useRef<(code: string) => void>(() => {});
   const cycleRef = useRef<(step: number) => void>(() => {});
   const matchesRef = useRef<{ code: string; title: string }[]>([]);
   const courseMap = useMemo(() => new Map(catalog?.courses.map((course) => [course.code, course]) ?? []), [catalog]);
@@ -232,6 +239,7 @@ function GraphWorkspace() {
           hasIncoming: incoming.has(code),
           hasOutgoing: outgoing.has(code),
           selectCourse: (code) => inspectRef.current(code),
+          enterConnections: (code) => enterConnectionsRef.current(code),
         },
         ariaLabel: `${code}: ${course?.title ?? "External reference"}`,
       };
@@ -356,13 +364,24 @@ function GraphWorkspace() {
   }, []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (!shouldClearLineFocusOnEscape(event, { active: Boolean(selectedRelationship), findQuery: searchRef.current, fullscreen: isFullscreen })) return;
+      if (shouldClearLineFocusOnEscape(event, { active: Boolean(selectedRelationship), findQuery: searchRef.current, fullscreen: isFullscreen })) {
+        event.preventDefault();
+        setSelectedRelationship(null);
+        return;
+      }
+      if (!shouldRestoreGraphViewOnEscape(event, { canRestore: viewStack.length > 0, lineFocus: Boolean(selectedRelationship), findQuery: searchRef.current, fullscreen: isFullscreen })) return;
       event.preventDefault();
+      const restored = popGraphView(viewStack);
+      if (!restored.view) return;
+      setViewStack(restored.rest);
       setSelectedRelationship(null);
+      setDepth(restored.view.depth);
+      setFocusCode(restored.view.focusCode);
+      setZoom(restored.view.zoom);
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [selectedRelationship, isFullscreen]);
+  }, [selectedRelationship, isFullscreen, viewStack]);
   useEffect(() => {
     setSelectedCode(workspaceSelection.selectedCode);
     setFocusCode(workspaceSelection.focusCode);
@@ -382,6 +401,7 @@ function GraphWorkspace() {
   const locate = (code: string, keepFind = false) => {
     const next: GraphNavigationEntry = { selectedCode: code, focusCode: code, depth: "course" };
     setNavigation((previous) => recordGraphNavigation(previous, liveNavigation(), next));
+    setViewStack([]);
     setFocusCode(code);
     setSelectedCode(code);
     setWorkspaceSelection({ selectedCode: code, focusCode: code });
@@ -409,6 +429,7 @@ function GraphWorkspace() {
     requestAnimationFrame(() => document.getElementById("graph-inspector")?.focus({ preventScroll: true }));
   };
   const applyFocusScope = (scope: GraphScope) => {
+    setViewStack([]);
     setSelectedRelationship(null);
     if (scope !== "program") {
       setFocusCode(selectedCode);
@@ -419,8 +440,32 @@ function GraphWorkspace() {
   const goNavigation = (index: number) => {
     const restored = restoreGraphNavigation(navigation, liveNavigation(), index);
     if (!restored) return;
+    setViewStack([]);
     setNavigation(restored.navigation);
     applyNavigation(restored.entry);
+  };
+  const enterConnections = (code: string) => {
+    const entered = enterCourseConnectionsView({ depth, focusCode, zoom }, code, GRAPH_READABLE_ZOOM);
+    const previousView = entered.previous;
+    if (previousView) setViewStack((stack) => [...stack, previousView]);
+    const next: GraphNavigationEntry = { selectedCode: code, focusCode: entered.next.focusCode, depth: entered.next.depth };
+    setNavigation((previous) => recordGraphNavigation(previous, liveNavigation(), next));
+    setSelectedCode(code);
+    setWorkspaceSelection({ selectedCode: code, focusCode: entered.next.focusCode });
+    setSelectedRelationship(null);
+    setFocusCode(entered.next.focusCode);
+    setDepth(entered.next.depth);
+    setZoom(entered.next.zoom);
+    requestAnimationFrame(() => document.getElementById("graph-inspector")?.focus({ preventScroll: true }));
+  };
+  const restorePreviousView = () => {
+    const restored = popGraphView(viewStack);
+    if (!restored.view) return;
+    setViewStack(restored.rest);
+    setSelectedRelationship(null);
+    setDepth(restored.view.depth);
+    setFocusCode(restored.view.focusCode);
+    setZoom(restored.view.zoom);
   };
   const cycle = (step: number) => {
     if (!matches.length) return;
@@ -431,6 +476,7 @@ function GraphWorkspace() {
   };
   locateRef.current = locate;
   inspectRef.current = inspectCourse;
+  enterConnectionsRef.current = enterConnections;
   cycleRef.current = cycle;
   const focus = (code: string) => locate(code, false);
   const selectRelated = (code: string) => {
@@ -568,7 +614,7 @@ function GraphWorkspace() {
             <button type="button" className="button button-secondary button-small" aria-label="Previous course" disabled={navigation.index === 0} onClick={() => goNavigation(navigation.index - 1)}><ArrowLeft size={14} /> Back</button>
             <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.entries.length - 1} onClick={() => goNavigation(navigation.index + 1)}><ArrowRight size={14} /></button>
           </div>
-          <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : depth === "unlocks" ? <>Unlocks of <strong>{focusCode}</strong></> : depth === "prerequisites" ? <>Prerequisites of <strong>{focusCode}</strong></> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
+          <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : depth === "1" ? <><Crosshair size={15} /> Connections for <strong>{focusCode}</strong></> : depth === "unlocks" ? <>Unlocks of <strong>{focusCode}</strong></> : depth === "prerequisites" ? <>Prerequisites of <strong>{focusCode}</strong></> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
           <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode} · {neighborhood.size} in focus{selectedRelationship ? ` · ${selectedRelationship.kind === "branch" ? `${selectedRelationship.source} unlocks ${selectedRelationship.target}` : `${selectedRelationship.sources.join(", ")} unlock ${selectedRelationship.target}`}` : ""}.</span>
           <div className="segmented-control" aria-label="Map display">
             <button type="button" aria-pressed={view === "graph"} className={view === "graph" ? "selected" : ""} onClick={() => setView("graph")}><Network size={15} /> Map</button>
@@ -617,7 +663,7 @@ function GraphWorkspace() {
             <tbody>{graph.courseNodes.map((node) => {
               const course = courseMap.get(node.id);
               return <tr key={node.id} id={tableRowId(node.id)} className={node.id === selectedCode ? "graph-find-current" : undefined}>
-                <th scope="row"><button className="text-button" onClick={() => inspectCourse(node.id)}>{node.id}</button><span>{course?.title ?? "External reference — unknown metadata"}</span></th>
+                <th scope="row"><button className="text-button" onClick={() => inspectCourse(node.id)} onDoubleClick={(event) => { event.preventDefault(); enterConnections(node.id); }}>{node.id}</button><span>{course?.title ?? "External reference — unknown metadata"}</span></th>
                 <td>{node.data.badgeLabel} · {node.data.statusLabel}</td>
                 <td>{node.data.prerequisites}<div className="detail-code-links"><CodeLinks codes={course?.prerequisiteCodes ?? []} limit={1000} /></div></td>
                 <td>{node.data.corequisites}<div className="detail-code-links"><CodeLinks codes={course?.corequisiteCodes ?? []} limit={1000} /></div></td>
@@ -625,7 +671,7 @@ function GraphWorkspace() {
             })}</tbody>
           </table>
         </div>}
-        {view === "graph" && <p className="graph-canvas-hint">Click a course to isolate its prerequisites and unlocks. The rest of the map stays visible but de-emphasized. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination. Empty map / Exit line focus restores every relationship. Only my planned hides courses that are not completed, waived, or on your plan. Critical path to target is johnyuencm/harness#54.</p>}
+        {view === "graph" && <p className="graph-canvas-hint">Click a course to isolate its prerequisites and unlocks. The rest of the map stays visible but de-emphasized. Double-click a course to show its connections, then press Escape to return to the previous view. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination. Empty map / Exit line focus restores every relationship. Only my planned hides courses that are not completed, waived, or on your plan. Critical path to target is johnyuencm/harness#54.</p>}
       </section>
       <aside className="graph-inspector" id="graph-inspector" tabIndex={-1}>
         <TargetPathCard compact />
@@ -674,9 +720,11 @@ function GraphWorkspace() {
           <button type="button" className="text-button inspector-focus" aria-pressed={depth === "unlocks"} onClick={() => applyFocusScope("unlocks")}><ArrowRight size={14} /> Show unlocks</button>
           <button type="button" className="text-button inspector-focus" aria-pressed={depth === "course"} onClick={() => applyFocusScope("course")}><Network size={14} /> Full dependency tree</button>
           {depth !== "program" && <button type="button" className="text-button inspector-focus" onClick={() => applyFocusScope("program")}><Network size={14} /> Show entire program</button>}
+          {depth !== "1" && <button type="button" className="text-button inspector-focus" onClick={() => enterConnections(selectedCode)}><Crosshair size={14} /> Show this course's connections</button>}
           {depth !== "program" && focusCode !== selectedCode && <button type="button" className="text-button inspector-focus" onClick={() => focus(selectedCode)}><Crosshair size={14} /> Focus map here</button>}
           <button type="button" className="text-button inspector-focus" aria-pressed={plannedOnly} onClick={() => setPlannedOnly((on) => !on)}>Only my planned</button>
           <button type="button" className="text-button inspector-focus" disabled title="Follow-up johnyuencm/harness#54">Critical path to target</button>
+          {viewStack.length ? <button type="button" className="text-button inspector-focus" aria-keyshortcuts="Escape" onClick={restorePreviousView}><ArrowLeft size={14} /> Return to previous view</button> : null}
         </div>
         <div className="inspector-relationships">
           {selectedRelationship ? <div className="graph-relationship-explanation"><h3>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} → ${selectedRelationship.target}` : `${selectedRelationship.target} shared prerequisite bus`}</h3><p>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} is named as a prerequisite of ${selectedRelationship.target}.` : `Visible incoming prerequisites: ${selectedRelationship.sources.join(", ")}.`}</p><p><strong>{selectedRelationship.target} catalog rule:</strong> {nodeRequirementCopy(relationshipTarget, "prerequisites")}</p><p className="muted small-text">A line records a named catalog link; the rule above states whether prerequisites are AND, OR, or need review.</p></div> : null}
