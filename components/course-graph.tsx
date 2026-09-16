@@ -2,22 +2,29 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Handle, MarkerType, Position, type Edge, type Node, type NodeProps } from "@xyflow/react";
-import { ArrowLeft, ArrowRight, CalendarPlus, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Minimize2, Network, Plus, RotateCcw, Search, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarPlus, Check, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Minimize2, Network, Plus, RotateCcw, Search, X, ZoomIn, ZoomOut } from "lucide-react";
+import pathwayConfig from "@/config/pathways.json";
 import {
   clampGraphZoom,
   compactGraphStatusLabel,
+  earliestTakeTerm,
+  GRAPH_FOCUS_STATUS_LEGEND,
   graphCourseZIndex,
+  graphFocusStatus,
   graphZoomPercent,
   GRAPH_MAX_ZOOM,
   GRAPH_MIN_ZOOM,
   GRAPH_READABLE_ZOOM,
   GRAPH_SELECTED_EDGE_Z,
   initialGraphNavigation,
+  isFocusNeighborhoodEdge,
   mapFind,
   mapScene,
+  pathwayRelevance,
   PROGRAM_COL,
   programMapCodes,
   prerequisiteBusMeta,
+  prerequisiteChecks,
   recordGraphNavigation,
   relationshipControlGroups,
   relationshipSelection,
@@ -27,14 +34,16 @@ import {
   type GraphScope,
   type RelationshipSelection,
 } from "@/lib/graph";
-import type { Course } from "@/lib/types";
-import { expressionLabel } from "@/lib/validation";
+import type { Course, Pathway } from "@/lib/types";
+import { expressionLabel, getEligibility } from "@/lib/validation";
 import { addableLineCourses } from "@/lib/plan";
 import { useApp } from "./app-provider";
-import { CodeLinks, courseStatus, requirementBadge } from "./course-card";
+import { CodeLinks, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
 import { PageHeading, creditLabel } from "./ui";
 import { GraphCanvas } from "./graph-canvas";
+
+const pathways = pathwayConfig as Pathway[];
 
 type GraphData = {
   code: string;
@@ -95,13 +104,27 @@ function nodeRequirementCopy(course: { requirementType: string; unlocks: string[
   return expressionLabel(kind === "prerequisites" ? course.prerequisites : course.corequisites);
 }
 
-function graphStatus(course: Course | undefined, code: string, completed: Set<string>, waived: Set<string>, planned: Set<string>, prior: Set<string>) {
-  if (!course) return { label: "Locked", className: "locked" };
-  return courseStatus(course, completed.has(code), waived.has(code), planned.has(code), prior);
+function graphStatus(
+  course: Course | undefined,
+  code: string,
+  completed: Set<string>,
+  waived: Set<string>,
+  plannedTermId: string | null,
+  currentTermId: string | null,
+  prior: Set<string>,
+) {
+  if (!course) return graphFocusStatus({ completed: false, waived: false, eligibility: "locked" });
+  return graphFocusStatus({
+    completed: completed.has(code),
+    waived: waived.has(code),
+    plannedTermId,
+    currentTermId,
+    eligibility: getEligibility(course, prior).status,
+  });
 }
 
 function GraphWorkspace() {
-  const { catalog, openCourse, openPicker, plan, addCourses, hydrated } = useApp();
+  const { catalog, openCourse, openPicker, plan, addCourses, hydrated, careerTargetId } = useApp();
   const [focusCode, setFocusCode] = useState("CS 5010");
   const [selectedCode, setSelectedCode] = useState("CS 5010");
   const [selectedRelationship, setSelectedRelationship] = useState<RelationshipSelection | null>(null);
@@ -133,6 +156,17 @@ function GraphWorkspace() {
   const completed = useMemo(() => new Set(plan.completedCourses), [plan.completedCourses]);
   const waived = useMemo(() => new Set(plan.waivedCourses), [plan.waivedCourses]);
   const planned = useMemo(() => new Set(plan.semesters.flatMap((semester) => semester.courses.map((course) => course.code))), [plan.semesters]);
+  const plannedByCode = useMemo(() => {
+    const terms = new Map<string, { id: string; name: string }>();
+    for (const semester of plan.semesters) {
+      for (const course of semester.courses) {
+        if (!terms.has(course.code)) terms.set(course.code, { id: semester.id, name: semester.name });
+      }
+    }
+    return terms;
+  }, [plan.semesters]);
+  const currentTermId = plan.semesters.find((semester) => semester.type === "academic")?.id ?? plan.semesters[0]?.id ?? null;
+  const firstAcademicTermName = plan.semesters.find((semester) => semester.type === "academic")?.name ?? plan.semesters[0]?.name ?? null;
   const recorded = useMemo(() => new Set([...history, ...planned]), [history, planned]);
   const scene = useMemo(() => {
     if (!catalog) {
@@ -142,6 +176,9 @@ function GraphWorkspace() {
         bands: [],
         arrows: [],
         chain: new Set<string>(),
+        neighborhood: new Set<string>(),
+        focusPrerequisites: [] as string[],
+        focusUnlocks: [] as string[],
       };
     }
     return mapScene({
@@ -153,17 +190,17 @@ function GraphWorkspace() {
     });
   }, [catalog, depth, focusCode, selectedCode]);
   const visible = scene.visible;
-  const highlighted = scene.chain;
+  const neighborhood = scene.neighborhood;
   const graph = useMemo(() => {
     const incoming = new Set(scene.arrows.map((edge) => edge.target));
     const outgoing = new Set(scene.arrows.map((edge) => edge.source));
     const makeNode = (code: string, x: number, y: number): GraphNode => {
       const course = courseMap.get(code);
-      const emphasized = selectedRelationship ? selectedRelationship.codes.has(code) : highlighted.has(code);
+      const emphasized = selectedRelationship ? selectedRelationship.codes.has(code) : neighborhood.has(code);
       const focused = code === selectedCode;
       const badge = requirementBadge(course?.requirementType ?? "external");
-      const status = graphStatus(course, code, completed, waived, planned, history);
-      const locked = status.className === "locked";
+      const status = graphStatus(course, code, completed, waived, plannedByCode.get(code)?.id ?? null, currentTermId, history);
+      const locked = status.id === "blocked";
       return {
         id: code,
         type: "course",
@@ -182,7 +219,7 @@ function GraphWorkspace() {
           prerequisites: nodeRequirementCopy(course, "prerequisites"),
           corequisites: nodeRequirementCopy(course, "corequisites"),
           emphasized,
-          dimmed: Boolean(selectedRelationship && !selectedRelationship.codes.has(code)),
+          dimmed: selectedRelationship ? !selectedRelationship.codes.has(code) : !neighborhood.has(code),
           focused,
           compact: true,
           hasIncoming: incoming.has(code),
@@ -220,6 +257,7 @@ function GraphWorkspace() {
     const edges: Edge[] = scene.arrows.map((edge, index) => {
       const stroke = edge.stroke;
       const selected = relationshipSelection.isSelected(selectedRelationship, edge.source, edge.target);
+      const neighborhoodEdge = isFocusNeighborhoodEdge(edge.source, edge.target, selectedCode, neighborhood);
       const bus = busMeta.get(edge.target);
       return {
         id: `${edge.source}-${edge.target}-${index}`,
@@ -236,8 +274,12 @@ function GraphWorkspace() {
           onSelectBus: () => setSelectedRelationship(relationshipSelection.bus(scene.arrows, edge.target)),
         },
         markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: stroke },
-        style: { stroke, strokeWidth: selected || edge.emphasized ? 2.5 : 1.25, opacity: selectedRelationship && !selected ? 0.18 : 1 },
-        zIndex: selected || edge.emphasized ? GRAPH_SELECTED_EDGE_Z : 0,
+        style: {
+          stroke,
+          strokeWidth: selected || neighborhoodEdge ? 2.5 : 1.25,
+          opacity: selectedRelationship ? (selected ? 1 : 0.18) : neighborhoodEdge ? 1 : 0.18,
+        },
+        zIndex: selected || neighborhoodEdge ? GRAPH_SELECTED_EDGE_Z : 0,
         ariaLabel: `${edge.source} unlocks ${edge.target}`,
         focusable: false,
         selectable: true,
@@ -245,7 +287,7 @@ function GraphWorkspace() {
     });
     const courseNodes = nodes.filter((node): node is GraphNode => node.type === "course");
     return { nodes, edges, courseNodes };
-  }, [scene, highlighted, selectedCode, selectedRelationship, courseMap, history, completed, waived, planned]);
+  }, [scene, neighborhood, selectedCode, selectedRelationship, courseMap, history, completed, waived, plannedByCode, currentTermId]);
   const programCodes = useMemo(
     () => (catalog ? programMapCodes(catalog.courses, catalog.requirements) : new Set<string>()),
     [catalog],
@@ -352,6 +394,11 @@ function GraphWorkspace() {
     setSelectedRelationship(null);
     requestAnimationFrame(() => document.getElementById("graph-inspector")?.focus({ preventScroll: true }));
   };
+  const applyFocusScope = (scope: GraphScope) => {
+    setSelectedRelationship(null);
+    if (scope !== "program") setFocusCode(selectedCode);
+    setDepth(scope);
+  };
   const goNavigation = (index: number) => {
     const restored = restoreGraphNavigation(navigation, liveNavigation(), index);
     if (!restored) return;
@@ -399,7 +446,22 @@ function GraphWorkspace() {
   const selected = courseMap.get(selectedCode);
   const relationshipTarget = selectedRelationship ? courseMap.get(selectedRelationship.target) : undefined;
   const badge = selected ? requirementBadge(selected.requirementType) : requirementBadge("external");
-  const selectedStatus = graphStatus(selected, selectedCode, completed, waived, planned, history);
+  const selectedStatus = graphStatus(selected, selectedCode, completed, waived, plannedByCode.get(selectedCode)?.id ?? null, currentTermId, history);
+  const selectedEligibility = selected ? getEligibility(selected, history) : { status: "locked" as const, missing: [] as string[], reasons: [] as string[] };
+  const takeTerm = earliestTakeTerm({
+    completed: completed.has(selectedCode),
+    waived: waived.has(selectedCode),
+    plannedTermName: plannedByCode.get(selectedCode)?.name ?? null,
+    eligibility: selectedEligibility.status,
+    missing: selectedEligibility.missing,
+    firstAcademicTermName,
+  });
+  const pathway = pathwayRelevance(selectedCode, pathways, careerTargetId);
+  const prereqItems = prerequisiteChecks(
+    selected?.requirementType === "external" ? [] : selected?.prerequisiteCodes ?? scene.focusPrerequisites,
+    history,
+  );
+  const unlockCodes = selected?.unlocks.length ? selected.unlocks : scene.focusUnlocks;
   const findStatus = !search.trim() ? "" : matches.length ? `${findIndex >= 0 ? findIndex + 1 : 0} of ${matches.length}` : "No matches";
   const showCorequisites = Boolean(selected?.corequisiteCodes.length);
   const relationshipGroups = relationshipControlGroups(scene.arrows);
@@ -415,10 +477,9 @@ function GraphWorkspace() {
       <span><i className="legend-node core" /> Core</span>
       <span><i className="legend-node breadth" /> Breadth</span>
       <span><i className="legend-node elective" /> Elective</span>
-      <span><span className="status-pill completed">Completed</span></span>
-      <span><span className="status-pill eligible">Prerequisite eligible</span></span>
-      <span><span className="status-pill planned">Planned</span></span>
-      <span><span className="status-pill locked">Locked</span></span>
+      {GRAPH_FOCUS_STATUS_LEGEND.map((status) => (
+        <span key={status.id}><span className={`status-pill ${status.className}`}>{status.label}</span></span>
+      ))}
       <span><i className="legend-arrow" aria-hidden="true" /> Unlocks after this course</span>
       {depth === "program" && <span><span className="legend-band">No prerequisite required</span> Startable, unlinked</span>}
     </div>
@@ -486,22 +547,27 @@ function GraphWorkspace() {
             <button type="button" className="button button-secondary button-small" aria-label="Previous course" disabled={navigation.index === 0} onClick={() => goNavigation(navigation.index - 1)}><ArrowLeft size={14} /> Back</button>
             <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.entries.length - 1} onClick={() => goNavigation(navigation.index + 1)}><ArrowRight size={14} /></button>
           </div>
-          <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
-          <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode}{selectedRelationship ? ` · ${selectedRelationship.kind === "branch" ? `${selectedRelationship.source} unlocks ${selectedRelationship.target}` : `${selectedRelationship.sources.join(", ")} unlock ${selectedRelationship.target}`}` : ""}.</span>
+          <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : depth === "unlocks" ? <>Unlocks of <strong>{focusCode}</strong></> : depth === "prerequisites" ? <>Prerequisites of <strong>{focusCode}</strong></> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
+          <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode} · {neighborhood.size} in focus{selectedRelationship ? ` · ${selectedRelationship.kind === "branch" ? `${selectedRelationship.source} unlocks ${selectedRelationship.target}` : `${selectedRelationship.sources.join(", ")} unlock ${selectedRelationship.target}`}` : ""}.</span>
           <div className="segmented-control" aria-label="Map display">
             <button type="button" aria-pressed={view === "graph"} className={view === "graph" ? "selected" : ""} onClick={() => setView("graph")}><Network size={15} /> Map</button>
             <button type="button" aria-pressed={view === "table"} className={view === "table" ? "selected" : ""} onClick={() => setView("table")}><List size={15} /> Table</button>
           </div>
           <label className="graph-depth-label">Show
-            <select value={depth} onChange={(event) => { setSelectedRelationship(null); setDepth(event.target.value as GraphScope); }}>
-              <option value="course">This course’s full chain</option>
-              <option value="program">Entire program</option>
+            <select value={depth} onChange={(event) => applyFocusScope(event.target.value as GraphScope)}>
+              <option value="prerequisites">Show prerequisites</option>
+              <option value="unlocks">Show unlocks</option>
+              <option value="course">Full dependency tree</option>
               <option value="1">This course’s connections</option>
               <option value="2">Two connections away</option>
+              <option value="program">Entire program</option>
               <option value="full">Full connected component</option>
-              <option value="prerequisites">All prerequisites</option>
             </select>
           </label>
+          <div className="graph-focus-stubs" aria-label="Follow-up graph filters">
+            <button type="button" className="button button-secondary button-small" disabled title="Follow-up johnyuencm/harness#52">Only my planned</button>
+            <button type="button" className="button button-secondary button-small" disabled title="Follow-up johnyuencm/harness#54">Critical path to target</button>
+          </div>
           <div className="graph-view-toolbar" aria-label="Map zoom and display controls">
             <button type="button" className="icon-button" aria-label="Zoom out" disabled={zoom <= GRAPH_MIN_ZOOM} onClick={() => changeZoom(-GRAPH_ZOOM_STEP)}><ZoomOut size={15} /></button>
             <span className="graph-zoom-readout" aria-live="polite">{graphZoomPercent(zoom)}%</span>
@@ -538,7 +604,7 @@ function GraphWorkspace() {
             })}</tbody>
           </table>
         </div>}
-        {view === "graph" && <p className="graph-canvas-hint">Arrows point at the course that lists the prerequisite. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination. Click a course card for details, or click empty map / Exit line focus to show every relationship again.</p>}
+        {view === "graph" && <p className="graph-canvas-hint">Click a course to isolate its prerequisites and unlocks. The rest of the map stays visible but de-emphasized. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination. Empty map / Exit line focus restores every relationship. Only my planned is johnyuencm/harness#52. Critical path to target is johnyuencm/harness#54.</p>}
       </section>
       <aside className="graph-inspector" id="graph-inspector" tabIndex={-1}>
         {selectedRelationship ? <div className="line-focus-banner">
@@ -561,39 +627,74 @@ function GraphWorkspace() {
         <div className="inspector-heading-meta">
           <span className={badge.className}>{badge.label}</span>
           <span className={`status-pill ${selectedStatus.className}`}>{selectedStatus.label}</span>
+          {waived.has(selectedCode) ? <span className="muted small-text">Waived</span> : null}
         </div>
         <h2>{selectedCode}</h2>
         <p className="inspector-course-title">{selected?.title ?? "External course reference"}</p>
         <p className="muted small-text">{selected ? `${creditLabel(selected)} credits` : "Credits unknown"}</p>
         {selected?.description ? <p className="inspector-description">{selected.description}</p> : <p className="muted small-text">No catalog description is cached for this code.</p>}
-        {depth !== "program" && <button className="text-button inspector-focus" onClick={() => { setSelectedRelationship(null); setDepth("program"); }}><Network size={14} /> Show entire program</button>}
-        {depth !== "1" && <button className="text-button inspector-focus" onClick={() => { setSelectedRelationship(null); setFocusCode(selectedCode); setDepth("1"); }}><Crosshair size={14} /> Show neighborhood</button>}
-        {depth !== "program" && focusCode !== selectedCode && <button className="text-button inspector-focus" onClick={() => focus(selectedCode)}><Crosshair size={14} /> Focus map here</button>}
-        <button className="text-button inspector-focus" onClick={() => { setSelectedRelationship(null); setFocusCode(selectedCode); setDepth("prerequisites"); }}><ArrowLeft size={14} /> Trace all prerequisites</button>
+        <dl className="inspector-facts">
+          <div>
+            <dt>Status</dt>
+            <dd><span className={`status-pill ${selectedStatus.className}`}>{selectedStatus.label}</span></dd>
+          </div>
+          <div>
+            <dt>Earliest take term</dt>
+            <dd>{takeTerm.label}<span className="muted small-text">{takeTerm.detail}</span></dd>
+          </div>
+          <div>
+            <dt>Pathway relevance</dt>
+            <dd>{pathway.summary}</dd>
+          </div>
+        </dl>
+        <div className="graph-focus-controls" aria-label="Course focus controls">
+          <button type="button" className="text-button inspector-focus" aria-pressed={depth === "prerequisites"} onClick={() => applyFocusScope("prerequisites")}><ArrowLeft size={14} /> Show prerequisites</button>
+          <button type="button" className="text-button inspector-focus" aria-pressed={depth === "unlocks"} onClick={() => applyFocusScope("unlocks")}><ArrowRight size={14} /> Show unlocks</button>
+          <button type="button" className="text-button inspector-focus" aria-pressed={depth === "course"} onClick={() => applyFocusScope("course")}><Network size={14} /> Full dependency tree</button>
+          {depth !== "program" && <button type="button" className="text-button inspector-focus" onClick={() => applyFocusScope("program")}><Network size={14} /> Show entire program</button>}
+          {depth !== "program" && focusCode !== selectedCode && <button type="button" className="text-button inspector-focus" onClick={() => focus(selectedCode)}><Crosshair size={14} /> Focus map here</button>}
+          <button type="button" className="text-button inspector-focus" disabled title="Follow-up johnyuencm/harness#52">Only my planned</button>
+          <button type="button" className="text-button inspector-focus" disabled title="Follow-up johnyuencm/harness#54">Critical path to target</button>
+        </div>
         <div className="inspector-relationships">
           {selectedRelationship ? <div className="graph-relationship-explanation"><h3>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} → ${selectedRelationship.target}` : `${selectedRelationship.target} shared prerequisite bus`}</h3><p>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} is named as a prerequisite of ${selectedRelationship.target}.` : `Visible incoming prerequisites: ${selectedRelationship.sources.join(", ")}.`}</p><p><strong>{selectedRelationship.target} catalog rule:</strong> {nodeRequirementCopy(relationshipTarget, "prerequisites")}</p><p className="muted small-text">A line records a named catalog link; the rule above states whether prerequisites are AND, OR, or need review.</p></div> : null}
           {scene.arrows.length ? <><h3>Visible map relationships</h3><div className="graph-relationship-buttons">{relationshipGroups.map((group) => <Fragment key={group.target}>
             <button key={`${group.target}-bus`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "bus" && selectedRelationship.target === group.target} aria-label={`Select every visible prerequisite of ${group.target}: ${group.sources.join(", ")}`} onClick={() => setSelectedRelationship(relationshipSelection.bus(scene.arrows, group.target))}>All into {group.target}</button>
             {group.branches.map((edge) => <button key={`${edge.source}-${edge.target}`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "branch" && selectedRelationship.source === edge.source && selectedRelationship.target === edge.target} aria-label={`Select exact relationship ${edge.source} unlocks ${edge.target}`} onClick={() => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target))}>{edge.source} → {edge.target}</button>)}
           </Fragment>)}</div></> : <p className="muted small-text">This course has no prerequisite or unlock relationships in this catalog.</p>}
-          <h3>Prerequisites <span>{selected?.requirementType === "external" ? 0 : selected?.prerequisiteCodes.length ?? 0}</span></h3>
+          <h3>Prerequisites <span>{prereqItems.length}</span></h3>
           {selected?.requirementType === "external" ? <p>{nodeRequirementCopy(selected, "prerequisites")}</p> : <>
             <p>{selected ? expressionLabel(selected.prerequisites) : "Unknown"}</p>
-            {selected?.prerequisiteCodes.length ? <div className="detail-code-links"><CodeLinks codes={selected.prerequisiteCodes} limit={1000} onSelect={focus} /></div> : <span className="muted small-text">No parsed prerequisites.</span>}
+            {prereqItems.length ? <ul className="inspector-prereq-list">{prereqItems.map((item) => (
+              <li key={item.code} className={item.met ? "met" : undefined}>
+                <span className="inspector-prereq-mark" aria-hidden="true">{item.met ? <Check size={13} /> : null}</span>
+                <button type="button" className="code-chip" onClick={() => inspectCourse(item.code)}>{item.code}</button>
+                <span className="sr-only">{item.met ? "completed or waived" : "still needed"}</span>
+              </li>
+            ))}</ul> : <span className="muted small-text">No parsed prerequisites.</span>}
           </>}
-          <h3>Unlocks <span>{selected?.unlocks.length ?? 0}</span></h3>
-          {selected?.unlocks.length ? <div className="detail-code-links"><CodeLinks codes={selected.unlocks} limit={1000} onSelect={focus} /></div> : <span className="muted small-text">No linked downstream courses in this catalog.</span>}
+          <h3>Unlocks <span>{unlockCodes.length}</span></h3>
+          {unlockCodes.length ? <div className="detail-code-links"><CodeLinks codes={unlockCodes} limit={1000} onSelect={inspectCourse} /></div> : <span className="muted small-text">No linked downstream courses in this catalog.</span>}
           {showCorequisites ? <>
             <h3>Corequisites <span>{selected?.corequisiteCodes.length ?? 0}</span></h3>
             <p>{nodeRequirementCopy(selected, "corequisites")}</p>
-            <div className="detail-code-links"><CodeLinks codes={selected?.corequisiteCodes ?? []} limit={1000} onSelect={focus} /></div>
+            <div className="detail-code-links"><CodeLinks codes={selected?.corequisiteCodes ?? []} limit={1000} onSelect={inspectCourse} /></div>
           </> : null}
         </div>
         <div className="inspector-actions">
-          {!recorded.has(selectedCode) && selected && selected.requirementType !== "external" && <button className="button button-primary" onClick={() => openPicker(undefined, selectedCode)}><Plus size={15} /> Add to Plan</button>}
+          {!recorded.has(selectedCode) && selected && selected.requirementType !== "external" && plan.semesters.length ? <div className="inspector-add-plan">
+            <label className="field-label" htmlFor="inspector-add-semester">Add to plan</label>
+            <div className="input-action-row">
+              <select id="inspector-add-semester" value={lineSemester} onChange={(event) => setLineSemesterId(event.target.value)}>
+                {plan.semesters.map((term) => <option key={term.id} value={term.id}>{term.name}{term.type === "coop" ? " · co-op" : ""}</option>)}
+              </select>
+              <button type="button" className="button button-primary" disabled={!hydrated || !lineSemester} onClick={() => { if (lineSemester) addCourses([selectedCode], lineSemester); }}><Plus size={15} /> Add to plan</button>
+            </div>
+            <button type="button" className="text-button" onClick={() => openPicker(lineSemester || undefined, selectedCode)}>Choose credits or a new term</button>
+          </div> : !recorded.has(selectedCode) && selected && selected.requirementType !== "external" ? <button className="button button-primary" onClick={() => openPicker(undefined, selectedCode)}><Plus size={15} /> Add to plan</button> : recorded.has(selectedCode) ? <p className="muted small-text">{completed.has(selectedCode) ? "In your completed history." : waived.has(selectedCode) ? "Waived on this plan." : `Planned in ${plannedByCode.get(selectedCode)?.name ?? "your plan"}.`}</p> : null}
           <button className="button button-secondary" onClick={() => openCourse(selectedCode)}>Full course details <ArrowRight size={14} /></button>
         </div>
-        <div className="inspector-tip"><Info size={16} /><p>Arrows point at the course that lists the prerequisite. Locked cards need earlier courses first. Open Full course details for the complete catalog description. Offerings are not listed because they are unknown.</p></div>
+        <div className="inspector-tip"><Info size={16} /><p>Selected course, its prerequisites, and its unlocks stay readable; everything else is de-emphasized. Blocked cards still need earlier courses. Offerings are not listed because they are unknown. Target-path earliest term is johnyuencm/harness#51.</p></div>
       </aside>
     </div>
     <p className="page-footnote">The default map follows the selected course through its cataloged prerequisites and unlocks; it does not add a downstream course’s other prerequisite branches. Choose Entire program to browse all listed MSCS Seattle courses and their cataloged external prerequisites. A shared color groups lines by destination, not by AND/OR satisfaction; read the catalog rule in the inspector. A connection does not verify course availability.</p>
