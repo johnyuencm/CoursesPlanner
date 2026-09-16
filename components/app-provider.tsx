@@ -236,15 +236,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     let result: ReturnType<typeof appendCoursesToSemester> | undefined;
+    let semesterName: string | undefined;
     setPlan((current) => {
       const items = addableLineCourses(codes, catalog.courses, recordedCourseCodes(current));
       result = appendCoursesToSemester(current, semesterId, items);
+      semesterName = current.semesters.find((semester) => semester.id === semesterId)?.name;
       return result.ok ? result.plan : current;
     });
     if (!result) return;
     if (!result.ok) {
       if (result.reason === "missing-term") announce("Choose an existing term before adding a course.");
-      else if (result.reason === "capacity") announce("That term already has 32 planned courses.");
+      else if (result.reason === "capacity") announce(`${semesterName} supports up to 32 planned courses.`);
       else announce("Every course on this line is already in your plan or history, or is an external catalog reference.");
       return;
     }
