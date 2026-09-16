@@ -103,7 +103,7 @@
     "university": "University of Michigan",
     "region": "us",
     "priority": 12,
-    "catalogUrl": "https://atlas.ai.umich.edu/",
+    "catalogUrl": "https://admissions.umich.edu/academics-majors/majors-degrees",
     "support": "unverified",
     "enabled": false
   },
@@ -130,7 +130,7 @@
     "university": "Harvard",
     "region": "us",
     "priority": 15,
-    "catalogUrl": "https://courses.my.harvard.edu/",
+    "catalogUrl": "https://www.harvard.edu/programs/",
     "support": "unverified",
     "enabled": false
   },
@@ -229,7 +229,7 @@
     "university": "National University of Singapore",
     "region": "world",
     "priority": 6,
-    "catalogUrl": "https://www.nus.edu.sg/oam/programmes",
+    "catalogUrl": "https://nus.edu.sg/oam/undergraduate-programmes",
     "support": "unverified",
     "enabled": false
   },
@@ -319,7 +319,7 @@
     "university": "KAIST",
     "region": "world",
     "priority": 16,
-    "catalogUrl": "https://www.kaist.ac.kr/en/html/edu/03100101.html",
+    "catalogUrl": "https://kaist.ac.kr/en/html/edu/03.html",
     "support": "unverified",
     "enabled": false
   },
