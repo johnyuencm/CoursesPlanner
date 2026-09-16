@@ -93,7 +93,7 @@ function topologicalRanks(codes: Iterable<string>, relations: GraphRelation[]): 
   return memo;
 }
 
-export type GraphScope = "course" | "program" | "1" | "2" | "full" | "prerequisites";
+export type GraphScope = "course" | "program" | "1" | "2" | "full" | "prerequisites" | "unlocks";
 
 export function visibleGraphDistances(
   scope: GraphScope,
@@ -114,6 +114,13 @@ export function visibleGraphDistances(
       if (!edge.corequisite) addRelation(incoming, edge.target, edge.source);
     }
     return new Map([focusCode, ...walkRelations(focusCode, incoming)].map((code) => [code, 0]));
+  }
+  if (scope === "unlocks") {
+    const outgoing = new Map<string, Set<string>>();
+    for (const edge of relations) {
+      if (!edge.corequisite) addRelation(outgoing, edge.source, edge.target);
+    }
+    return new Map([focusCode, ...walkRelations(focusCode, outgoing)].map((code) => [code, 0]));
   }
   const maxDepth = scope === "full" ? relations.length + 1 : Number(scope);
   return neighborhoodDistances(focusCode, relations, maxDepth);
@@ -429,6 +436,9 @@ export type MapScene = {
   bands: ProgramBandLabel[];
   arrows: UnlockArrow[];
   chain: Set<string>;
+  neighborhood: Set<string>;
+  focusPrerequisites: string[];
+  focusUnlocks: string[];
 };
 
 export type MapSceneInput = {
@@ -478,6 +488,57 @@ export function directedCourseChain(relations: readonly GraphRelation[], selecte
   ]);
 }
 
+export type CourseFocusNeighborhood = {
+  selected: string;
+  prerequisites: string[];
+  unlocks: string[];
+  codes: Set<string>;
+};
+
+function sortedCodes(codes: Iterable<string>): string[] {
+  return [...codes].sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
+}
+
+/** Immediate named prerequisites and unlocks of one course, excluding corequisites. */
+export function courseFocusNeighborhood(
+  relations: readonly GraphRelation[],
+  selectedCode: string,
+): CourseFocusNeighborhood {
+  const prerequisites = new Set<string>();
+  const unlocks = new Set<string>();
+  for (const edge of relations) {
+    if (edge.corequisite) continue;
+    if (edge.target === selectedCode && edge.source !== selectedCode) prerequisites.add(edge.source);
+    if (edge.source === selectedCode && edge.target !== selectedCode) unlocks.add(edge.target);
+  }
+  const prerequisiteList = sortedCodes(prerequisites);
+  const unlockList = sortedCodes(unlocks);
+  return {
+    selected: selectedCode,
+    prerequisites: prerequisiteList,
+    unlocks: unlockList,
+    codes: new Set([selectedCode, ...prerequisiteList, ...unlockList]),
+  };
+}
+
+export function isFocusNeighborhoodEdge(
+  source: string,
+  target: string,
+  selectedCode: string,
+  neighborhood: ReadonlySet<string>,
+): boolean {
+  if (!neighborhood.has(source) || !neighborhood.has(target)) return false;
+  return source === selectedCode || target === selectedCode;
+}
+
+export function prerequisiteChecks(
+  codes: readonly string[],
+  satisfied: Iterable<string>,
+): { code: string; met: boolean }[] {
+  const done = satisfied instanceof Set ? satisfied : new Set(satisfied);
+  return sortedCodes(new Set(codes)).map((code) => ({ code, met: done.has(code) }));
+}
+
 function requirementTypeOrder(code: string, courses: Map<string, Pick<Course, "requirementType">>) {
   const course = courses.get(code);
   if (!course || course.requirementType === "external") return 3;
@@ -504,6 +565,7 @@ export function mapScene(input: MapSceneInput): MapScene {
       left.localeCompare(right, undefined, { numeric: true }));
   const layout = layoutProgramFlow(visible.keys(), relations, input.courses, compare);
   const arrows = unlockArrowView(relations, chain, visible.keys());
+  const neighborhood = courseFocusNeighborhood(relations, input.selectedCode);
   // Reserve a separate vertical track for each destination, so unrelated buses
   // cannot merge into one ambiguous line in the gutter between columns.
   const destinations = new Map<number, Set<string>>();
@@ -522,6 +584,9 @@ export function mapScene(input: MapSceneInput): MapScene {
     bands: input.scope === "program" ? layout.bands : [],
     arrows,
     chain,
+    neighborhood: neighborhood.codes,
+    focusPrerequisites: neighborhood.prerequisites,
+    focusUnlocks: neighborhood.unlocks,
   };
 }
 
@@ -817,6 +882,102 @@ export const mapFind = {
 
 export function compactGraphStatusLabel(fullLabel: string): string {
   return fullLabel === "Prerequisite eligible" ? "Eligible" : fullLabel;
+}
+
+export type GraphFocusStatusId = "completed" | "in-progress" | "available" | "planned" | "blocked" | "review";
+
+export type GraphFocusStatus = {
+  id: GraphFocusStatusId;
+  label: string;
+  className: string;
+};
+
+export const GRAPH_FOCUS_STATUS_LEGEND = [
+  { id: "completed", label: "Completed", className: "completed" },
+  { id: "in-progress", label: "In progress", className: "in-progress" },
+  { id: "available", label: "Available", className: "available" },
+  { id: "planned", label: "Planned", className: "planned" },
+  { id: "blocked", label: "Blocked", className: "blocked" },
+] as const;
+
+export function graphFocusStatus(input: {
+  completed: boolean;
+  waived: boolean;
+  plannedTermId?: string | null;
+  currentTermId?: string | null;
+  eligibility: "eligible" | "locked" | "uncertain";
+}): GraphFocusStatus {
+  if (input.completed || input.waived) return { id: "completed", label: "Completed", className: "completed" };
+  if (input.plannedTermId) {
+    if (input.currentTermId && input.plannedTermId === input.currentTermId) {
+      return { id: "in-progress", label: "In progress", className: "in-progress" };
+    }
+    return { id: "planned", label: "Planned", className: "planned" };
+  }
+  if (input.eligibility === "eligible") return { id: "available", label: "Available", className: "available" };
+  if (input.eligibility === "uncertain") return { id: "review", label: "Needs review", className: "review" };
+  return { id: "blocked", label: "Blocked", className: "blocked" };
+}
+
+export function earliestTakeTerm(input: {
+  completed: boolean;
+  waived: boolean;
+  plannedTermName?: string | null;
+  eligibility: "eligible" | "locked" | "uncertain";
+  missing: readonly string[];
+  firstAcademicTermName?: string | null;
+}): { label: string; detail: string } {
+  if (input.completed) return { label: "Already completed", detail: "This course is in your completed history." };
+  if (input.waived) {
+    return { label: "Waived", detail: "The requirement is waived. Offerings and credits are not implied." };
+  }
+  if (input.plannedTermName) {
+    return { label: input.plannedTermName, detail: "Already on your plan. Catalog offerings are not verified." };
+  }
+  if (input.eligibility === "eligible") {
+    return {
+      label: input.firstAcademicTermName ?? "Available now",
+      detail: "Prerequisites are met from your completed history. Catalog offerings are unknown.",
+    };
+  }
+  if (input.eligibility === "uncertain") {
+    return { label: "Needs review", detail: "Prerequisite text could not be fully verified." };
+  }
+  const missing = input.missing.length ? `After ${input.missing.join(", ")}` : "After prerequisites";
+  return {
+    label: missing,
+    detail: "Blocked until listed prerequisites are completed or waived. Catalog offerings are not verified.",
+  };
+}
+
+export type PathwayRelevanceHit = { pathwayId: string; pathwayName: string; groupLabel: string };
+
+export function pathwayRelevance(
+  code: string,
+  pathways: readonly { id: string; name: string; groups: readonly { label: string; courses: readonly string[] }[] }[],
+  preferredId?: string | null,
+): { hits: PathwayRelevanceHit[]; summary: string } {
+  const hits: PathwayRelevanceHit[] = [];
+  for (const pathway of pathways) {
+    for (const group of pathway.groups) {
+      if (group.courses.includes(code)) {
+        hits.push({ pathwayId: pathway.id, pathwayName: pathway.name, groupLabel: group.label });
+      }
+    }
+  }
+  hits.sort((left, right) => {
+    const preferred = Number(right.pathwayId === preferredId) - Number(left.pathwayId === preferredId);
+    return preferred || left.pathwayName.localeCompare(right.pathwayName) || left.groupLabel.localeCompare(right.groupLabel);
+  });
+  if (!hits.length) return { hits, summary: "Not on a suggested pathway" };
+  const preferredHits = preferredId ? hits.filter((hit) => hit.pathwayId === preferredId) : [];
+  if (preferredHits.length) {
+    const groups = [...new Set(preferredHits.map((hit) => hit.groupLabel))];
+    return { hits, summary: `${preferredHits[0]!.pathwayName} · ${groups.join(", ")}` };
+  }
+  const names = [...new Set(hits.map((hit) => hit.pathwayName))];
+  if (preferredId) return { hits, summary: `Not on your current target. Listed on ${names.join(", ")}` };
+  return { hits, summary: names.join(", ") };
 }
 
 export type GraphNavigationEntry = {

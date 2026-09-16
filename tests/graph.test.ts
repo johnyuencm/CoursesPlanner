@@ -9,19 +9,25 @@ import {
   centeredGraphZoomScroll,
   clampGraphZoom,
   compactGraphStatusLabel,
+  courseFocusNeighborhood,
   directedCourseChain,
+  earliestTakeTerm,
   graphCourseZIndex,
   graphFitZoom,
+  graphFocusStatus,
   graphZoomPercent,
   GRAPH_SELECTED_EDGE_Z,
   shouldClearLineFocusOnEscape,
+  isFocusNeighborhoodEdge,
   layoutProgramFlow,
   initialGraphNavigation,
   mapFind,
   mapScene,
+  pathwayRelevance,
   PROGRAM_ROW,
   programMapCodes,
   prerequisiteBusMeta,
+  prerequisiteChecks,
   prerequisiteConnector,
   prerequisiteHitPaths,
   recordGraphNavigation,
@@ -619,6 +625,9 @@ test("compact graph cards shorten Prerequisite eligible without clipping other s
   assert.equal(compactGraphStatusLabel("Locked"), "Locked");
   assert.equal(compactGraphStatusLabel("Needs review"), "Needs review");
   assert.equal(compactGraphStatusLabel("Completed"), "Completed");
+  assert.equal(compactGraphStatusLabel("Available"), "Available");
+  assert.equal(compactGraphStatusLabel("Blocked"), "Blocked");
+  assert.equal(compactGraphStatusLabel("In progress"), "In progress");
 });
 
 test("a pending Fit survives Table to Map and is consumed once across remounts", () => {
@@ -801,4 +810,159 @@ test("graph navigation records Focus map here when selectedCode is unchanged", (
   assert.equal(recordGraphNavigation(nav, focused, focused), nav);
   const back = restoreGraphNavigation(nav, focused, 1);
   assert.deepEqual(back?.entry, inspected);
+});
+
+test("course focus neighborhood is immediate prerequisites and unlocks, not the full chain", () => {
+  const relations = [
+    { source: "A", target: "B", corequisite: false },
+    { source: "B", target: "C", corequisite: false },
+    { source: "SIBLING", target: "C", corequisite: false },
+    { source: "C", target: "D", corequisite: false },
+    { source: "X", target: "B", corequisite: true },
+  ];
+  const focus = courseFocusNeighborhood(relations, "B");
+  assert.deepEqual(focus.prerequisites, ["A"]);
+  assert.deepEqual(focus.unlocks, ["C"]);
+  assert.deepEqual([...focus.codes].sort(), ["A", "B", "C"]);
+  assert.equal(isFocusNeighborhoodEdge("A", "B", "B", focus.codes), true);
+  assert.equal(isFocusNeighborhoodEdge("B", "C", "B", focus.codes), true);
+  assert.equal(isFocusNeighborhoodEdge("C", "D", "B", focus.codes), false);
+  assert.equal(isFocusNeighborhoodEdge("SIBLING", "C", "B", focus.codes), false);
+});
+
+test("unlocks scope walks descendants and omits sibling prerequisites of downstream courses", () => {
+  const { courses, requirements } = seattleGraph();
+  const relations = [
+    { source: "A", target: "B", corequisite: false },
+    { source: "B", target: "C", corequisite: false },
+    { source: "SIBLING", target: "C", corequisite: false },
+    { source: "X", target: "B", corequisite: true },
+  ];
+  const visible = visibleGraphDistances("unlocks", "B", courses, requirements, relations);
+  assert.deepEqual([...visible.keys()].sort(), ["B", "C"]);
+});
+
+test("mapScene isolates CS 5500 to its immediate neighborhood even on the program map", () => {
+  const { courses, requirements } = seattleGraph();
+  const scene = mapScene({
+    courses,
+    requirements,
+    scope: "program",
+    focusCode: "CS 5010",
+    selectedCode: "CS 5500",
+  });
+  assert.deepEqual(scene.focusPrerequisites, ["CS 5004", "CS 5010"]);
+  assert.deepEqual(scene.focusUnlocks, ["CS 6510"]);
+  assert.deepEqual([...scene.neighborhood].sort(), ["CS 5004", "CS 5010", "CS 5500", "CS 6510"]);
+  assert.equal(scene.neighborhood.has("CS 5800"), false);
+  assert.equal(scene.visible.has("CS 5800"), true);
+});
+
+test("CS 5800 focus lists its catalog unlocks and no prerequisites", () => {
+  const { courses, requirements } = seattleGraph();
+  const scene = mapScene({
+    courses,
+    requirements,
+    scope: "program",
+    focusCode: "CS 5800",
+    selectedCode: "CS 5800",
+  });
+  assert.deepEqual(scene.focusPrerequisites, []);
+  assert.ok(scene.focusUnlocks.includes("CS 6140"));
+  assert.equal(scene.neighborhood.has("CS 5800"), true);
+  assert.equal(scene.neighborhood.has("CS 5010"), false);
+});
+
+test("graph focus status uses Completed, In progress, Available, Planned, and Blocked", () => {
+  assert.deepEqual(graphFocusStatus({ completed: true, waived: false, eligibility: "eligible" }), {
+    id: "completed",
+    label: "Completed",
+    className: "completed",
+  });
+  assert.deepEqual(
+    graphFocusStatus({ completed: false, waived: true, eligibility: "locked" }),
+    { id: "completed", label: "Completed", className: "completed" },
+  );
+  assert.deepEqual(
+    graphFocusStatus({
+      completed: false,
+      waived: false,
+      plannedTermId: "fall-2026",
+      currentTermId: "fall-2026",
+      eligibility: "eligible",
+    }),
+    { id: "in-progress", label: "In progress", className: "in-progress" },
+  );
+  assert.deepEqual(
+    graphFocusStatus({
+      completed: false,
+      waived: false,
+      plannedTermId: "spring-2027",
+      currentTermId: "fall-2026",
+      eligibility: "eligible",
+    }),
+    { id: "planned", label: "Planned", className: "planned" },
+  );
+  assert.deepEqual(
+    graphFocusStatus({ completed: false, waived: false, eligibility: "eligible" }),
+    { id: "available", label: "Available", className: "available" },
+  );
+  assert.deepEqual(
+    graphFocusStatus({ completed: false, waived: false, eligibility: "locked" }),
+    { id: "blocked", label: "Blocked", className: "blocked" },
+  );
+  assert.equal(graphFocusStatus({ completed: false, waived: false, eligibility: "uncertain" }).id, "review");
+});
+
+test("prerequisite checks mark completed history and sort codes", () => {
+  assert.deepEqual(prerequisiteChecks(["CS 5500", "CS 5010", "CS 5010"], ["CS 5010"]), [
+    { code: "CS 5010", met: true },
+    { code: "CS 5500", met: false },
+  ]);
+});
+
+test("earliest take term prefers plan placement, then first academic term, then blockers", () => {
+  assert.equal(earliestTakeTerm({ completed: true, waived: false, eligibility: "eligible", missing: [] }).label, "Already completed");
+  assert.equal(
+    earliestTakeTerm({
+      completed: false,
+      waived: false,
+      plannedTermName: "Spring 2027",
+      eligibility: "locked",
+      missing: ["CS 5010"],
+    }).label,
+    "Spring 2027",
+  );
+  assert.equal(
+    earliestTakeTerm({
+      completed: false,
+      waived: false,
+      eligibility: "eligible",
+      missing: [],
+      firstAcademicTermName: "Fall 2026",
+    }).label,
+    "Fall 2026",
+  );
+  assert.equal(
+    earliestTakeTerm({
+      completed: false,
+      waived: false,
+      eligibility: "locked",
+      missing: ["CS 5004", "CS 5010"],
+    }).label,
+    "After CS 5004, CS 5010",
+  );
+});
+
+test("pathway relevance prefers the current career target", () => {
+  const pathways = [
+    { id: "machine-learning", name: "Machine Learning", groups: [{ label: "Foundation", courses: ["CS 5800"] }] },
+    { id: "data-engineering", name: "Data Engineering", groups: [{ label: "Foundation", courses: ["CS 5800"] }] },
+  ];
+  const none = pathwayRelevance("CS 5010", pathways, "machine-learning");
+  assert.equal(none.summary, "Not on a suggested pathway");
+  const preferred = pathwayRelevance("CS 5800", pathways, "machine-learning");
+  assert.equal(preferred.summary, "Machine Learning · Foundation");
+  const other = pathwayRelevance("CS 5800", pathways, "robotics-software-engineer");
+  assert.match(other.summary, /Not on your current target/);
 });
