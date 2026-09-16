@@ -6,6 +6,9 @@ export const routes = {
   paths: "/pathways",
 } as const;
 
+/** Deep-link stub for the target path panel (Why-blocked follow-up can reuse this). */
+export const targetPathHref = `${routes.plan}#target-path`;
+
 export const primaryNav = [
   { href: routes.explore, label: "Explore" },
   { href: routes.plan, label: "Plan" },

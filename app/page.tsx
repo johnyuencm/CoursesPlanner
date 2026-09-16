@@ -8,19 +8,21 @@ import { CatalogState } from "@/components/catalog-state";
 import { OfficialLink, PageHeading } from "@/components/ui";
 import { overviewSnapshot } from "@/lib/overview";
 import { routes } from "@/lib/routes";
+import { targetPathSnapshot } from "@/lib/target-path";
 import type { Pathway } from "@/lib/types";
 
 const pathways = pathwayConfig as Pathway[];
 
 export default function OverviewPage() {
-  const { catalog, plan, progress, openCourse, careerTargetId } = useApp();
+  const { catalog, plan, progress, openCourse, careerTargetId, courseTargetCode } = useApp();
   if (!catalog || !progress) return <CatalogState />;
   const selectedTarget = pathways.find((pathway) => pathway.id === careerTargetId) ?? null;
+  const path = courseTargetCode ? targetPathSnapshot(courseTargetCode, catalog.courses, plan) : null;
   const snapshot = overviewSnapshot({
     catalog,
     plan,
     progress,
-    targetName: selectedTarget?.name ?? null,
+    targetName: path ? path.earliest.summary : selectedTarget?.name ?? null,
   });
   const nextUnlockLabel = snapshot.nextUnlock
     ? snapshot.nextUnlock.unlocks.length
@@ -41,8 +43,14 @@ export default function OverviewPage() {
         </article>
         <article className="status-card">
           <span className="status-kicker"><Target size={15} /> Target</span>
-          <strong>{snapshot.targetName ?? "No target yet"}</strong>
-          <p className="muted">{snapshot.targetName ? "Career direction for Paths." : "Choose a direction from Paths when you want one."}</p>
+          <strong>{courseTargetCode ?? snapshot.targetName ?? "No target yet"}</strong>
+          <p className="muted">
+            {path
+              ? path.earliest.summary
+              : snapshot.targetName
+                ? "Career direction for Paths."
+                : "Choose a target course from Explore or the My Target control."}
+          </p>
         </article>
         <article className="status-card">
           <span className="status-kicker"><KeyRound size={15} /> Critical prereq</span>

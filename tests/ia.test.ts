@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { overviewSnapshot } from "../lib/overview";
 import { emptyPlan } from "../lib/plan";
-import { legacyRedirects, primaryNav, routes } from "../lib/routes";
+import { legacyRedirects, primaryNav, routes, targetPathHref } from "../lib/routes";
 import type { Catalog, Course, RequirementExpression, StudentPlan } from "../lib/types";
 import { validatePlan } from "../lib/validation";
 
@@ -98,6 +98,10 @@ test("primary nav is Explore, Plan, Courses, Paths", () => {
 
 test("legacy /map bookmark redirects to Explore", () => {
   assert.deepEqual([...legacyRedirects], [{ source: "/map", destination: "/explore", permanent: true }]);
+});
+
+test("target path panel is anchored on Plan", () => {
+  assert.equal(targetPathHref, "/planner#target-path");
 });
 
 test("slim overview reports credits, target, critical prereq, and next unlock", () => {

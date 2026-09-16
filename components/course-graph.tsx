@@ -41,6 +41,7 @@ import { addableLineCourses } from "@/lib/plan";
 import { useApp } from "./app-provider";
 import { CodeLinks, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
+import { TargetPathCard, SetAsTargetButton } from "./target-path";
 import { PageHeading, creditLabel } from "./ui";
 import { GraphCanvas } from "./graph-canvas";
 
@@ -612,6 +613,7 @@ function GraphWorkspace() {
         {view === "graph" && <p className="graph-canvas-hint">Click a course to isolate its prerequisites and unlocks. The rest of the map stays visible but de-emphasized. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination. Empty map / Exit line focus restores every relationship. Only my planned is johnyuencm/harness#52. Critical path to target is johnyuencm/harness#54.</p>}
       </section>
       <aside className="graph-inspector" id="graph-inspector" tabIndex={-1}>
+        <TargetPathCard compact />
         {selectedRelationship ? <div className="line-focus-banner">
           <div className="line-focus-banner-copy">
             <p><strong>Line focus</strong> {lineLabel}</p>
@@ -687,6 +689,7 @@ function GraphWorkspace() {
           </> : null}
         </div>
         <div className="inspector-actions">
+          <SetAsTargetButton code={selectedCode} />
           {!recorded.has(selectedCode) && selected && selected.requirementType !== "external" && plan.semesters.length ? <div className="inspector-add-plan">
             <label className="field-label" htmlFor="inspector-add-semester">Add to plan</label>
             <div className="input-action-row">
@@ -699,7 +702,7 @@ function GraphWorkspace() {
           </div> : !recorded.has(selectedCode) && selected && selected.requirementType !== "external" ? <button className="button button-primary" onClick={() => openPicker(undefined, selectedCode)}><Plus size={15} /> Add to plan</button> : recorded.has(selectedCode) ? <p className="muted small-text">{completed.has(selectedCode) ? "In your completed history." : waived.has(selectedCode) ? "Waived on this plan." : `Planned in ${plannedByCode.get(selectedCode)?.name ?? "your plan"}.`}</p> : null}
           <button className="button button-secondary" onClick={() => openCourse(selectedCode)}>Full course details <ArrowRight size={14} /></button>
         </div>
-        <div className="inspector-tip"><Info size={16} /><p>Selected course, its prerequisites, and its unlocks stay readable; everything else is de-emphasized. Blocked cards still need earlier courses. Offerings are not listed because they are unknown. Target-path earliest term is johnyuencm/harness#51.</p></div>
+        <div className="inspector-tip"><Info size={16} /><p>Selected course, its prerequisites, and its unlocks stay readable; everything else is de-emphasized. Blocked cards still need earlier courses. Offerings are not listed because they are unknown. The path card above shows remaining prerequisites and earliest term for your target.</p></div>
       </aside>
     </div>
     <p className="page-footnote">The default map follows the selected course through its cataloged prerequisites and unlocks; it does not add a downstream course’s other prerequisite branches. Choose Entire program to browse all listed MSCS Seattle courses and their cataloged external prerequisites. A shared color groups lines by destination, not by AND/OR satisfaction; read the catalog rule in the inspector. A connection does not verify course availability.</p>

@@ -4,6 +4,7 @@ import { ArrowRight, Check, Plus } from "lucide-react";
 import type { Course } from "@/lib/types";
 import { getEligibility } from "@/lib/validation";
 import { useApp } from "./app-provider";
+import { SetAsTargetButton } from "./target-path";
 import { creditLabel } from "./ui";
 
 export function CodeLinks({ codes, limit = 3, onSelect }: { codes: string[]; limit?: number; onSelect?: (code: string) => void }) {
@@ -43,7 +44,7 @@ export function CourseCard({ course, compact = false }: { course: Course; compac
     {!compact && <div className="course-relationships"><div><span className="relationship-label">Prerequisites</span><div className="relationship-chips">{course.prerequisiteCodes.length ? <><CodeLinks codes={course.prerequisiteCodes} />{course.prerequisiteCodes.length > 3 && <button className="text-button" onClick={() => openCourse(course.code)}>+{course.prerequisiteCodes.length - 3}</button>}</> : <span className="muted">{course.prerequisites.type === "none" ? "None" : "Needs review"}</span>}</div></div><div><span className="relationship-label">Unlocks</span><div className="relationship-chips">{course.unlocks.length ? <><CodeLinks codes={course.unlocks} limit={2} />{course.unlocks.length > 2 && <button className="text-button" onClick={() => openCourse(course.code)}>+{course.unlocks.length - 2}</button>}</> : <span className="muted">None listed</span>}</div></div></div>}
     {course.corequisiteCodes.length > 0 && <p className="coreq-note">Corequisite links <CodeLinks codes={course.corequisiteCodes} /></p>}
     <div className="course-card-credits"><span className="credits">{creditLabel(course)} credits</span></div>
-    {!compact && <div className="course-card-footer"><button className="button button-secondary button-small" onClick={() => openCourse(course.code)}>Details</button>{completed || waived ? <span className="status-label"><Check size={14} />{waived ? "Waived" : "Completed"}</span> : planned ? <button className="text-button" onClick={() => openCourse(course.code)}>In your plan</button> : <button className="button button-primary button-small" disabled={!hydrated} onClick={() => openPicker(undefined, course.code)}><Plus size={14} /> Add to Plan</button>}</div>}
+    {!compact && <div className="course-card-footer"><button className="button button-secondary button-small" onClick={() => openCourse(course.code)}>Details</button>{completed || waived ? <span className="status-label"><Check size={14} />{waived ? "Waived" : "Completed"}</span> : planned ? <button className="text-button" onClick={() => openCourse(course.code)}>In your plan</button> : <button className="button button-primary button-small" disabled={!hydrated} onClick={() => openPicker(undefined, course.code)}><Plus size={14} /> Add to Plan</button>}<SetAsTargetButton code={course.code} compact /></div>}
   </article>;
 }
 
