@@ -222,7 +222,7 @@ export function suggestedPrerequisiteFix(
   if (issueIndex < 0) return null;
   const issueTerm = plan.semesters[issueIndex]!;
   const resolutionTerm = issue.kind === "corequisite" ? issueTerm : lastAcademicBefore(plan, issue.semesterId);
-  if (!resolutionTerm) return null;
+  if (!resolutionTerm || resolutionTerm.courses.length >= MAX_COURSES_PER_SEMESTER) return null;
   const addable = addableCodes instanceof Set ? addableCodes : new Set(addableCodes);
   const relatedCode = pickRelatedCode(issue.relatedCourses, plan, issueIndex, addable);
   if (!relatedCode) return null;

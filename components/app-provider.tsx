@@ -333,7 +333,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
     if (!issue) return `${addedLabel} added to ${semesterName}.`;
     const fix = suggestedPrerequisiteFix(issue, nextPlan, addableProgramCodes(catalog.courses));
-    return `${addedLabel} added to ${semesterName}. ${issue.kind === "prerequisite" ? "Prerequisites not met" : "Corequisite not met"}${fix ? ` — ${fix.suggestion}` : ""}. Open Plan to apply a fix.`;
+    const kind = issue.kind === "prerequisite" ? "Prerequisites not met" : "Corequisite not met";
+    if (!fix) return `${addedLabel} added to ${semesterName}. ${kind}.`;
+    return `${addedLabel} added to ${semesterName}. ${kind} — ${fix.suggestion}. Open Plan to apply a fix.`;
   };
   const addTargetChain = () => {
     if (!catalog) {
