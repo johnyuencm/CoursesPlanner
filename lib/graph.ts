@@ -880,6 +880,14 @@ export const mapFind = {
   },
 };
 
+/** Inspector prereq/unlock/coreq chips: inspect when the course is on the current map, otherwise locate. */
+export function graphInspectorLinkAction(
+  code: string,
+  visible: Iterable<string> | Map<string, unknown> | Set<string>,
+): "inspect" | "locate" {
+  return visibleCodes(visible).has(code) ? "inspect" : "locate";
+}
+
 export function compactGraphStatusLabel(fullLabel: string): string {
   return fullLabel === "Prerequisite eligible" ? "Eligible" : fullLabel;
 }

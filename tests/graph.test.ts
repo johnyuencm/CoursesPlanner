@@ -15,6 +15,7 @@ import {
   graphCourseZIndex,
   graphFitZoom,
   graphFocusStatus,
+  graphInspectorLinkAction,
   graphZoomPercent,
   GRAPH_SELECTED_EDGE_Z,
   shouldClearLineFocusOnEscape,
@@ -545,6 +546,16 @@ test("mapFind reveals off-map courses by switching to the immediate neighborhood
   assert.deepEqual(mapFind.reveal("CS 1800", new Set(["CS 5010"])), { code: "CS 1800", neighborhood: true });
   assert.deepEqual(mapFind.reveal("CS 5010", new Set(["CS 5010"])), { code: "CS 5010", neighborhood: false });
   assert.deepEqual(mapFind.reveal("CS 5500", new Map([["CS 5500", 0]])), { code: "CS 5500", neighborhood: false });
+});
+
+test("inspector relationship chips inspect on-map courses and locate off-map unlocks", () => {
+  const { courses, requirements } = seattleGraph();
+  const visible = visibleGraphDistances("prerequisites", "CS 5500", courses, requirements, catalogRelations(courses));
+  assert.equal(visible.has("CS 5500"), true);
+  assert.equal(visible.has("CS 5010"), true);
+  assert.equal(visible.has("CS 6510"), false);
+  assert.equal(graphInspectorLinkAction("CS 5010", visible), "inspect");
+  assert.equal(graphInspectorLinkAction("CS 6510", visible), "locate");
 });
 
 class FakeElement {

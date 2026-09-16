@@ -11,6 +11,7 @@ import {
   GRAPH_FOCUS_STATUS_LEGEND,
   graphCourseZIndex,
   graphFocusStatus,
+  graphInspectorLinkAction,
   graphZoomPercent,
   GRAPH_MAX_ZOOM,
   GRAPH_MIN_ZOOM,
@@ -416,6 +417,10 @@ function GraphWorkspace() {
   inspectRef.current = inspectCourse;
   cycleRef.current = cycle;
   const focus = (code: string) => locate(code, false);
+  const selectRelated = (code: string) => {
+    if (graphInspectorLinkAction(code, visible) === "locate") focus(code);
+    else inspectCourse(code);
+  };
   const setManualZoom = useCallback((next: number) => setZoom(clampGraphZoom(next)), []);
   const setCanvasZoom = useCallback((next: number) => setZoom(clampGraphZoom(next, 0.05, GRAPH_MAX_ZOOM)), []);
   const changeZoom = (step: number) => setZoom((current) => clampGraphZoom(current + step));
@@ -668,17 +673,17 @@ function GraphWorkspace() {
             {prereqItems.length ? <ul className="inspector-prereq-list">{prereqItems.map((item) => (
               <li key={item.code} className={item.met ? "met" : undefined}>
                 <span className="inspector-prereq-mark" aria-hidden="true">{item.met ? <Check size={13} /> : null}</span>
-                <button type="button" className="code-chip" onClick={() => inspectCourse(item.code)}>{item.code}</button>
+                <button type="button" className="code-chip" onClick={() => selectRelated(item.code)}>{item.code}</button>
                 <span className="sr-only">{item.met ? "completed or waived" : "still needed"}</span>
               </li>
             ))}</ul> : <span className="muted small-text">No parsed prerequisites.</span>}
           </>}
           <h3>Unlocks <span>{unlockCodes.length}</span></h3>
-          {unlockCodes.length ? <div className="detail-code-links"><CodeLinks codes={unlockCodes} limit={1000} onSelect={inspectCourse} /></div> : <span className="muted small-text">No linked downstream courses in this catalog.</span>}
+          {unlockCodes.length ? <div className="detail-code-links"><CodeLinks codes={unlockCodes} limit={1000} onSelect={selectRelated} /></div> : <span className="muted small-text">No linked downstream courses in this catalog.</span>}
           {showCorequisites ? <>
             <h3>Corequisites <span>{selected?.corequisiteCodes.length ?? 0}</span></h3>
             <p>{nodeRequirementCopy(selected, "corequisites")}</p>
-            <div className="detail-code-links"><CodeLinks codes={selected?.corequisiteCodes ?? []} limit={1000} onSelect={inspectCourse} /></div>
+            <div className="detail-code-links"><CodeLinks codes={selected?.corequisiteCodes ?? []} limit={1000} onSelect={selectRelated} /></div>
           </> : null}
         </div>
         <div className="inspector-actions">
