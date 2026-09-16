@@ -238,7 +238,7 @@
     "university": "Tsinghua",
     "region": "world",
     "priority": 7,
-    "catalogUrl": "https://www.tsinghua.edu.cn/en/Admissions/Undergraduate/Overview.htm",
+    "catalogUrl": "https://www.tsinghua.edu.cn/en/Admissions/Undergraduate/Degree_Programs.htm",
     "support": "unverified",
     "enabled": false
   },
@@ -292,7 +292,7 @@
     "university": "Peking University",
     "region": "world",
     "priority": 13,
-    "catalogUrl": "https://english.pku.edu.cn/about.html#ab6",
+    "catalogUrl": "https://dean.pku.edu.cn/web/student_info.php?type=1&id=8",
     "support": "unverified",
     "enabled": false
   },

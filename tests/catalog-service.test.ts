@@ -135,13 +135,13 @@ test("university directory loads the approved 20 US and 20 world entries", async
     ["imperial", "Imperial College London", "https://www.imperial.ac.uk/study/courses/"],
     ["toronto", "University of Toronto", "https://future.utoronto.ca/programs/"],
     ["nus", "National University of Singapore", "https://www.nus.edu.sg/oam/programmes"],
-    ["tsinghua", "Tsinghua", "https://www.tsinghua.edu.cn/en/Admissions/Undergraduate/Overview.htm"],
+    ["tsinghua", "Tsinghua", "https://www.tsinghua.edu.cn/en/Admissions/Undergraduate/Degree_Programs.htm"],
     ["epfl", "EPFL", "https://www.epfl.ch/education/bachelor/programs/"],
     ["waterloo", "University of Waterloo", "https://uwaterloo.ca/future-students/programs"],
     ["ucl", "UCL", "https://www.ucl.ac.uk/prospective-students/undergraduate/degrees"],
     ["edinburgh", "University of Edinburgh", "https://study.ed.ac.uk/programmes"],
     ["ntu", "Nanyang Technological University", "https://www.ntu.edu.sg/education/degree-programmes"],
-    ["peking", "Peking University", "https://english.pku.edu.cn/about.html#ab6"],
+    ["peking", "Peking University", "https://dean.pku.edu.cn/web/student_info.php?type=1&id=8"],
     ["ubc", "University of British Columbia", "https://you.ubc.ca/programs/"],
     ["tokyo", "University of Tokyo", "https://www.u-tokyo.ac.jp/en/academics/faculties.html"],
     ["kaist", "KAIST", "https://www.kaist.ac.kr/en/html/edu/03100101.html"],
@@ -246,6 +246,24 @@ test("university crawl URLs must use allowed origins", () => {
   const crawl = supported.crawl as Record<string, unknown>;
   const discoverySource = crawl.discoverySource as Record<string, unknown>;
 
+  assert.throws(
+    () =>
+      parseUniversityDirectory(
+        [
+          {
+            ...supported,
+            crawl: {
+              ...crawl,
+              allowedOrigins: ["https://user:password@catalog.northeastern.edu"],
+            },
+          },
+        ],
+        "test universities",
+      ),
+    {
+      message: "test universities[0].crawl.allowedOrigins[0] must be an HTTPS origin",
+    },
+  );
   assert.throws(
     () =>
       parseUniversityDirectory(
@@ -517,6 +535,17 @@ test("catalog service HTTP handlers list sources and universities without changi
   assert.equal(payload.universities[19].enabled, false);
   assert.equal(payload.universities[20].id, "oxford");
   assert.equal("crawl" in payload.universities[19], false);
+
+  const wrongUniversityMethod = await handleCatalogRequest(
+    "POST",
+    new URL("http://127.0.0.1/universities"),
+    Buffer.alloc(0),
+    context,
+  );
+  assert.equal(wrongUniversityMethod.status, 405);
+  assert.equal((wrongUniversityMethod.headers as Record<string, string>).Allow, "GET");
+  assert.equal(wrongUniversityMethod.headers["Content-Type"], "application/json; charset=utf-8");
+  assert.deepEqual(JSON.parse(wrongUniversityMethod.body), { error: "Method not allowed." });
 
   const missing = await handleCatalogRequest(
     "POST",

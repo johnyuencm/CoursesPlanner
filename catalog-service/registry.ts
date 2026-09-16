@@ -51,7 +51,7 @@ function parseAllowedOrigins(value: unknown, label: string): string[] {
   return value.map((origin, index) => {
     if (typeof origin !== "string") throw new Error(`${label}[${index}] is invalid`);
     const url = new URL(origin);
-    if (url.protocol !== "https:" || url.pathname !== "/" || url.search || url.hash) {
+    if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
       throw new Error(`${label}[${index}] must be an HTTPS origin`);
     }
     return url.origin;

@@ -80,6 +80,9 @@ export async function handleCatalogRequest(
       })),
     });
   }
+  if (url.pathname === "/universities") {
+    return json({ error: "Method not allowed." }, 405, { Allow: "GET" });
+  }
   if (method === "GET" && url.pathname === "/catalogs") {
     return json({
       catalogs: context.sources.map((source) => ({
