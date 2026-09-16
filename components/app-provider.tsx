@@ -297,13 +297,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     let added: string[] = [];
     let createdTerms: string[] = [];
+    let capacityTerm: string | undefined;
+    let failed: "capacity" | "missing-term" | undefined;
     setPlan((current) => {
       const snapshot = targetPathSnapshot(courseTargetCode, catalog.courses, current);
       const result = applyRemainingPathToPlan(current, catalog.courses, snapshot.earliest.placements);
+      if (!result.ok) {
+        failed = result.reason;
+        capacityTerm = result.semesterName;
+        return current;
+      }
       added = result.added;
       createdTerms = result.createdTerms;
       return result.plan;
     });
+    if (failed === "capacity") {
+      announce(`${capacityTerm ?? "That term"} supports up to 32 planned courses. The missing chain was not added.`);
+      return;
+    }
+    if (failed === "missing-term") {
+      announce("A planned term for this path is missing. The missing chain was not added.");
+      return;
+    }
     if (!added.length) {
       announce("Every course on this path is already in your plan or history, or cannot be added.");
       return;

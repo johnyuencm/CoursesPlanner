@@ -1,6 +1,6 @@
 import type { Course, RequirementExpression, Semester, StudentPlan } from "./types";
 
-export type TargetPathRole = "completed" | "planned" | "remaining" | "target";
+export type TargetPathRole = "completed" | "waived" | "planned" | "remaining" | "target";
 
 export interface TargetPathNode {
   code: string;
@@ -119,8 +119,14 @@ function cheaper(left: Walk, right: Walk, courses: Map<string, Course>): Walk {
   return left;
 }
 
-function roleOf(code: string, history: Set<string>, planned: Set<string>): Exclude<TargetPathRole, "target"> {
-  if (history.has(code)) return "completed";
+function roleOf(
+  code: string,
+  completed: Set<string>,
+  waived: Set<string>,
+  planned: Set<string>,
+): Exclude<TargetPathRole, "target"> {
+  if (completed.has(code)) return "completed";
+  if (waived.has(code)) return "waived";
   if (planned.has(code)) return "planned";
   return "remaining";
 }
@@ -133,6 +139,7 @@ function chooseExpression(
   visiting: Set<string>,
   memo: Map<string, Walk>,
   parent: string,
+  root: string,
 ): Walk {
   switch (expression.type) {
     case "none":
@@ -151,7 +158,7 @@ function chooseExpression(
           missing: [],
         };
       }
-      const inner = walkCourse(expression.code, courses, history, planned, visiting, memo);
+      const inner = walkCourse(expression.code, courses, history, planned, visiting, memo, root);
       return {
         remaining: unique([...inner.remaining, expression.code]),
         ancestors: unique([...inner.ancestors, expression.code]),
@@ -168,13 +175,13 @@ function chooseExpression(
       if (!expression.items.length) return emptyWalk();
       return mergeWalks(
         expression.items.map((item) =>
-          chooseExpression(item, courses, history, planned, visiting, memo, parent),
+          chooseExpression(item, courses, history, planned, visiting, memo, parent, root),
         ),
       );
     case "any": {
       if (!expression.items.length) return emptyWalk();
       const options = expression.items.map((item) =>
-        chooseExpression(item, courses, history, planned, visiting, memo, parent),
+        chooseExpression(item, courses, history, planned, visiting, memo, parent, root),
       );
       const satisfied = options.find((option) => !option.cyclic && option.remaining.length === 0);
       if (satisfied) return satisfied;
@@ -190,15 +197,16 @@ function walkCourse(
   planned: Set<string>,
   visiting: Set<string>,
   memo: Map<string, Walk>,
+  root: string,
 ): Walk {
   const cached = memo.get(code);
-  if (cached) return cached;
+  if (cached !== undefined) return cached;
   if (visiting.has(code)) return { ...emptyWalk(), cyclic: true };
   visiting.add(code);
   const course = courses.get(code);
   if (!course) {
     visiting.delete(code);
-    const recorded = history.has(code) || planned.has(code);
+    const recorded = history.has(code) || (planned.has(code) && code !== root);
     const result: Walk = {
       remaining: recorded ? [] : [code],
       ancestors: recorded ? [code] : [],
@@ -210,13 +218,13 @@ function walkCourse(
     if (recorded) memo.set(code, emptyWalk());
     return result;
   }
-  if (history.has(code) || planned.has(code)) {
+  if (history.has(code) || (planned.has(code) && code !== root)) {
     visiting.delete(code);
     const result = emptyWalk();
     memo.set(code, result);
     return result;
   }
-  const chosen = chooseExpression(course.prerequisites, courses, history, planned, visiting, memo, code);
+  const chosen = chooseExpression(course.prerequisites, courses, history, planned, visiting, memo, code, root);
   const coreqWalks: Walk[] = [];
   for (const coreq of course.corequisiteCodes) {
     if (coreq === code || visiting.has(coreq)) continue;
@@ -246,30 +254,71 @@ function walkCourse(
   return merged;
 }
 
+function concurrentComponents(codes: readonly string[], edges: readonly TargetPathEdge[]): string[][] {
+  const keep = new Set(codes);
+  const parent = new Map<string, string>();
+  for (const code of keep) parent.set(code, code);
+  const find = (code: string): string => {
+    const current = parent.get(code) ?? code;
+    if (current === code) return code;
+    const root = find(current);
+    parent.set(code, root);
+    return root;
+  };
+  for (const edge of edges) {
+    if (!edge.concurrent || !keep.has(edge.from) || !keep.has(edge.to)) continue;
+    const left = find(edge.from);
+    const right = find(edge.to);
+    if (left !== right) parent.set(left, right);
+  }
+  const groups = new Map<string, string[]>();
+  for (const code of keep) {
+    const root = find(code);
+    const group = groups.get(root) ?? [];
+    group.push(code);
+    groups.set(root, group);
+  }
+  return [...groups.values()].map((group) =>
+    group.sort((left, right) => left.localeCompare(right, undefined, { numeric: true })),
+  );
+}
+
 function topologicalOrder(codes: readonly string[], edges: readonly TargetPathEdge[]): string[] {
   const keep = new Set(codes);
-  const incoming = new Map<string, string[]>();
-  for (const code of keep) incoming.set(code, []);
+  const components = concurrentComponents([...keep], edges);
+  const idOf = new Map<string, number>();
+  components.forEach((component, index) => {
+    for (const code of component) idOf.set(code, index);
+  });
+  const incoming = components.map(() => new Set<number>());
   for (const edge of edges) {
     if (edge.concurrent || !keep.has(edge.from) || !keep.has(edge.to)) continue;
-    incoming.get(edge.to)?.push(edge.from);
+    const fromId = idOf.get(edge.from);
+    const toId = idOf.get(edge.to);
+    if (fromId === undefined || toId === undefined || fromId === toId) continue;
+    incoming[toId].add(fromId);
   }
-  const memo = new Map<string, number>();
-  const visiting = new Set<string>();
-  const rankOf = (code: string): number => {
-    const cached = memo.get(code);
+  const memo = new Map<number, number>();
+  const visiting = new Set<number>();
+  const rankOf = (id: number): number => {
+    const cached = memo.get(id);
     if (cached !== undefined) return cached;
-    if (visiting.has(code)) return 0;
-    visiting.add(code);
-    const dependencies = incoming.get(code) ?? [];
+    if (visiting.has(id)) return 0;
+    visiting.add(id);
+    const dependencies = [...incoming[id]];
     const value = dependencies.length ? 1 + Math.max(...dependencies.map(rankOf)) : 0;
-    visiting.delete(code);
-    memo.set(code, value);
+    visiting.delete(id);
+    memo.set(id, value);
     return value;
   };
-  return [...keep].sort(
-    (left, right) => rankOf(left) - rankOf(right) || left.localeCompare(right, undefined, { numeric: true }),
-  );
+  return components
+    .map((component, id) => ({ component, rank: rankOf(id) }))
+    .sort(
+      (left, right) =>
+        left.rank - right.rank ||
+        left.component[0].localeCompare(right.component[0], undefined, { numeric: true }),
+    )
+    .flatMap((item) => item.component);
 }
 
 export function prerequisitePathToTarget(
@@ -278,7 +327,9 @@ export function prerequisitePathToTarget(
   plan: Pick<StudentPlan, "completedCourses" | "waivedCourses" | "semesters">,
 ): TargetPath {
   const catalog = new Map(courses.map((course) => [course.code, course]));
-  const history = new Set([...plan.completedCourses, ...plan.waivedCourses]);
+  const completed = new Set(plan.completedCourses);
+  const waived = new Set(plan.waivedCourses);
+  const history = new Set([...completed, ...waived]);
   const planned = new Set(plan.semesters.flatMap((semester) => semester.courses.map((course) => course.code)));
   if (!catalog.has(targetCode)) {
     return {
@@ -292,12 +343,12 @@ export function prerequisitePathToTarget(
       missingCatalog: [targetCode],
     };
   }
-  const walk = walkCourse(targetCode, catalog, history, planned, new Set(), new Map());
+  const walk = walkCourse(targetCode, catalog, history, planned, new Set(), new Map(), targetCode);
   const remainingCodes = unique(walk.remaining.filter((code) => code !== targetCode));
   const ancestorCodes = unique(walk.ancestors.filter((code) => code !== targetCode));
   const ordered = topologicalOrder(ancestorCodes, walk.edges);
   const nodes: TargetPathNode[] = [
-    ...ordered.map((code) => ({ code, role: roleOf(code, history, planned) })),
+    ...ordered.map((code) => ({ code, role: roleOf(code, completed, waived, planned) })),
     { code: targetCode, role: "target" },
   ];
   const missingCatalog = unique(walk.missing.filter((code) => code !== targetCode));
@@ -383,14 +434,14 @@ export function earliestFeasibleTerm(
   plan: StudentPlan,
 ): EarliestTerm {
   const remainingCount = path.remainingCodes.length;
-  const fail = (reason: EarliestTerm["reason"], termName: string | null = null): EarliestTerm => ({
+  const fail = (reason: EarliestTerm["reason"], termName: string | null = null, usedOfferings = false): EarliestTerm => ({
     remainingCount,
     termName,
     semesterId: null,
     reason,
     summary: summarize(reason, remainingCount, termName),
     placements: [],
-    usedOfferings: false,
+    usedOfferings,
   });
   if (path.status === "unknown-course") return fail("unknown-course");
   if (path.status === "cyclic") return fail("cyclic");
@@ -398,90 +449,115 @@ export function earliestFeasibleTerm(
 
   const catalog = new Map(courses.map((course) => [course.code, course]));
   const history = new Set([...plan.completedCourses, ...plan.waivedCourses]);
-  const usedOfferings = courses.some((course) => Boolean(course.termOfferings?.length));
   const academic = academicTerms(plan);
-  const recorded = history.has(path.target) || plan.semesters.some((semester) => semester.courses.some((course) => course.code === path.target));
-  if (recorded) {
-    const semester = plan.semesters.find((item) => item.courses.some((course) => course.code === path.target));
-    const alreadyCompleted = history.has(path.target);
+  const targetSemester = plan.semesters.find((item) => item.courses.some((course) => course.code === path.target));
+  const targetPlanned = Boolean(targetSemester);
+
+  if (history.has(path.target)) {
     return {
       remainingCount,
-      termName: semester?.name ?? null,
-      semesterId: semester?.id ?? null,
+      termName: targetSemester?.name ?? null,
+      semesterId: targetSemester?.id ?? null,
+      reason: "already-recorded",
+      summary: summarize("already-recorded", remainingCount, targetSemester?.name ?? null, "Already completed"),
+      placements: [],
+      usedOfferings: false,
+    };
+  }
+  if (remainingCount === 0 && targetPlanned) {
+    return {
+      remainingCount,
+      termName: targetSemester?.name ?? null,
+      semesterId: targetSemester?.id ?? null,
       reason: "already-recorded",
       summary: summarize(
         "already-recorded",
         remainingCount,
-        semester?.name ?? null,
-        alreadyCompleted ? "Already completed" : semester ? `Already on your plan · ${semester.name}` : "Already on your plan",
+        targetSemester?.name ?? null,
+        targetSemester ? `Already on your plan · ${targetSemester.name}` : "Already on your plan",
       ),
       placements: [],
-      usedOfferings,
+      usedOfferings: false,
     };
   }
   if (!academic.length) return fail("no-academic-term");
 
-  const toPlace = unique([...path.remainingCodes, path.target]);
+  const toPlace = unique([...path.remainingCodes, ...(targetPlanned ? [] : [path.target])]);
+  const usedOfferings = unique([...toPlace, path.target]).some((code) => Boolean(catalog.get(code)?.termOfferings?.length));
   const assignment = new Map<string, number>();
   const order = topologicalOrder(toPlace, path.edges);
-  let synthesized = 0;
+  const components = concurrentComponents(toPlace, path.edges);
 
   const termAt = (index: number): { name: string; id: string | null } => {
     const existing = academic[index];
     if (existing) return { name: existing.name, id: existing.id };
     const extra = index - academic.length + 1;
-    synthesized = Math.max(synthesized, extra);
     let name = academic[academic.length - 1]?.name ?? "Fall 2026";
     for (let step = 0; step < extra; step++) name = nextAcademicTermName(name);
     return { name, id: null };
   };
 
-  const findTerm = (minimum: number, code: string): number | null => {
-    const offerings = catalog.get(code)?.termOfferings;
+  const componentOf = (code: string): string[] => components.find((group) => group.includes(code)) ?? [code];
+
+  const raiseMinimum = (minimum: number, other: string, concurrent: boolean): number => {
+    if (history.has(other)) return minimum;
+    const plannedIndex = plannedAcademicIndex(other, plan, academic);
+    if (plannedIndex !== undefined) minimum = Math.max(minimum, plannedIndex + (concurrent ? 0 : 1));
+    const assigned = assignment.get(other);
+    if (assigned !== undefined) minimum = Math.max(minimum, assigned + (concurrent ? 0 : 1));
+    return minimum;
+  };
+
+  const findSharedTerm = (minimum: number, group: readonly string[]): number | null => {
     for (let index = minimum; index < academic.length + 8; index++) {
-      if (termMatchesOffering(termAt(index).name, offerings)) return index;
+      const name = termAt(index).name;
+      if (group.every((code) => termMatchesOffering(name, catalog.get(code)?.termOfferings))) return index;
     }
     return null;
   };
 
+  const placed = new Set<string>();
   for (const code of order) {
-    if (assignment.has(code)) continue;
+    if (placed.has(code)) continue;
+    const group = componentOf(code);
     let minimum = 0;
-    for (const edge of path.edges) {
-      if (edge.to !== code) continue;
-      if (history.has(edge.from)) continue;
-      const plannedIndex = plannedAcademicIndex(edge.from, plan, academic);
-      if (plannedIndex !== undefined) {
-        minimum = Math.max(minimum, plannedIndex + (edge.concurrent ? 0 : 1));
-      }
-      const assigned = assignment.get(edge.from);
-      if (assigned !== undefined) {
-        minimum = Math.max(minimum, assigned + (edge.concurrent ? 0 : 1));
+    for (const member of group) {
+      placed.add(member);
+      for (const edge of path.edges) {
+        if (!edge.concurrent) {
+          if (edge.to !== member || group.includes(edge.from)) continue;
+          minimum = raiseMinimum(minimum, edge.from, false);
+          continue;
+        }
+        const other = edge.to === member ? edge.from : edge.from === member ? edge.to : null;
+        if (!other || group.includes(other)) continue;
+        minimum = raiseMinimum(minimum, other, true);
       }
     }
-    const index = findTerm(minimum, code);
+    const index = findSharedTerm(minimum, group);
     if (index === null) return { ...fail("no-matching-offering"), usedOfferings };
-    assignment.set(code, index);
-    for (const edge of path.edges) {
-      if (!edge.concurrent) continue;
-      const partner = edge.to === code ? edge.from : edge.from === code ? edge.to : null;
-      if (partner && toPlace.includes(partner) && !assignment.has(partner) && !history.has(partner)) {
-        const partnerIndex = findTerm(index, partner);
-        assignment.set(partner, partnerIndex ?? index);
-      }
-    }
+    for (const member of group) assignment.set(member, index);
   }
 
   const placements: TermPlacement[] = order.map((code) => {
     const term = termAt(assignment.get(code) ?? 0);
     return { code, termName: term.name, semesterId: term.id };
   });
-  const targetIndex = assignment.get(path.target) ?? 0;
+
+  let targetIndex = assignment.get(path.target);
+  if (targetIndex === undefined) {
+    let minimum = 0;
+    for (const edge of path.edges) {
+      if (edge.to !== path.target) continue;
+      minimum = raiseMinimum(minimum, edge.from, edge.concurrent);
+    }
+    targetIndex = findSharedTerm(minimum, [path.target]) ?? minimum;
+  }
   const targetTerm = termAt(targetIndex);
   return {
     remainingCount,
     termName: targetTerm.name,
-    semesterId: targetTerm.id,
+    semesterId: targetPlanned ? targetSemester?.id ?? null : targetTerm.id,
     reason: "ok",
     summary: summarize("ok", remainingCount, targetTerm.name),
     placements,

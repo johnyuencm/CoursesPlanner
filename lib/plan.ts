@@ -71,11 +71,16 @@ export function appendCoursesToSemester(
   };
 }
 
+export type ApplyRemainingPathResult =
+  | { ok: true; plan: StudentPlan; added: string[]; createdTerms: string[] }
+  | { ok: false; reason: "capacity" | "missing-term"; plan: StudentPlan; added: []; createdTerms: []; semesterName?: string };
+
 export function applyRemainingPathToPlan(
   plan: StudentPlan,
   courses: Iterable<{ code: string; requirementType: string; credits: number }>,
   placements: readonly TermPlacement[],
-): { plan: StudentPlan; added: string[]; createdTerms: string[] } {
+): ApplyRemainingPathResult {
+  const original = plan;
   const catalog = [...courses];
   let next = plan;
   const createdTerms: string[] = [];
@@ -108,12 +113,23 @@ export function applyRemainingPathToPlan(
       catalog,
       recordedCourseCodes(next),
     );
+    if (!items.length) continue;
     const result = appendCoursesToSemester(next, semesterId, items);
-    if (!result.ok) continue;
+    if (!result.ok) {
+      if (result.reason === "none") continue;
+      return {
+        ok: false,
+        reason: result.reason,
+        plan: original,
+        added: [],
+        createdTerms: [],
+        semesterName: next.semesters.find((semester) => semester.id === semesterId)?.name,
+      };
+    }
     next = result.plan;
     added.push(...result.added);
   }
-  return { plan: next, added, createdTerms };
+  return { ok: true, plan: next, added, createdTerms };
 }
 
 export function emptyPlan(): StudentPlan {

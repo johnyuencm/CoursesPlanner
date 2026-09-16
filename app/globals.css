@@ -664,6 +664,7 @@ textarea { resize: vertical; }
 .target-path-node { display: flex; align-items: center; gap: 0.55rem; padding: 0.35rem 0 0.35rem 0.2rem; border-left: 2px solid var(--line); padding-left: 0.75rem; }
 .target-path-node:last-child { padding-bottom: 0; }
 .target-path-node.completed { border-color: var(--green); }
+.target-path-node.waived { border-color: #6b7a99; }
 .target-path-node.planned { border-color: #8b93a7; }
 .target-path-node.remaining { border-color: var(--amber); }
 .target-path-node.target { border-color: var(--red); }

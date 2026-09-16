@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { applyRemainingPathToPlan, emptyPlan } from "../lib/plan";
+import { applyRemainingPathToPlan, emptyPlan, MAX_COURSES_PER_SEMESTER } from "../lib/plan";
 import {
   earliestFeasibleTerm,
   matchCourseTarget,
@@ -120,6 +120,56 @@ test("already completed target does not invent a remaining chain", () => {
   assert.deepEqual(snapshot.earliest.placements, []);
 });
 
+test("completed CS 6510 target stays empty even though it has catalog prerequisites", () => {
+  const snapshot = targetPathSnapshot("CS 6510", seattle.courses, plan({ completedCourses: ["CS 6510"] }));
+  assert.deepEqual(snapshot.path.remainingCodes, []);
+  assert.equal(snapshot.earliest.reason, "already-recorded");
+  assert.deepEqual(snapshot.earliest.placements, []);
+});
+
+test("planned CS 6510 still expands remaining prerequisites so Add missing chain can backfill", () => {
+  const withTarget = plan({
+    semesters: emptyPlan().semesters.map((semester) =>
+      semester.id === "fall-2026" ? { ...semester, courses: [{ code: "CS 6510", credits: 4 }] } : semester,
+    ),
+  });
+  const snapshot = targetPathSnapshot("CS 6510", seattle.courses, withTarget);
+  assert.equal(snapshot.path.status, "ok");
+  assert.ok(snapshot.path.remainingCodes.includes("CS 5010"));
+  assert.ok(snapshot.path.remainingCodes.includes("CS 5500"));
+  assert.notEqual(snapshot.earliest.reason, "already-recorded");
+  assert.equal(snapshot.earliest.reason, "ok");
+  assert.ok(snapshot.earliest.placements.some((item) => item.code === "CS 5010"));
+  assert.ok(snapshot.earliest.placements.some((item) => item.code === "CS 5500"));
+  assert.ok(!snapshot.earliest.placements.some((item) => item.code === "CS 6510"));
+  const applied = applyRemainingPathToPlan(withTarget, seattle.courses, snapshot.earliest.placements);
+  assert.equal(applied.ok, true);
+  assert.ok(applied.added.includes("CS 5010"));
+  assert.ok(applied.added.includes("CS 5500"));
+  assert.ok(
+    applied.plan.semesters.some((semester) => semester.courses.some((item) => item.code === "CS 6510")),
+  );
+});
+
+test("waived prerequisite is labeled waived, not completed", () => {
+  const snapshot = targetPathSnapshot("CS 6510", seattle.courses, plan({ waivedCourses: ["CS 5010"] }));
+  assert.ok(snapshot.path.nodes.some((node) => node.code === "CS 5010" && node.role === "waived"));
+  assert.ok(!snapshot.path.nodes.some((node) => node.code === "CS 5010" && node.role === "completed"));
+  assert.ok(snapshot.path.remainingCodes.includes("CS 5500"));
+  assert.ok(!snapshot.path.remainingCodes.includes("CS 5010"));
+});
+
+test("usedOfferings is path-local, not catalog-global", () => {
+  const courses = [
+    course("A"),
+    course("B", { prerequisites: req("A"), prerequisiteCodes: ["A"] }),
+    course("Z", { termOfferings: ["Fall"] }),
+  ];
+  const snapshot = targetPathSnapshot("B", courses, emptyPlan());
+  assert.equal(snapshot.earliest.usedOfferings, false);
+  assert.equal(snapshot.earliest.reason, "ok");
+});
+
 test("catalog term offerings skip terms that do not match", () => {
   const courses = [
     course("A"),
@@ -158,12 +208,69 @@ test("no academic terms is an explicit empty state", () => {
 test("applyRemainingPathToPlan inserts remaining courses by earliest term", () => {
   const snapshot = targetPathSnapshot("CS 5500", seattle.courses, emptyPlan());
   const applied = applyRemainingPathToPlan(emptyPlan(), seattle.courses, snapshot.earliest.placements);
+  assert.equal(applied.ok, true);
   assert.ok(applied.added.includes("CS 5010"));
   assert.ok(applied.added.includes("CS 5500"));
   const fall = applied.plan.semesters.find((semester) => semester.id === "fall-2026");
   const spring = applied.plan.semesters.find((semester) => semester.id === "spring-2027");
   assert.ok(fall?.courses.some((item) => item.code === "CS 5010"));
   assert.ok(spring?.courses.some((item) => item.code === "CS 5500"));
+});
+
+test("applyRemainingPathToPlan fails closed when a term is at capacity", () => {
+  const snapshot = targetPathSnapshot("CS 5500", seattle.courses, emptyPlan());
+  const fullFall = plan({
+    semesters: emptyPlan().semesters.map((semester) =>
+      semester.id === "fall-2026"
+        ? {
+            ...semester,
+            courses: Array.from({ length: MAX_COURSES_PER_SEMESTER }, (_, index) => ({
+              code: `CS ${1100 + index}`,
+            })),
+          }
+        : semester,
+    ),
+  });
+  const applied = applyRemainingPathToPlan(fullFall, seattle.courses, snapshot.earliest.placements);
+  assert.equal(applied.ok, false);
+  if (applied.ok) throw new Error("expected capacity failure");
+  assert.equal(applied.reason, "capacity");
+  assert.deepEqual(applied.added, []);
+  assert.deepEqual(applied.plan, fullFall);
+  assert.equal(
+    applied.plan.semesters.find((semester) => semester.id === "spring-2027")?.courses.length,
+    0,
+  );
+});
+
+test("concurrent prerequisite waits for non-concurrent dependencies and stays in the same term", () => {
+  const courses = [
+    course("A"),
+    course("B", { prerequisites: req("A"), prerequisiteCodes: ["A"] }),
+    course("C", { prerequisites: req("B", { concurrent: true }), prerequisiteCodes: ["B"] }),
+  ];
+  const snapshot = targetPathSnapshot("C", courses, emptyPlan());
+  assert.deepEqual(snapshot.path.remainingCodes, ["A", "B"]);
+  assert.equal(snapshot.earliest.reason, "ok");
+  assert.equal(snapshot.earliest.placements.find((item) => item.code === "A")?.termName, "Fall 2026");
+  assert.equal(snapshot.earliest.placements.find((item) => item.code === "B")?.termName, "Spring 2027");
+  assert.equal(snapshot.earliest.placements.find((item) => item.code === "C")?.termName, "Spring 2027");
+  assert.equal(snapshot.earliest.termName, "Spring 2027");
+});
+
+test("concurrent partners with disjoint offerings fail closed instead of splitting terms", () => {
+  const courses = [
+    course("B", { termOfferings: ["Fall"] }),
+    course("C", {
+      prerequisites: req("B", { concurrent: true }),
+      prerequisiteCodes: ["B"],
+      termOfferings: ["Spring"],
+    }),
+  ];
+  const snapshot = targetPathSnapshot("C", courses, emptyPlan());
+  assert.equal(snapshot.earliest.reason, "no-matching-offering");
+  assert.deepEqual(snapshot.earliest.placements, []);
+  assert.equal(snapshot.earliest.usedOfferings, true);
 });
 
 test("matchCourseTarget accepts compact and spaced codes", () => {

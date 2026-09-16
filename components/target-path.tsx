@@ -101,7 +101,7 @@ export function TargetPathCard({ compact = false }: { compact?: boolean }) {
           {path.nodes.map((node) => (
             <li key={`${node.role}-${node.code}`} className={`target-path-node ${node.role}`}>
               <button type="button" className="code-chip" onClick={() => openCourse(node.code)}>{node.code}</button>
-              <span className="muted">{node.role === "target" ? "Target" : node.role === "completed" ? "Completed" : node.role === "planned" ? "Planned" : "Remaining"}</span>
+              <span className="muted">{node.role === "target" ? "Target" : node.role === "completed" ? "Completed" : node.role === "waived" ? "Waived" : node.role === "planned" ? "Planned" : "Remaining"}</span>
             </li>
           ))}
         </ol>
