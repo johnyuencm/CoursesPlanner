@@ -11,10 +11,10 @@ This is the independent verification checklist, not a claim of completion.
 - Cache records catalog edition, update timestamp and source URLs. Frontend cannot mutate scrape URLs or filesystem paths.
 
 ## Student flow
-1. Open a fresh browser profile. No completed courses or fabricated progress appear. Read the degree overview and its core, breadth and elective sections.
+1. Open a fresh browser profile. The brand and first nav item are **Explore** (`/explore`). `/` is a slim status overview (credits, target, critical prereq, next unlock, CTA to the map) — not a Stellic-like degree audit.
 2. Search CS 5180. Open details. Compare displayed prerequisites to the actual catalog, not the illustrative product brief. Follow a prerequisite chip and official source link.
 3. Filter by core, breadth category, credits, prerequisites and topic. Reset filters. Verify empty results are recoverable.
-4. Open the prerequisite graph. Confirm the default entire-program map includes isolated official courses such as CS 5800 and CS 5100, not only the neighborhood of one course. Select a graph course. Identify upstream prerequisites and downstream unlocks. Switch to Immediate neighborhood for CS 5500 and confirm that local view. Check labels/legend and equivalent relationship table. Verify zoom, keyboard access and long titles.
+4. Open Explore (`/explore`; `/map` redirects here). Confirm the default entire-program map includes isolated official courses such as CS 5800 and CS 5100, not only the neighborhood of one course. Select a graph course. Identify upstream prerequisites and downstream unlocks. Switch to Immediate neighborhood for CS 5500 and confirm that local view. Check labels/legend and equivalent relationship table. Verify zoom, keyboard access and long titles.
 5. Add courses to a term. Verify credit/core/breadth/elective progress changes. Schedule a dependent before its prerequisites and see an actionable warning. Move prerequisites earlier and see the warning clear.
 6. Add CS 5010 without CS 5011 and see the corequisite warning; add both to the same term and see it clear. CS 5011 contributes zero credits.
 7. Add, rename and reorder terms. Add an internship/co-op term. Move a course using drag-and-drop and the keyboard/native move alternative. Remove a course. Confirm before removing a populated term.

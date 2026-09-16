@@ -1,8 +1,10 @@
 # NEU MSCS Course Planner
 
-A local-first course and degree planner for Northeastern University's Seattle MS in Computer Science program.
+A local-first course map for Northeastern University's Seattle MS in Computer Science program.
 
-The application explains the current catalog requirements, exposes parsed prerequisite relationships, and validates a semester-by-semester plan. It is an advising aid, not an official degree audit. Course availability in a specific semester or campus section is not included because the academic catalog does not provide that data.
+The application is graph-first: **understand what every course unlocks**. Explore the official MSCS Seattle prerequisite map, then plan locally. It is an advising aid, not an official degree audit. Course availability in a specific semester or campus section is not included because the academic catalog does not provide that data.
+
+Primary navigation is **Explore · Plan · Courses · Paths**. Route redirects and the slim Overview at `/` are documented in [`docs/ia.md`](docs/ia.md).
 
 ## Deployment
 
@@ -10,13 +12,13 @@ Production is on Vercel at [https://courses-planner.vercel.app](https://courses-
 
 ## What the application includes
 
-- **Degree overview** for total credits, required core, breadth areas, and electives.
-- **Course explorer** with search, requirement, breadth, credit, prerequisite, eligibility, and topic filters.
-- **Prerequisite graph** of the official MSCS Seattle program, with neighborhood zoom, upstream/downstream emphasis, and an accessible relationship table.
-- **Plan builder** with academic and internship/co-op terms, drag-and-drop, keyboard drag controls, and native move menus.
+- **Explore** (`/explore`) — the default workspace. The official MSCS Seattle prerequisite map, with neighborhood zoom, upstream/downstream emphasis, and an accessible relationship table.
+- **Slim Overview** (`/`) — credits, target, critical prereq, next unlock, and a CTA into the map. Not a degree-audit dashboard.
+- **Courses** with search, requirement, breadth, credit, prerequisite, eligibility, and topic filters.
+- **Plan** with academic and internship/co-op terms, drag-and-drop, keyboard drag controls, and native move menus.
 - **Live validation** for prerequisites, corequisites, credits, core, breadth diversity, and electives.
-- **Next-course view** that reports prerequisite eligibility separately from actual course offerings.
-- **Editable suggested pathways**, including a robotics-focused starting point. Pathways never change degree requirements.
+- **Next-course view** on Plan that reports prerequisite eligibility separately from actual course offerings.
+- **Paths** — editable suggested pathways, including a robotics-focused starting point. Pathways never change degree requirements.
 - **Local persistence** in browser LocalStorage. No account, authentication service, or database is required.
 
 ## Catalog source inspection
@@ -89,7 +91,7 @@ The service does not fetch a second live university until that source file exist
 | `config/pathways.json` | Default recommendation-only pathway groups |
 | `data/raw/` | Cached official HTML and research fixtures |
 | `tests/` | Parser, catalog-service, validation, and persistence tests |
-| `docs/` | Source inspection, acceptance checklist, and deployment notes |
+| `docs/` | Source inspection, IA/redirects, acceptance checklist, and deployment notes |
 | `.github/workflows/` | GitHub Actions CI (and optional Vercel CLI production deploy) |
 
 ## Catalog cache and refresh behavior
@@ -223,7 +225,7 @@ npm run catalog:serve
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Run only one `next dev` at a time: if you are working in `.worktrees/<slug>/`, start Next there and do not also run it at the repo root. Restart `next dev` if a session has been running for many hours; Turbopack memory eviction does not replace a process recycle. Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. For a production server on a shared network, bind loopback if you expose refresh at all:
+Open [http://localhost:3000/explore](http://localhost:3000/explore) for the course map (the default workspace). [http://localhost:3000](http://localhost:3000) is the slim Overview. Old `/map` bookmarks redirect to `/explore`. See [`docs/ia.md`](docs/ia.md). Run only one `next dev` at a time: if you are working in `.worktrees/<slug>/`, start Next there and do not also run it at the repo root. Restart `next dev` if a session has been running for many hours; Turbopack memory eviction does not replace a process recycle. Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. For a production server on a shared network, bind loopback if you expose refresh at all:
 
 ```bash
 npx next start --hostname 127.0.0.1
@@ -252,7 +254,7 @@ npm run typecheck
 npm run build
 ```
 
-Browser acceptance criteria are documented in [`docs/acceptance-checklist.md`](docs/acceptance-checklist.md). Command presence here is not a claim that a particular checkout has passed them; run all three after changing parser, validation, or UI code.
+Browser acceptance criteria are documented in [`docs/acceptance-checklist.md`](docs/acceptance-checklist.md). Information architecture and old-path redirects are in [`docs/ia.md`](docs/ia.md). Command presence here is not a claim that a particular checkout has passed them; run all three after changing parser, validation, or UI code.
 
 ## Security and trust boundaries
 
