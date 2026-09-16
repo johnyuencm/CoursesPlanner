@@ -450,7 +450,29 @@ export type MapSceneInput = {
   focusCode: string;
   selectedCode: string;
   compare?: (left: string, right: string) => number;
+  /** When set, drop every other visible node before layout. Used by Only my planned. */
+  keep?: Iterable<string>;
 };
+
+export function restrictVisibleDistances(
+  visible: Map<string, number>,
+  keep: Iterable<string> | undefined,
+): Map<string, number> {
+  if (!keep) return visible;
+  const allowed = keep instanceof Set ? keep : new Set(keep);
+  const next = new Map<string, number>();
+  for (const [code, distance] of visible) {
+    if (allowed.has(code)) next.set(code, distance);
+  }
+  return next;
+}
+
+export function plannedOnlyKeep(
+  recorded: Iterable<string>,
+  extras: Iterable<string> = [],
+): Set<string> {
+  return new Set([...recorded, ...extras]);
+}
 
 function addRelation(graph: Map<string, Set<string>>, from: string, to: string) {
   const next = graph.get(from) ?? new Set<string>();
@@ -551,12 +573,15 @@ function requirementTypeOrder(code: string, courses: Map<string, Pick<Course, "r
 
 export function mapScene(input: MapSceneInput): MapScene {
   const relations = catalogRelations(input.courses);
-  const visible = visibleGraphDistances(
-    input.scope,
-    input.focusCode,
-    input.courses,
-    input.requirements,
-    relations,
+  const visible = restrictVisibleDistances(
+    visibleGraphDistances(
+      input.scope,
+      input.focusCode,
+      input.courses,
+      input.requirements,
+      relations,
+    ),
+    input.keep,
   );
   const chain = directedCourseChain(relations, input.selectedCode);
   const courseByCode = new Map(input.courses.map((course) => [course.code, course] as const));
@@ -1005,8 +1030,36 @@ export function sameGraphNavigationEntry(a: GraphNavigationEntry, b: GraphNaviga
   return a.selectedCode === b.selectedCode && a.focusCode === b.focusCode && a.depth === b.depth;
 }
 
-export function initialGraphNavigation(code = "CS 5010"): GraphNavigation {
-  return { entries: [{ selectedCode: code, focusCode: code, depth: "course" }], index: 0 };
+export function initialGraphNavigation(code = "CS 5010", focusCode = code): GraphNavigation {
+  return { entries: [{ selectedCode: code, focusCode, depth: "course" }], index: 0 };
+}
+
+export const WORKSPACE_SELECTION_KEY = "neu-mscs-workspace-selection-v1";
+
+export type WorkspaceSelection = {
+  selectedCode: string;
+  focusCode: string;
+};
+
+export const DEFAULT_WORKSPACE_SELECTION: WorkspaceSelection = {
+  selectedCode: "CS 5010",
+  focusCode: "CS 5010",
+};
+
+export function parseWorkspaceSelection(input: unknown): WorkspaceSelection {
+  if (!input || typeof input !== "object") return DEFAULT_WORKSPACE_SELECTION;
+  const value = input as Record<string, unknown>;
+  const selectedCode =
+    typeof value.selectedCode === "string" && value.selectedCode.trim()
+      ? value.selectedCode
+      : DEFAULT_WORKSPACE_SELECTION.selectedCode;
+  const focusCode =
+    typeof value.focusCode === "string" && value.focusCode.trim() ? value.focusCode : selectedCode;
+  return { selectedCode, focusCode };
+}
+
+export function sameWorkspaceSelection(left: WorkspaceSelection, right: WorkspaceSelection): boolean {
+  return left.selectedCode === right.selectedCode && left.focusCode === right.focusCode;
 }
 
 export function recordGraphNavigation(

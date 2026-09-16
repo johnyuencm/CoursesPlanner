@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Handle, MarkerType, Position, type Edge, type Node, type NodeProps } from "@xyflow/react";
 import { ArrowLeft, ArrowRight, CalendarPlus, Check, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Minimize2, Network, Plus, RotateCcw, Search, X, ZoomIn, ZoomOut } from "lucide-react";
 import pathwayConfig from "@/config/pathways.json";
@@ -22,6 +23,7 @@ import {
   mapFind,
   mapScene,
   pathwayRelevance,
+  plannedOnlyKeep,
   PROGRAM_COL,
   programMapCodes,
   prerequisiteBusMeta,
@@ -38,6 +40,7 @@ import {
 import type { Course, Pathway } from "@/lib/types";
 import { expressionLabel, getEligibility } from "@/lib/validation";
 import { addableLineCourses } from "@/lib/plan";
+import { routes } from "@/lib/routes";
 import { useApp } from "./app-provider";
 import { CodeLinks, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
@@ -126,13 +129,14 @@ function graphStatus(
 }
 
 function GraphWorkspace() {
-  const { catalog, openCourse, openPicker, plan, addCourses, hydrated, careerTargetId } = useApp();
-  const [focusCode, setFocusCode] = useState("CS 5010");
-  const [selectedCode, setSelectedCode] = useState("CS 5010");
+  const { catalog, openCourse, openPicker, plan, addCourses, hydrated, careerTargetId, workspaceSelection, setWorkspaceSelection } = useApp();
+  const [focusCode, setFocusCode] = useState(workspaceSelection.focusCode);
+  const [selectedCode, setSelectedCode] = useState(workspaceSelection.selectedCode);
   const [selectedRelationship, setSelectedRelationship] = useState<RelationshipSelection | null>(null);
   const [search, setSearch] = useState("");
   const [findIndex, setFindIndex] = useState(-1);
   const [depth, setDepth] = useState<GraphScope>("course");
+  const [plannedOnly, setPlannedOnly] = useState(false);
   const [view, setView] = useState<"graph" | "table">("graph");
   const [zoom, setZoom] = useState(GRAPH_READABLE_ZOOM);
   const [fitRequest, setFitRequest] = useState(0);
@@ -141,7 +145,7 @@ function GraphWorkspace() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenSupported, setFullscreenSupported] = useState(false);
   const [fullscreenMessage, setFullscreenMessage] = useState("");
-  const [navigation, setNavigation] = useState(initialGraphNavigation);
+  const [navigation, setNavigation] = useState(() => initialGraphNavigation(workspaceSelection.selectedCode, workspaceSelection.focusCode));
   const graphLayoutRef = useRef<HTMLDivElement>(null);
   const fullscreenButtonRef = useRef<HTMLButtonElement>(null);
   const wasFullscreenRef = useRef(false);
@@ -189,8 +193,9 @@ function GraphWorkspace() {
       scope: depth,
       focusCode,
       selectedCode,
+      keep: plannedOnly ? plannedOnlyKeep(recorded, [selectedCode, focusCode]) : undefined,
     });
-  }, [catalog, depth, focusCode, selectedCode]);
+  }, [catalog, depth, focusCode, selectedCode, plannedOnly, recorded]);
   const visible = scene.visible;
   const neighborhood = scene.neighborhood;
   const graph = useMemo(() => {
@@ -358,10 +363,15 @@ function GraphWorkspace() {
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [selectedRelationship, isFullscreen]);
+  useEffect(() => {
+    setSelectedCode(workspaceSelection.selectedCode);
+    setFocusCode(workspaceSelection.focusCode);
+  }, [workspaceSelection.selectedCode, workspaceSelection.focusCode]);
   const liveNavigation = (): GraphNavigationEntry => ({ selectedCode, focusCode, depth });
   const applyNavigation = (entry: GraphNavigationEntry) => {
     setSelectedCode(entry.selectedCode);
     setFocusCode(entry.focusCode);
+    setWorkspaceSelection({ selectedCode: entry.selectedCode, focusCode: entry.focusCode });
     setDepth(entry.depth);
     setSelectedRelationship(null);
     if (view === "table") {
@@ -374,6 +384,7 @@ function GraphWorkspace() {
     setNavigation((previous) => recordGraphNavigation(previous, liveNavigation(), next));
     setFocusCode(code);
     setSelectedCode(code);
+    setWorkspaceSelection({ selectedCode: code, focusCode: code });
     setSelectedRelationship(null);
     setDepth("course");
     if (view === "table") {
@@ -393,12 +404,16 @@ function GraphWorkspace() {
     const next: GraphNavigationEntry = { selectedCode: code, focusCode, depth };
     setNavigation((previous) => recordGraphNavigation(previous, liveNavigation(), next));
     setSelectedCode(code);
+    setWorkspaceSelection({ selectedCode: code, focusCode });
     setSelectedRelationship(null);
     requestAnimationFrame(() => document.getElementById("graph-inspector")?.focus({ preventScroll: true }));
   };
   const applyFocusScope = (scope: GraphScope) => {
     setSelectedRelationship(null);
-    if (scope !== "program") setFocusCode(selectedCode);
+    if (scope !== "program") {
+      setFocusCode(selectedCode);
+      setWorkspaceSelection({ selectedCode, focusCode: selectedCode });
+    }
     setDepth(scope);
   };
   const goNavigation = (index: number) => {
@@ -570,8 +585,8 @@ function GraphWorkspace() {
               <option value="full">Full connected component</option>
             </select>
           </label>
-          <div className="graph-focus-stubs" aria-label="Follow-up graph filters">
-            <button type="button" className="button button-secondary button-small" disabled title="Follow-up johnyuencm/harness#52">Only my planned</button>
+          <div className="graph-focus-stubs" aria-label="Graph filters">
+            <button type="button" className={`button button-secondary button-small ${plannedOnly ? "selected" : ""}`} aria-pressed={plannedOnly} onClick={() => setPlannedOnly((on) => !on)}>Only my planned</button>
             <button type="button" className="button button-secondary button-small" disabled title="Follow-up johnyuencm/harness#54">Critical path to target</button>
           </div>
           <div className="graph-view-toolbar" aria-label="Map zoom and display controls">
@@ -610,7 +625,7 @@ function GraphWorkspace() {
             })}</tbody>
           </table>
         </div>}
-        {view === "graph" && <p className="graph-canvas-hint">Click a course to isolate its prerequisites and unlocks. The rest of the map stays visible but de-emphasized. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination. Empty map / Exit line focus restores every relationship. Only my planned is johnyuencm/harness#52. Critical path to target is johnyuencm/harness#54.</p>}
+        {view === "graph" && <p className="graph-canvas-hint">Click a course to isolate its prerequisites and unlocks. The rest of the map stays visible but de-emphasized. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination. Empty map / Exit line focus restores every relationship. Only my planned hides courses that are not completed, waived, or on your plan. Critical path to target is johnyuencm/harness#54.</p>}
       </section>
       <aside className="graph-inspector" id="graph-inspector" tabIndex={-1}>
         <TargetPathCard compact />
@@ -660,7 +675,7 @@ function GraphWorkspace() {
           <button type="button" className="text-button inspector-focus" aria-pressed={depth === "course"} onClick={() => applyFocusScope("course")}><Network size={14} /> Full dependency tree</button>
           {depth !== "program" && <button type="button" className="text-button inspector-focus" onClick={() => applyFocusScope("program")}><Network size={14} /> Show entire program</button>}
           {depth !== "program" && focusCode !== selectedCode && <button type="button" className="text-button inspector-focus" onClick={() => focus(selectedCode)}><Crosshair size={14} /> Focus map here</button>}
-          <button type="button" className="text-button inspector-focus" disabled title="Follow-up johnyuencm/harness#52">Only my planned</button>
+          <button type="button" className="text-button inspector-focus" aria-pressed={plannedOnly} onClick={() => setPlannedOnly((on) => !on)}>Only my planned</button>
           <button type="button" className="text-button inspector-focus" disabled title="Follow-up johnyuencm/harness#54">Critical path to target</button>
         </div>
         <div className="inspector-relationships">
@@ -691,15 +706,15 @@ function GraphWorkspace() {
         <div className="inspector-actions">
           <SetAsTargetButton code={selectedCode} />
           {!recorded.has(selectedCode) && selected && selected.requirementType !== "external" && plan.semesters.length ? <div className="inspector-add-plan">
-            <label className="field-label" htmlFor="inspector-add-semester">Add to plan</label>
+            <label className="field-label" htmlFor="inspector-add-semester">Add to a semester</label>
             <div className="input-action-row">
               <select id="inspector-add-semester" value={lineSemester} onChange={(event) => setLineSemesterId(event.target.value)}>
                 {plan.semesters.map((term) => <option key={term.id} value={term.id}>{term.name}{term.type === "coop" ? " · co-op" : ""}</option>)}
               </select>
-              <button type="button" className="button button-primary" disabled={!hydrated || !lineSemester} onClick={() => { if (lineSemester) addCourses([selectedCode], lineSemester); }}><Plus size={15} /> Add to plan</button>
+              <button type="button" className="button button-primary" disabled={!hydrated || !lineSemester} onClick={() => { if (lineSemester) addCourses([selectedCode], lineSemester); }}><Plus size={15} /> Add to {plan.semesters.find((term) => term.id === lineSemester)?.name ?? "plan"}</button>
             </div>
             <button type="button" className="text-button" onClick={() => openPicker(lineSemester || undefined, selectedCode)}>Choose credits or a new term</button>
-          </div> : !recorded.has(selectedCode) && selected && selected.requirementType !== "external" ? <button className="button button-primary" onClick={() => openPicker(undefined, selectedCode)}><Plus size={15} /> Add to plan</button> : recorded.has(selectedCode) ? <p className="muted small-text">{completed.has(selectedCode) ? "In your completed history." : waived.has(selectedCode) ? "Waived on this plan." : `Planned in ${plannedByCode.get(selectedCode)?.name ?? "your plan"}.`}</p> : null}
+          </div> : !recorded.has(selectedCode) && selected && selected.requirementType !== "external" ? <button className="button button-primary" onClick={() => openPicker(undefined, selectedCode)}><Plus size={15} /> Add to plan</button> : recorded.has(selectedCode) ? <p className="muted small-text">{completed.has(selectedCode) ? "In your completed history." : waived.has(selectedCode) ? "Waived on this plan." : `Planned in ${plannedByCode.get(selectedCode)?.name ?? "your plan"}.`}{planned.has(selectedCode) ? <> <Link className="text-link" href={routes.plan}>View in Plan</Link></> : null}</p> : null}
           <button className="button button-secondary" onClick={() => openCourse(selectedCode)}>Full course details <ArrowRight size={14} /></button>
         </div>
         <div className="inspector-tip"><Info size={16} /><p>Selected course, its prerequisites, and its unlocks stay readable; everything else is de-emphasized. Blocked cards still need earlier courses. Offerings are not listed because they are unknown. The path card above shows remaining prerequisites and earliest term for your target.</p></div>

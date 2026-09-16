@@ -1,7 +1,11 @@
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
 
-import { addableLineCourses, appendCoursesToSemester, canRestorePlanBackup, createPlanBackupDownload, emptyPlan, isCatalogOutage, loadPlan, parsePlan, parsePlanBackup, PLAN_BACKUP_FILENAME, PLAN_RECOVERY_FILENAME, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY, summarizePlan } from "../lib/plan";
+import { addableLineCourses, addableProgramCodes, appendCoursesToSemester, applyPrerequisiteFix, canRestorePlanBackup, createPlanBackupDownload, emptyPlan, isCatalogOutage, loadPlan, MAX_COURSES_PER_SEMESTER, moveCourseToSemester, parsePlan, parsePlanBackup, PLAN_BACKUP_FILENAME, PLAN_RECOVERY_FILENAME, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY, suggestedPrerequisiteFix, summarizePlan } from "../lib/plan";
+import type { Catalog } from "../lib/types";
+import { validatePlan } from "../lib/validation";
 
 test("emptyPlan starts in Fall 2026 with five fresh terms and one co-op", () => {
   const first = emptyPlan();
@@ -361,4 +365,91 @@ test("appendCoursesToSemester inserts remaining line courses and refuses a missi
   const capacity = appendCoursesToSemester(full, "fall-2026", [{ code: "CS 5800", credits: 4 }]);
   assert.equal(capacity.ok, false);
   if (!capacity.ok) assert.equal(capacity.reason, "capacity");
+});
+
+const seattle = JSON.parse(readFileSync(path.join(process.cwd(), "data", "catalog.json"), "utf8")) as Catalog;
+
+function withCourses(plan: ReturnType<typeof emptyPlan>, updates: Record<string, { code: string; credits?: number }[]>) {
+  return {
+    ...plan,
+    semesters: plan.semesters.map((semester) =>
+      Object.prototype.hasOwnProperty.call(updates, semester.id)
+        ? { ...semester, courses: updates[semester.id]! }
+        : semester,
+    ),
+  };
+}
+
+test("moveCourseToSemester relocates a course and refuses missing or full terms", () => {
+  const start = withCourses(emptyPlan(), { "fall-2026": [{ code: "CS 5800", credits: 4 }] });
+  const moved = moveCourseToSemester(start, "CS 5800", "fall-2026", "spring-2027");
+  assert.equal(moved.ok, true);
+  if (moved.ok) {
+    assert.deepEqual(moved.plan.semesters[0].courses, []);
+    assert.deepEqual(moved.plan.semesters[1].courses, [{ code: "CS 5800", credits: 4 }]);
+    assert.deepEqual(start.semesters[0].courses, [{ code: "CS 5800", credits: 4 }]);
+  }
+  assert.equal(moveCourseToSemester(start, "CS 5800", "fall-2026", "fall-2026").ok, false);
+  assert.equal(moveCourseToSemester(start, "CS 5800", "fall-2026", "missing").ok, false);
+});
+
+test("suggestedPrerequisiteFix moves a later hard prereq earlier", () => {
+  const plan = withCourses(emptyPlan(), {
+    "fall-2027": [{ code: "CS 6140", credits: 4 }],
+    "spring-2028": [{ code: "CS 5800", credits: 4 }],
+  });
+  const progress = validatePlan(plan, seattle);
+  const issue = progress.issues.find((item) => item.kind === "prerequisite" && item.courseCode === "CS 6140");
+  assert.ok(issue);
+  assert.equal(progress.satisfied, false);
+  const fix = suggestedPrerequisiteFix(issue!, plan, addableProgramCodes(seattle.courses));
+  assert.equal(fix?.suggestion, "move CS 5800 earlier");
+  assert.deepEqual(fix?.action, { type: "move", fromId: "spring-2028", toId: "spring-2027" });
+  const applied = applyPrerequisiteFix(plan, fix!, seattle.courses);
+  assert.equal(applied.ok, true);
+  if (applied.ok) {
+    const next = validatePlan(applied.plan, seattle);
+    assert.equal(next.issues.some((item) => item.kind === "prerequisite" && item.courseCode === "CS 6140"), false);
+    assert.ok(applied.plan.semesters.find((semester) => semester.id === "spring-2027")?.courses.some((course) => course.code === "CS 5800"));
+  }
+});
+
+test("suggestedPrerequisiteFix adds a missing hard prereq to the previous academic term", () => {
+  const plan = withCourses(emptyPlan(), { "fall-2027": [{ code: "CS 6140", credits: 4 }] });
+  const issue = validatePlan(plan, seattle).issues.find((item) => item.kind === "prerequisite" && item.courseCode === "CS 6140");
+  assert.ok(issue);
+  const fix = suggestedPrerequisiteFix(issue!, plan, addableProgramCodes(seattle.courses));
+  assert.equal(fix?.suggestion, "add CS 5800 to Spring 2027");
+  assert.deepEqual(fix?.action, { type: "add", toId: "spring-2027" });
+  const applied = applyPrerequisiteFix(plan, fix!, seattle.courses);
+  assert.equal(applied.ok, true);
+  if (applied.ok) {
+    assert.ok(applied.plan.semesters.find((semester) => semester.id === "spring-2027")?.courses.some((course) => course.code === "CS 5800"));
+    assert.equal(validatePlan(applied.plan, seattle).issues.some((item) => item.kind === "prerequisite" && item.courseCode === "CS 6140"), false);
+  }
+});
+
+test("known catalog hard prerequisites cannot silently satisfy a plan", () => {
+  const plan = withCourses(emptyPlan(), { "fall-2027": [{ code: "CS 6140", credits: 4 }] });
+  const progress = validatePlan(plan, seattle);
+  assert.equal(progress.satisfied, false);
+  assert.ok(progress.issues.some((issue) => issue.kind === "prerequisite" && issue.courseCode === "CS 6140" && issue.relatedCourses.includes("CS 5800")));
+});
+
+test("a blocked course in the first academic term has no earlier-semester Apply suggestion", () => {
+  const plan = withCourses(emptyPlan(), { "fall-2026": [{ code: "CS 6140", credits: 4 }] });
+  const issue = validatePlan(plan, seattle).issues.find((item) => item.kind === "prerequisite" && item.courseCode === "CS 6140");
+  assert.ok(issue);
+  assert.equal(suggestedPrerequisiteFix(issue!, plan, addableProgramCodes(seattle.courses)), null);
+});
+
+test("suggestedPrerequisiteFix does not suggest Apply into a full term", () => {
+  const fillers = Array.from({ length: MAX_COURSES_PER_SEMESTER }, (_, index) => ({ code: `CS ${5100 + index}`, credits: 4 }));
+  const plan = withCourses(emptyPlan(), {
+    "spring-2027": fillers,
+    "fall-2027": [{ code: "CS 6140", credits: 4 }],
+  });
+  const issue = validatePlan(plan, seattle).issues.find((item) => item.kind === "prerequisite" && item.courseCode === "CS 6140");
+  assert.ok(issue);
+  assert.equal(suggestedPrerequisiteFix(issue!, plan, addableProgramCodes(seattle.courses)), null);
 });

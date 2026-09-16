@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
@@ -35,6 +37,14 @@ import {
   X,
 } from "lucide-react";
 import type { Course, PlannedCourse, Semester } from "@/lib/types";
+import {
+  addableProgramCodes,
+  applyPrerequisiteFix,
+  moveCourseToSemester,
+  suggestedPrerequisiteFix,
+  type PrerequisiteFix,
+} from "@/lib/plan";
+import { routes } from "@/lib/routes";
 import { getEligibility } from "@/lib/validation";
 import { useApp } from "./app-provider";
 import { PlanBackup } from "./plan-backup";
@@ -42,6 +52,10 @@ import { CatalogState } from "./catalog-state";
 import { requirementBadge } from "./course-card";
 import { TargetPathCard } from "./target-path";
 import { CreditSelect, EmptyState, Meter, PageHeading, creditLabel } from "./ui";
+
+function planCourseDomId(code: string) {
+  return `plan-course-${code.replaceAll(" ", "-")}`;
+}
 
 function PlanCourseCard({
   item,
@@ -60,7 +74,8 @@ function PlanCourseCard({
   onRemove: () => void;
   onCredits: (credits: number) => void;
 }) {
-  const { openCourse, setCourseStatus } = useApp();
+  const router = useRouter();
+  const { openCourse, setCourseStatus, plan, catalog, progress, workspaceSelection, setWorkspaceSelection, setPlan, announce } = useApp();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `course:${semester.id}:${item.code}`,
     data: { kind: "course", semesterId: semester.id, code: item.code },
@@ -68,14 +83,43 @@ function PlanCourseCard({
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
   const badge = course ? requirementBadge(course.requirementType) : null;
   const topic = course?.topics[0];
+  const issue = progress?.issues.find(
+    (itemIssue) =>
+      itemIssue.courseCode === item.code &&
+      itemIssue.semesterId === semester.id &&
+      (itemIssue.kind === "prerequisite" || itemIssue.kind === "corequisite"),
+  );
+  const fix = issue ? suggestedPrerequisiteFix(issue, plan, catalog ? addableProgramCodes(catalog.courses) : []) : null;
+  const selected = workspaceSelection.selectedCode === item.code;
+  const applyFix = (next: PrerequisiteFix) => {
+    if (!catalog) return;
+    const applied = applyPrerequisiteFix(plan, next, catalog.courses);
+    if (!applied.ok) {
+      announce(applied.reason === "capacity" ? "That term is full." : "Could not apply that fix. Try the Move menu.");
+      return;
+    }
+    setPlan(applied.plan);
+    announce(applied.message);
+  };
+  const viewDependency = (next: PrerequisiteFix) => {
+    setWorkspaceSelection({ selectedCode: next.relatedCode, focusCode: next.issueCourseCode });
+    router.push(routes.explore);
+  };
 
-  return <article ref={setNodeRef} style={style} className={`plan-course ${isDragging ? "dragging" : ""}`}>
+  return <article ref={setNodeRef} style={style} id={planCourseDomId(item.code)} className={`plan-course ${isDragging ? "dragging" : ""} ${issue ? "has-issue" : ""} ${selected ? "selected" : ""}`}>
     <button className="drag-handle" aria-label={`Drag ${item.code} to another semester`} {...attributes} {...listeners}><GripVertical size={17} /></button>
-    <button className="plan-course-title" onClick={() => openCourse(item.code)}><strong>{item.code}</strong><span>{course?.title ?? "Course not found in current catalog"}</span></button>
-    <span className="status-pill planned">Planned</span>
+    <button className="plan-course-title" onClick={() => { setWorkspaceSelection({ selectedCode: item.code, focusCode: item.code }); openCourse(item.code); }}><strong>{item.code}</strong><span>{course?.title ?? "Course not found in current catalog"}</span></button>
+    <span className={`status-pill ${issue ? "locked" : "planned"}`}>{issue ? (issue.kind === "prerequisite" ? "Prereq unmet" : "Needs fix") : "Planned"}</span>
     <div className="plan-course-chips">{badge && <span className={badge.className}>{badge.label}</span>}{topic && <span className="topic-chip">{topic}</span>}</div>
     <span className="plan-course-credits">{course ? `${item.credits ?? course.credits} credits` : "Unknown"}</span>
     {course && course.maxCredits !== undefined && course.maxCredits > course.credits && <CreditSelect course={course} value={item.credits ?? course.credits} onChange={onCredits} id={`credits-${semester.id}-${item.code.replace(/\s/g, "-")}`} />}
+    {issue && <div className="plan-course-warning" role="status">
+      <p><TriangleAlert size={14} /> {issue.kind === "prerequisite" ? "Prerequisites not met." : "Corequisite not met."}{fix ? ` Suggested: ${fix.suggestion}.` : ""}</p>
+      <div className="button-row">
+        {fix ? <button type="button" className="button button-small button-primary" onClick={() => applyFix(fix)}>Apply</button> : null}
+        {fix ? <button type="button" className="text-button" onClick={() => viewDependency(fix)}>View dependency</button> : issue.relatedCourses.map((code) => <button type="button" key={code} className="text-button" onClick={() => openCourse(code)}>View {code}</button>)}
+      </div>
+    </div>}
     <div className="plan-course-actions">
       <label className="compact-select"><span className="sr-only">Move {item.code}</span><select value={semester.id} onChange={(event) => onMove(event.target.value)}>{terms.map((term) => <option key={term.id} value={term.id}>Move to {term.name}</option>)}</select></label>
       <button className="icon-button" title="Mark completed" aria-label={`Mark ${item.code} completed`} onClick={() => setCourseStatus(item.code, "completed", item.credits ?? course?.credits)}><Check size={15} /></button>
@@ -143,22 +187,17 @@ function SemesterColumn({
   </section>;
 }
 
-function AuditPanel({ onMoveCourse }: { onMoveCourse: (code: string, fromId: string, targetId: string) => void }) {
-  const { catalog, progress, plan, openCourse, openPicker } = useApp();
+function AuditPanel({ onApplyFix, onViewDependency }: { onApplyFix: (fix: PrerequisiteFix) => void; onViewDependency: (fix: PrerequisiteFix) => void }) {
+  const { catalog, progress, plan, openCourse } = useApp();
   if (!catalog || !progress) return null;
+  const addable = addableProgramCodes(catalog.courses);
   return <aside className="audit-panel" id="plan-issue-rail" tabIndex={-1}>
     <div className="audit-heading"><span className="section-kicker"><CircleAlert size={15} /> WHY IS THIS BLOCKED?</span><span className={`audit-status ${progress.issues.length ? "incomplete" : "complete"}`}>{progress.issues.length ? <Clock3 size={16} /> : <CheckCircle2 size={16} />}{progress.issues.length ? `${progress.issues.length} issue${progress.issues.length === 1 ? "" : "s"}` : "No blocking issues"}</span></div>
     <h2>{progress.issues.length ? "Plan checks that need attention." : "No prerequisite, corequisite, duplicate, or credit issues found."}</h2>
-    <section className="audit-issues">{progress.issues.length ? progress.issues.map((issue, index) => <div className={`audit-issue ${issue.severity}`} key={`${issue.semesterId}-${issue.courseCode}-${issue.kind}-${index}`}>{issue.severity === "error" ? <TriangleAlert size={17} /> : <Info size={17} />}<div><strong>{issue.courseCode} · {issue.kind}</strong><p>{issue.message}</p>{issue.relatedCourses.length > 0 && <div className="button-row">{issue.relatedCourses.map((code) => {
-      const issueIndex = plan.semesters.findIndex((semester) => semester.id === issue.semesterId);
-      const issueTerm = plan.semesters[issueIndex];
-      const earlierTerm = issueIndex > 0 ? plan.semesters.slice(0, issueIndex).findLast((semester) => semester.type === "academic") : undefined;
-      const resolutionTerm = issue.kind === "corequisite" ? issueTerm : earlierTerm;
-      const plannedTerm = plan.semesters.find((semester) => semester.courses.some((course) => course.code === code));
-      const plannedTermIndex = plannedTerm ? plan.semesters.findIndex((semester) => semester.id === plannedTerm.id) : -1;
-      const canMoveEarlier = plannedTerm !== undefined && plannedTermIndex >= issueIndex;
-      return <span key={code}><button className="text-button" onClick={() => openCourse(code)}>View {code}</button>{resolutionTerm && (canMoveEarlier && plannedTerm ? <button className="text-button" onClick={() => onMoveCourse(code, plannedTerm.id, resolutionTerm.id)}>Move to {resolutionTerm.name}</button> : !plannedTerm ? <button className="text-button" onClick={() => openPicker(resolutionTerm.id, code)}>Add to {resolutionTerm.name}</button> : null)}</span>;
-    })}</div>}</div></div>) : <div className="audit-clear"><CheckCircle2 size={18} /><span>Modeled plan checks are clear. Offerings are still unverified.</span></div>}</section>
+    <section className="audit-issues">{progress.issues.length ? progress.issues.map((issue, index) => {
+      const fix = suggestedPrerequisiteFix(issue, plan, addable);
+      return <div className={`audit-issue ${issue.severity}`} key={`${issue.semesterId}-${issue.courseCode}-${issue.kind}-${index}`}>{issue.severity === "error" ? <TriangleAlert size={17} /> : <Info size={17} />}<div><strong>{issue.courseCode} · {issue.kind}</strong><p>{issue.message}</p>{fix ? <p className="muted">Suggested: {fix.suggestion}.</p> : null}{(fix || issue.relatedCourses.length > 0) && <div className="button-row">{fix ? <><button type="button" className="button button-small button-primary" onClick={() => onApplyFix(fix)}>Apply</button><button type="button" className="text-button" onClick={() => onViewDependency(fix)}>View dependency</button></> : issue.relatedCourses.map((code) => <button type="button" key={code} className="text-button" onClick={() => openCourse(code)}>View {code}</button>)}</div>}</div></div>;
+    }) : <div className="audit-clear"><CheckCircle2 size={18} /><span>Modeled plan checks are clear. Offerings are still unverified.</span></div>}</section>
     <details className="audit-notes"><summary>What this audit cannot verify</summary><ul>{progress.notes.map((note) => <li key={note}>{note}</li>)}</ul></details>
     <NextCourses />
   </aside>;
@@ -186,10 +225,14 @@ function NextCourses() {
 }
 
 export default function PlannerBoard() {
-  const { catalog, plan, setPlan, hydrated, persistence, resetPlan, openPicker, announce, progress } = useApp();
+  const { catalog, plan, setPlan, hydrated, persistence, resetPlan, openPicker, announce, progress, workspaceSelection, setWorkspaceSelection } = useApp();
+  const router = useRouter();
   const [activeCourse, setActiveCourse] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor));
   const courseMap = useMemo(() => new Map(catalog?.courses.map((course) => [course.code, course]) ?? []), [catalog]);
+  useEffect(() => {
+    document.getElementById(planCourseDomId(workspaceSelection.selectedCode))?.scrollIntoView({ block: "nearest" });
+  }, [workspaceSelection.selectedCode]);
   if (!catalog) return <>
     <PageHeading title="Build My Plan" description="Your local plan remains available for backup while the catalog is unavailable." actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Loading local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span></div>} />
     <PlanBackup />
@@ -198,22 +241,27 @@ export default function PlannerBoard() {
 
   const updateTerms = (change: (terms: Semester[]) => Semester[]) => setPlan((current) => ({ ...current, semesters: change(current.semesters) }));
   const moveCourse = (code: string, fromId: string, targetId: string) => {
-    if (fromId === targetId) return;
-    const target = plan.semesters.find((semester) => semester.id === targetId);
-    if (!target) {
-      announce("Choose an existing term before moving a course.");
+    const result = moveCourseToSemester(plan, code, fromId, targetId);
+    if (!result.ok) {
+      if (result.reason === "same-term") return;
+      if (result.reason === "missing-term") announce("Choose an existing term before moving a course.");
+      else if (result.reason === "capacity") announce(`${plan.semesters.find((semester) => semester.id === targetId)?.name ?? "That term"} supports up to 32 planned courses.`);
       return;
     }
-    if (target.courses.length >= 32) {
-      announce(`${target.name} supports up to 32 planned courses.`);
+    setPlan(result.plan);
+  };
+  const applyFix = (fix: PrerequisiteFix) => {
+    const applied = applyPrerequisiteFix(plan, fix, catalog.courses);
+    if (!applied.ok) {
+      announce(applied.reason === "capacity" ? "That term is full." : "Could not apply that fix. Try the Move menu.");
       return;
     }
-    updateTerms((terms) => {
-      const item = terms.find((term) => term.id === fromId)?.courses.find((course) => course.code === code);
-      const currentTarget = terms.find((term) => term.id === targetId);
-      if (!item || !currentTarget || currentTarget.courses.length >= 32 || currentTarget.courses.some((course) => course.code === code)) return terms;
-      return terms.map((term) => term.id === fromId ? { ...term, courses: term.courses.filter((course) => course.code !== code) } : term.id === targetId ? { ...term, courses: [...term.courses, item] } : term);
-    });
+    setPlan(applied.plan);
+    announce(applied.message);
+  };
+  const viewDependency = (fix: PrerequisiteFix) => {
+    setWorkspaceSelection({ selectedCode: fix.relatedCode, focusCode: fix.issueCourseCode });
+    router.push(routes.explore);
   };
   const dragStart = (event: DragStartEvent) => setActiveCourse(String(event.active.data.current?.code ?? ""));
   const dragEnd = (event: DragEndEvent) => {
@@ -231,7 +279,7 @@ export default function PlannerBoard() {
   };
 
   return <>
-    <PageHeading title="Build My Plan" description="Arrange semesters, test prerequisites, and see every degree requirement update as you go." actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Loading local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span><PlanBackup /><button className="button button-secondary" onClick={() => document.getElementById("plan-issue-rail")?.focus()}>Review audit</button><button className="button button-secondary" onClick={() => openPicker()}><Plus size={16} /> Add course</button></div>} />
+    <PageHeading title="Build My Plan" description="Arrange semesters, test prerequisites, and see every degree requirement update as you go." actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Loading local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span><PlanBackup /><Link className="button button-secondary" href={routes.explore}>View on map</Link><button className="button button-secondary" onClick={() => document.getElementById("plan-issue-rail")?.focus()}>Review audit</button><button className="button button-secondary" onClick={() => openPicker()}><Plus size={16} /> Add course</button></div>} />
     <TargetPathCard />
     {progress && <section className="status-card-row four" aria-label="Plan status">
       <article className="status-card"><span className="status-kicker">Total credits in plan</span><strong>{progress.totalCredits} / {progress.requiredCredits}</strong><Meter value={progress.totalCredits} max={progress.requiredCredits} label="Total credits in plan" /></article>
@@ -247,7 +295,7 @@ export default function PlannerBoard() {
         <DragOverlay>{activeCourse && <div className="drag-overlay"><GripVertical size={16} /><strong>{activeCourse}</strong><span>{courseMap.get(activeCourse)?.title}</span></div>}</DragOverlay>
       </DndContext>
       {!plan.semesters.length && <EmptyState icon={<CalendarPlus size={25} />} title="Start with your first semester" action={<button className="button button-primary" onClick={() => addTerm()}><Plus size={15} /> Add semester</button>}>Create a term, then add courses from the catalog.</EmptyState>}
-    </div><AuditPanel onMoveCourse={moveCourse} /></div>
+    </div><AuditPanel onApplyFix={applyFix} onViewDependency={viewDependency} /></div>
     {progress && <section className="suggestion-strip" aria-label="Smart suggestions">
       {progress.core.some((item) => !item.satisfied) && <article className="suggestion-card core"><strong>Core remaining</strong><p>{progress.core.filter((item) => !item.satisfied).map((item) => item.code).join(", ")} still needed for modeled core.</p></article>}
       {!progress.breadth.satisfied && <article className="suggestion-card breadth"><strong>Breadth diversity</strong><p>{progress.breadth.assignedCourses.length}/{progress.breadth.coursesRequired} breadth courses; {progress.breadth.categoriesSatisfied.length}/{progress.breadth.minCategories} required areas represented.</p></article>}
