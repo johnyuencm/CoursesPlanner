@@ -115,7 +115,7 @@ test("university directory loads the approved 20 US and 20 world entries", async
     ["uc-berkeley", "UC Berkeley", "https://registrar.berkeley.edu/catalog/"],
     ["uiuc", "UIUC", "https://catalog.illinois.edu/"],
     ["georgia-tech", "Georgia Tech", "https://catalog.gatech.edu/"],
-    ["washington", "University of Washington", "https://www.washington.edu/students/gencat/"],
+    ["washington", "University of Washington", "https://www.washington.edu/students/gencat/degree_programs.html"],
     ["cornell", "Cornell", "https://courses.cornell.edu/"],
     ["princeton", "Princeton", "https://ua.princeton.edu/"],
     ["ut-austin", "UT Austin", "https://catalog.utexas.edu/"],
