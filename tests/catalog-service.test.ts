@@ -141,7 +141,7 @@ test("university directory loads the approved 20 US and 20 world entries", async
     ["ucl", "UCL", "https://www.ucl.ac.uk/prospective-students/undergraduate/degrees"],
     ["edinburgh", "University of Edinburgh", "https://study.ed.ac.uk/programmes"],
     ["ntu", "Nanyang Technological University", "https://www.ntu.edu.sg/education/degree-programmes"],
-    ["peking", "Peking University", "https://dean.pku.edu.cn/web/student_info.php?type=1&id=8"],
+    ["peking", "Peking University", "https://dean.pku.edu.cn/web/student_info.php?id=2&type=1"],
     ["ubc", "University of British Columbia", "https://you.ubc.ca/programs/"],
     ["tokyo", "University of Tokyo", "https://www.u-tokyo.ac.jp/en/academics/faculties.html"],
     ["kaist", "KAIST", "https://kaist.ac.kr/en/html/edu/03.html"],

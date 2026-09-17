@@ -292,7 +292,7 @@
     "university": "Peking University",
     "region": "world",
     "priority": 13,
-    "catalogUrl": "https://dean.pku.edu.cn/web/student_info.php?type=1&id=8",
+    "catalogUrl": "https://dean.pku.edu.cn/web/student_info.php?id=2&type=1",
     "support": "unverified",
     "enabled": false
   },
