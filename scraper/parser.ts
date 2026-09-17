@@ -481,15 +481,20 @@ function externalPlaceholder(code: string, origin: string): Course {
   };
 }
 
-export function buildCourseGraph(courses: Course[], requirements: DegreeRequirement): Course[] {
-  const origin = catalogOrigin(requirements.officialUrl);
+function buildScopedCourseGraph(
+  courses: Course[],
+  listedCodes: Iterable<string>,
+  origin: string,
+  classification: (
+    code: string,
+  ) => Pick<Course, "breadthCategories" | "requirementType" | "electiveEligible">,
+): Course[] {
   const parsed = new Map<string, Course>();
   for (const course of courses) {
     if (parsed.has(course.code)) throw new Error(`Duplicate parsed course: ${course.code}`);
     parsed.set(course.code, course);
   }
 
-  const listedCodes = new Set(listedProgramCodes(requirements));
   const keep = new Set(listedCodes);
   let growing = true;
   while (growing) {
@@ -512,15 +517,6 @@ export function buildCourseGraph(courses: Course[], requirements: DegreeRequirem
     byCode.set(code, course ? { ...course, unlocks: [] } : externalPlaceholder(code, origin));
   }
 
-  const coreCodes = new Set(requirements.coreCourses);
-  const electiveCodes = new Set(requirements.eligibleElectives);
-  const categoryIdsByCourse = new Map<string, string[]>();
-  for (const category of requirements.breadthRequirements.categories) {
-    for (const code of category.courses) {
-      categoryIdsByCourse.set(code, [...(categoryIdsByCourse.get(code) ?? []), category.id]);
-    }
-  }
-
   const unlocks = new Map<string, Set<string>>();
   for (const course of byCode.values()) {
     for (const code of course.prerequisiteCodes) {
@@ -530,22 +526,53 @@ export function buildCourseGraph(courses: Course[], requirements: DegreeRequirem
   }
 
   return [...byCode.values()]
-    .map((course): Course => {
-      const breadthCategories = categoryIdsByCourse.get(course.code) ?? [];
-      const requirementType = coreCodes.has(course.code)
-        ? "core"
-        : breadthCategories.length
-          ? "breadth"
-          : electiveCodes.has(course.code)
-            ? "elective"
-            : "external";
-      return {
-        ...course,
-        breadthCategories,
-        requirementType,
-        electiveEligible: electiveCodes.has(course.code),
-        unlocks: [...(unlocks.get(course.code) ?? [])].sort(),
-      };
-    })
+    .map((course): Course => ({
+      ...course,
+      ...classification(course.code),
+      unlocks: [...(unlocks.get(course.code) ?? [])].sort(),
+    }))
     .sort((left, right) => left.code.localeCompare(right.code, undefined, { numeric: true }));
+}
+
+export function buildCourseGraph(courses: Course[], requirements: DegreeRequirement): Course[] {
+  const coreCodes = new Set(requirements.coreCourses);
+  const electiveCodes = new Set(requirements.eligibleElectives);
+  const categoryIdsByCourse = new Map<string, string[]>();
+  for (const category of requirements.breadthRequirements.categories) {
+    for (const code of category.courses) {
+      categoryIdsByCourse.set(code, [...(categoryIdsByCourse.get(code) ?? []), category.id]);
+    }
+  }
+  return buildScopedCourseGraph(
+    courses,
+    listedProgramCodes(requirements),
+    catalogOrigin(requirements.officialUrl),
+    (code) => {
+      const breadthCategories = categoryIdsByCourse.get(code) ?? [];
+      return {
+        breadthCategories,
+        requirementType: coreCodes.has(code)
+          ? "core"
+          : breadthCategories.length
+            ? "breadth"
+            : electiveCodes.has(code)
+              ? "elective"
+              : "external",
+        electiveEligible: electiveCodes.has(code),
+      };
+    },
+  );
+}
+
+export function buildRoadmapCourseGraph(
+  courses: Course[],
+  programCourseCodes: Iterable<string>,
+  origin: string,
+): Course[] {
+  const programCodes = new Set(programCourseCodes);
+  return buildScopedCourseGraph(courses, programCodes, new URL(origin).origin, (code) => ({
+    breadthCategories: [],
+    requirementType: programCodes.has(code) ? "program" : "external",
+    electiveEligible: false,
+  }));
 }

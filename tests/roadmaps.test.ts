@@ -1,6 +1,9 @@
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
 
+import { getAdapter } from "../catalog-service/adapters";
 import {
   validateDiscoveredPrograms,
   validateProgramRoadmap,
@@ -15,6 +18,8 @@ import type {
 
 const timestamp = "2026-09-16T00:00:00.000Z";
 const origin = "https://catalog.example.edu";
+const fixture = (filePath: string) =>
+  readFileSync(path.join(process.cwd(), filePath), "utf8");
 
 function roadmapCourse(
   code: string,
@@ -149,4 +154,67 @@ test("discovered programs and persisted crawl status validate queue state", () =
     () => validateRoadmapCrawlStatus(duplicateQueue),
     /duplicate program id/,
   );
+});
+
+test("Northeastern adapter discovers official program leaves from the catalog sitemap", () => {
+  const adapter = getAdapter("northeastern-acalog");
+  assert.ok(adapter.discoverPrograms);
+  const programs = adapter.discoverPrograms(
+    fixture("tests/fixtures/northeastern-programs.xml"),
+    "https://catalog.northeastern.edu/sitemap.xml",
+  );
+
+  assert.deepEqual(
+    programs.map((program) => program.officialUrl),
+    [
+      "https://catalog.northeastern.edu/graduate/computer-information-science/computer-science/computer-science-mscs-sea/",
+      "https://catalog.northeastern.edu/graduate/computer-information-science/computer-science/computer-science-phd/",
+      "https://catalog.northeastern.edu/undergraduate/computer-information-science/computer-science/minor/",
+    ],
+  );
+  assert.equal(new Set(programs.map((program) => program.id)).size, programs.length);
+});
+
+test("Northeastern adapter extracts program scope and builds a known prerequisite unlock edge", () => {
+  const adapter = getAdapter("northeastern-acalog");
+  assert.ok(adapter.parseProgramScope);
+  assert.ok(adapter.courseSources);
+  assert.ok(adapter.buildRoadmapGraph);
+
+  const scope = adapter.parseProgramScope(
+    fixture("data/raw/mscs-sea-program.html"),
+    "https://catalog.northeastern.edu/graduate/computer-information-science/computer-science/computer-science-mscs-sea/",
+  );
+  assert.ok(scope);
+  assert.equal(scope.name, "Computer Science, MSCS (Seattle)");
+  assert.equal(scope.kind, "degree");
+  assert.ok(scope.programCourseCodes.includes("CS 5010"));
+  assert.ok(scope.programCourseCodes.includes("CS 5500"));
+  assert.equal("requirements" in scope, false);
+
+  const courseSources = adapter.courseSources(
+    scope.programCourseCodes,
+    "https://catalog.northeastern.edu",
+  );
+  assert.deepEqual(
+    courseSources.map((source) => source.key),
+    ["course:DADS", "course:CY", "course:DS", "course:CS"].sort(),
+  );
+
+  const parsedCourses = ["cs", "cy", "ds", "dads"].flatMap((subject) =>
+    adapter.parseCourses(
+      fixture(`data/raw/${subject}.html`),
+      `https://catalog.northeastern.edu/course-descriptions/${subject}/`,
+    ),
+  );
+  const courses = adapter.buildRoadmapGraph(
+    parsedCourses,
+    scope.programCourseCodes,
+    "https://catalog.northeastern.edu",
+  );
+  const byCode = new Map(courses.map((course) => [course.code, course]));
+
+  assert.ok(byCode.get("CS 5010")?.unlocks.includes("CS 5500"));
+  assert.ok(byCode.get("CS 5500")?.prerequisiteCodes.includes("CS 5010"));
+  assert.equal(byCode.get("CS 5010")?.requirementType, "program");
 });
