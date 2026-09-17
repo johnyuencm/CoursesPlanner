@@ -18,7 +18,7 @@ export interface Course {
   corequisiteCodes: string[];
   unlocks: string[];
   breadthCategories: string[];
-  requirementType: "core" | "breadth" | "elective" | "external";
+  requirementType: "core" | "breadth" | "elective" | "program" | "external";
   electiveEligible: boolean;
   topics: string[];
   officialUrl: string;
@@ -61,6 +61,63 @@ export interface Catalog {
   lastUpdated: string;
   sources: string[];
   warnings: string[];
+}
+
+export type RoadmapStatus = "unverified" | "queued" | "ready" | "unsupported" | "error";
+export type ProgramKind = "degree" | "major" | "minor" | "certificate" | "other";
+
+export interface DiscoveredProgram {
+  id: string;
+  universityId: string;
+  university: string;
+  name?: string;
+  kind?: ProgramKind;
+  officialUrl: string;
+  status: RoadmapStatus;
+  statusUpdatedAt: string;
+  reason?: string;
+}
+
+export interface DiscoveredPrograms {
+  version: 1;
+  universityId: string;
+  university: string;
+  adapter: string;
+  sourceUrl: string;
+  discoveredAt: string;
+  programs: DiscoveredProgram[];
+}
+
+export interface ProgramRoadmap {
+  universityId: string;
+  university: string;
+  programId: string;
+  program: string;
+  adapter: string;
+  officialUrl: string;
+  programCourseCodes: string[];
+  courses: Course[];
+  lastUpdated: string;
+  sources: string[];
+  warnings: string[];
+}
+
+export interface RoadmapStatusCounts {
+  queued: number;
+  ready: number;
+  unsupported: number;
+  error: number;
+}
+
+export interface RoadmapCrawlStatus {
+  version: 1;
+  universityId: string;
+  status: RoadmapStatus;
+  discoveryStatus: RoadmapStatus;
+  queue: string[];
+  counts: RoadmapStatusCounts;
+  updatedAt: string;
+  reason?: string;
 }
 
 export interface PlannedCourse {
