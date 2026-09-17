@@ -7,7 +7,7 @@ export const MAX_PLAN_BACKUP_BYTES = 1_000_000;
 
 const MAX_COURSE_CODES = 256;
 const MAX_CREDIT_ENTRIES = 256;
-const MAX_SEMESTERS = 32;
+export const MAX_SEMESTERS = 32;
 export const MAX_COURSES_PER_SEMESTER = 32;
 const MAX_CREDITS_PER_COURSE = 32;
 const MAX_TEXT_LENGTH = 100;
@@ -73,7 +73,7 @@ export function appendCoursesToSemester(
 
 export type ApplyRemainingPathResult =
   | { ok: true; plan: StudentPlan; added: string[]; createdTerms: string[] }
-  | { ok: false; reason: "capacity" | "missing-term"; plan: StudentPlan; added: []; createdTerms: []; semesterName?: string };
+  | { ok: false; reason: "capacity" | "missing-term" | "semester-limit"; plan: StudentPlan; added: []; createdTerms: []; semesterName?: string };
 
 export function applyRemainingPathToPlan(
   plan: StudentPlan,
@@ -84,12 +84,20 @@ export function applyRemainingPathToPlan(
   const catalog = [...courses];
   let next = plan;
   const createdTerms: string[] = [];
-  const resolved = placements.map((placement) => {
+  const resolved: TermPlacement[] = [];
+  for (const placement of placements) {
     if (placement.semesterId && next.semesters.some((semester) => semester.id === placement.semesterId)) {
-      return placement;
+      resolved.push(placement);
+      continue;
     }
     const existing = next.semesters.find((semester) => semester.name === placement.termName && semester.type === "academic");
-    if (existing) return { ...placement, semesterId: existing.id };
+    if (existing) {
+      resolved.push({ ...placement, semesterId: existing.id });
+      continue;
+    }
+    if (next.semesters.length >= MAX_SEMESTERS) {
+      return { ok: false, reason: "semester-limit", plan: original, added: [], createdTerms: [] };
+    }
     let id = termSlug(placement.termName);
     if (next.semesters.some((semester) => semester.id === id)) id = `${id}-${next.semesters.length}`;
     next = {
@@ -97,8 +105,8 @@ export function applyRemainingPathToPlan(
       semesters: [...next.semesters, { id, name: placement.termName, type: "academic", courses: [] }],
     };
     createdTerms.push(placement.termName);
-    return { ...placement, semesterId: id };
-  });
+    resolved.push({ ...placement, semesterId: id });
+  }
   const added: string[] = [];
   const byTerm = new Map<string, TermPlacement[]>();
   for (const placement of resolved) {

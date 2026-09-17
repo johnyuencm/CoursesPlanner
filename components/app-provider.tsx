@@ -349,7 +349,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let added: string[] = [];
     let createdTerms: string[] = [];
     let capacityTerm: string | undefined;
-    let failed: "capacity" | "missing-term" | undefined;
+    let failed: "capacity" | "missing-term" | "semester-limit" | undefined;
     setPlan((current) => {
       const snapshot = targetPathSnapshot(courseTargetCode, catalog.courses, current);
       const result = applyRemainingPathToPlan(current, catalog.courses, snapshot.earliest.placements);
@@ -368,6 +368,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     if (failed === "missing-term") {
       announce("A planned term for this path is missing. The missing chain was not added.");
+      return;
+    }
+    if (failed === "semester-limit") {
+      announce("This local plan supports up to 32 terms. The missing chain was not added.");
       return;
     }
     if (!added.length) {
