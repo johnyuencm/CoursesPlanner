@@ -100,14 +100,37 @@ function graphStatus(course: Course | undefined, code: string, completed: Set<st
   return courseStatus(course, completed.has(code), waived.has(code), planned.has(code), prior);
 }
 
+export type GraphInspectorActionsProps = {
+  overrideActive: boolean;
+  selected: Course | undefined;
+  recorded: boolean;
+  onAddToPlan: () => void;
+  onOpenCourse: () => void;
+};
+
+export function GraphInspectorActions({
+  overrideActive,
+  selected,
+  recorded,
+  onAddToPlan,
+  onOpenCourse,
+}: GraphInspectorActionsProps) {
+  if (overrideActive) return null;
+  return <div className="inspector-actions">
+    {!recorded && selected && selected.requirementType !== "external" && <button className="button button-primary" onClick={onAddToPlan}><Plus size={15} /> Add to Plan</button>}
+    <button className="button button-secondary" onClick={onOpenCourse}>Full course details <ArrowRight size={14} /></button>
+  </div>;
+}
+
 function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   const { catalog, openCourse, openPicker, plan, addCourses, hydrated } = useApp();
   const overrideActive = roadmap !== null;
   const courses = useMemo(() => resolveGraphCourses(catalog, roadmap), [catalog, roadmap]);
   const programCodes = useMemo(() => resolveProgramScope(catalog, roadmap), [catalog, roadmap]);
   const programLabel = roadmapProgramLabel(roadmap);
-  const [focusCode, setFocusCode] = useState("CS 5010");
-  const [selectedCode, setSelectedCode] = useState("CS 5010");
+  const initialFocusCode = roadmap ? (roadmapFocusCourse(roadmap) || "CS 5010") : "CS 5010";
+  const [focusCode, setFocusCode] = useState(initialFocusCode);
+  const [selectedCode, setSelectedCode] = useState(initialFocusCode);
   const [selectedRelationship, setSelectedRelationship] = useState<ReturnType<typeof relationshipSelection.branch> | ReturnType<typeof relationshipSelection.bus> | null>(null);
   const [search, setSearch] = useState("");
   const [findIndex, setFindIndex] = useState(-1);
@@ -120,7 +143,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenSupported, setFullscreenSupported] = useState(false);
   const [fullscreenMessage, setFullscreenMessage] = useState("");
-  const [navigation, setNavigation] = useState({ codes: ["CS 5010"], index: 0 });
+  const [navigation, setNavigation] = useState({ codes: [initialFocusCode], index: 0 });
   const [viewStack, setViewStack] = useState<GraphViewSnapshot[]>([]);
   const graphLayoutRef = useRef<HTMLDivElement>(null);
   const fullscreenButtonRef = useRef<HTMLButtonElement>(null);
@@ -129,18 +152,6 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   const searchRef = useRef(search);
   searchRef.current = search;
   const [lineSemesterId, setLineSemesterId] = useState("");
-  useEffect(() => {
-    const first = roadmap ? (roadmapFocusCourse(roadmap) || "CS 5010") : "CS 5010";
-    setFocusCode(first);
-    setSelectedCode(first);
-    setNavigation({ codes: [first], index: 0 });
-    setSelectedRelationship(null);
-    setDepth("course");
-    setViewStack([]);
-    setZoom(GRAPH_READABLE_ZOOM);
-    setSearch("");
-    setFindIndex(-1);
-  }, [roadmap]);
   const locateRef = useRef<(code: string, keepFind?: boolean) => void>(() => {});
   const inspectRef = useRef<(code: string) => void>(() => {});
   const enterConnectionsRef = useRef<(code: string) => void>(() => {});
@@ -650,10 +661,13 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
             <div className="detail-code-links"><CodeLinks codes={selected?.corequisiteCodes ?? []} limit={1000} onSelect={focus} /></div>
           </> : null}
         </div>
-        {!overrideActive && <div className="inspector-actions">
-          {!recorded.has(selectedCode) && selected && selected.requirementType !== "external" && <button className="button button-primary" onClick={() => openPicker(undefined, selectedCode)}><Plus size={15} /> Add to Plan</button>}
-          <button className="button button-secondary" onClick={() => openCourse(selectedCode)}>Full course details <ArrowRight size={14} /></button>
-        </div>}
+        <GraphInspectorActions
+          overrideActive={overrideActive}
+          selected={selected}
+          recorded={recorded.has(selectedCode)}
+          onAddToPlan={() => openPicker(undefined, selectedCode)}
+          onOpenCourse={() => openCourse(selectedCode)}
+        />
         <div className="inspector-tip"><Info size={16} /><p>Arrows point at the course that lists the prerequisite. Locked cards need earlier courses first. Open Full course details for the complete catalog description. Offerings are not listed because they are unknown.</p></div>
       </aside>
     </div>
@@ -662,5 +676,6 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
 }
 
 export default function CourseGraph({ roadmap }: { roadmap: ProgramRoadmap | null }) {
-  return <GraphWorkspace roadmap={roadmap} />;
+  const graphKey = roadmap ? `${roadmap.universityId}:${roadmap.programId}` : "default";
+  return <GraphWorkspace key={graphKey} roadmap={roadmap} />;
 }

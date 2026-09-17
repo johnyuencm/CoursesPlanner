@@ -18,6 +18,14 @@ function errorResponse(message: string, status: number) {
   return NextResponse.json({ error: message }, { status, headers: NO_STORE });
 }
 
+function safeReadError(error: unknown): { message: string; status: number } {
+  const message = error instanceof Error ? error.message : "";
+  if (message.startsWith("Unknown university:")) return { message: "Unknown university.", status: 404 };
+  if (message.startsWith("Unknown roadmap program:")) return { message: "Unknown roadmap program.", status: 404 };
+  if (message.startsWith("Roadmap is not ready:")) return { message: "Roadmap is not ready yet.", status: 503 };
+  return { message: "Roadmap data is temporarily unavailable.", status: 503 };
+}
+
 /**
  * Same-origin roadmap reader. Only reads validated local snapshots; it never
  * crawls or fetches a remote catalog, so it is safe to run in Next.js/Vercel.
@@ -57,11 +65,8 @@ export async function handleRoadmapsRequest(
     }
     return NextResponse.json(await readReadyRoadmap(university, programId, rootDir), { headers: NO_STORE });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.startsWith("Unknown university:") || message.startsWith("Unknown roadmap program:")) {
-      return errorResponse(message, 404);
-    }
-    return errorResponse(message, 503);
+    const result = safeReadError(error);
+    return errorResponse(result.message, result.status);
   }
 }
 

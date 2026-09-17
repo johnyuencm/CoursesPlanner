@@ -47,6 +47,25 @@ export function isProgramSelectable(program: DiscoveredProgram): boolean {
   return program.status === "ready";
 }
 
+export function programDisplayName(program: Pick<DiscoveredProgram, "id" | "name">): string {
+  const name = program.name?.trim();
+  if (name) return name;
+  const readableId = program.id
+    .replace(/-[a-f0-9]{10}$/i, "")
+    .replace(/[-_]+/g, " ")
+    .trim();
+  return readableId ? readableId.replace(/\b\w/g, (character) => character.toUpperCase()) : "Unnamed program";
+}
+
+export function sortPrograms(programs: readonly DiscoveredProgram[]): DiscoveredProgram[] {
+  return [...programs].sort(
+    (left, right) =>
+      Number(!isProgramSelectable(left)) - Number(!isProgramSelectable(right)) ||
+      programDisplayName(left).localeCompare(programDisplayName(right), undefined, { numeric: true, sensitivity: "base" }) ||
+      left.id.localeCompare(right.id, undefined, { numeric: true }),
+  );
+}
+
 export function resolveGraphCourses(
   catalog: Catalog | null,
   roadmap: ProgramRoadmap | null,

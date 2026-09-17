@@ -1,15 +1,21 @@
 import { strict as assert } from "node:assert";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import test from "node:test";
 
+import { GraphInspectorActions } from "../components/course-graph";
+import { RoadmapSelectorView, type RoadmapSelectorViewProps } from "../components/roadmap-selector";
 import {
   groupUniversities,
   isProgramSelectable,
   isUniversitySelectable,
+  programDisplayName,
   programStatusText,
   resolveGraphCourses,
   resolveProgramScope,
   roadmapFocusCourse,
   roadmapProgramLabel,
+  sortPrograms,
   universityStatusText,
 } from "../lib/roadmaps";
 import { programMapCodes } from "../lib/graph";
@@ -149,4 +155,82 @@ test("resolveProgramScope falls back to programMapCodes for the default catalog"
   const scope = resolveProgramScope(defaultCatalog, null);
   const expected = programMapCodes(defaultCatalog.courses, defaultCatalog.requirements);
   assert.deepEqual([...scope].sort(), [...expected].sort());
+});
+
+test("program labels remove generated suffixes and ready programs sort first", () => {
+  const unnamed = program({ id: "global-doctoral-research-a4e438d122", name: undefined, status: "queued" });
+  const ready = program({ id: "ready-program", name: " Ready Program ", status: "ready" });
+  assert.equal(programDisplayName(unnamed), "Global Doctoral Research");
+  assert.equal(programDisplayName(ready), "Ready Program");
+  assert.deepEqual(sortPrograms([unnamed, ready]).map((entry) => entry.id), ["ready-program", "global-doctoral-research-a4e438d122"]);
+});
+
+const selectorViewProps = (overrides: Partial<RoadmapSelectorViewProps> = {}): RoadmapSelectorViewProps => ({
+  universities: [],
+  loading: false,
+  error: null,
+  universityId: "",
+  programs: [],
+  programsLoading: false,
+  programsError: null,
+  programId: "",
+  roadmapLoading: false,
+  roadmapError: null,
+  onUniversityChange: () => {},
+  onProgramChange: () => {},
+  onReset: () => {},
+  onRetryUniversities: () => {},
+  onRetryPrograms: () => {},
+  onRetryRoadmap: () => {},
+  ...overrides,
+});
+
+test("selector render groups universities, prioritizes ready programs, and exposes status guidance", () => {
+  const readyUniversity = summary({
+    id: "us-ready",
+    university: "Ready US University",
+    status: { ...summary({}).status, status: "ready" },
+  });
+  const blockedUniversity = summary({
+    id: "us-blocked",
+    university: "Blocked US University",
+    support: "unverified",
+  });
+  const worldUniversity = summary({ id: "world-queued", university: "Queued World University", region: "world" });
+  const markup = renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({
+    universities: [worldUniversity, blockedUniversity, readyUniversity],
+    universityId: "us-ready",
+    programs: [
+      program({ id: "queued-program-a4e438d122", name: undefined, status: "queued" }),
+      program({ id: "ready-program", name: "Ready Program, MS", status: "ready" }),
+    ],
+  })));
+
+  const usGroup = markup.indexOf('<optgroup label="United States">');
+  const worldGroup = markup.indexOf('<optgroup label="World">');
+  assert.ok(usGroup >= 0 && worldGroup > usGroup);
+  const blockedOption = markup.slice(markup.indexOf('value="us-blocked"'), markup.indexOf('value="us-blocked"') + 120);
+  assert.match(blockedOption, /disabled/);
+  assert.ok(markup.indexOf('value="ready-program"') < markup.indexOf('value="queued-program-a4e438d122"'));
+  assert.match(markup, /Global|Ready Program, MS/);
+  assert.match(markup, /Status guide/);
+  assert.match(markup, /Queued.*waiting for crawl/);
+  assert.match(markup, /Unverified.*needs review/);
+
+  const errorMarkup = renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({ error: "temporary failure" })));
+  assert.match(errorMarkup, /Retry loading universities/);
+});
+
+test("roadmap override hides Northeastern inspector actions", () => {
+  const selected = course("CS 5500");
+  const props = {
+    selected,
+    recorded: false,
+    onAddToPlan: () => {},
+    onOpenCourse: () => {},
+  };
+  const defaultMarkup = renderToStaticMarkup(createElement(GraphInspectorActions, { ...props, overrideActive: false }));
+  assert.match(defaultMarkup, /Add to Plan/);
+  assert.match(defaultMarkup, /Full course details/);
+  assert.equal(renderToStaticMarkup(createElement(GraphInspectorActions, { ...props, overrideActive: true })), "");
 });

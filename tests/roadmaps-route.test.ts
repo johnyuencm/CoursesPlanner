@@ -225,3 +225,14 @@ test("a program id without a university id is 400", async () => {
     assert.equal(response.status, 400);
   });
 });
+
+test("roadmap storage failures return a safe public error", async () => {
+  await withFixture(async (rootDir) => {
+    await rm(path.join(rootDir, "catalog-service", "universities.json"));
+    const response = await request(rootDir);
+    assert.equal(response.status, 503);
+    const data = await response.json();
+    assert.equal(data.error, "Roadmap data is temporarily unavailable.");
+    assert.doesNotMatch(data.error, /ENOENT|universities\.json/);
+  });
+});
