@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { applyRemainingPathToPlan, emptyPlan, MAX_COURSES_PER_SEMESTER } from "../lib/plan";
+import { applyRemainingPathToPlan, emptyPlan, MAX_COURSES_PER_SEMESTER, MAX_SEMESTERS } from "../lib/plan";
 import {
   earliestFeasibleTerm,
   matchCourseTarget,
@@ -262,6 +262,40 @@ test("applyRemainingPathToPlan fails closed when a term is at capacity", () => {
     applied.plan.semesters.find((semester) => semester.id === "spring-2027")?.courses.length,
     0,
   );
+});
+
+test("applyRemainingPathToPlan creates a missing academic term", () => {
+  const applied = applyRemainingPathToPlan(emptyPlan(), seattle.courses, [
+    { code: "CS 5010", termName: "Fall 2028", semesterId: null },
+  ]);
+  assert.equal(applied.ok, true);
+  assert.deepEqual(applied.createdTerms, ["Fall 2028"]);
+  assert.ok(applied.added.includes("CS 5010"));
+  const created = applied.plan.semesters.find((semester) => semester.name === "Fall 2028");
+  assert.equal(created?.type, "academic");
+  assert.ok(created?.courses.some((item) => item.code === "CS 5010"));
+  assert.equal(applied.plan.semesters.length, emptyPlan().semesters.length + 1);
+});
+
+test("applyRemainingPathToPlan fails closed when creating a term would exceed MAX_SEMESTERS", () => {
+  const full = plan({
+    semesters: Array.from({ length: MAX_SEMESTERS }, (_, index) => ({
+      id: `term-${index}`,
+      name: `Term ${index}`,
+      type: "academic" as const,
+      courses: [],
+    })),
+  });
+  const applied = applyRemainingPathToPlan(full, seattle.courses, [
+    { code: "CS 5010", termName: "Fall 2099", semesterId: null },
+  ]);
+  assert.equal(applied.ok, false);
+  if (applied.ok) throw new Error("expected semester-limit failure");
+  assert.equal(applied.reason, "semester-limit");
+  assert.deepEqual(applied.added, []);
+  assert.deepEqual(applied.createdTerms, []);
+  assert.deepEqual(applied.plan, full);
+  assert.equal(applied.plan.semesters.length, MAX_SEMESTERS);
 });
 
 test("concurrent prerequisite waits for non-concurrent dependencies and stays in the same term", () => {
