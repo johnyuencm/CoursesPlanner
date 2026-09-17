@@ -62,6 +62,8 @@ AppProvider --------> pages and dialogs
 
 The crawler is an independent Node service. It does not import Next.js. The web app never scrapes on page load. `GET /api/catalog` reads the validated snapshot from disk. `POST /api/catalog` asks the catalog service to refresh, and falls back to the same refresh library in-process if the service is not running.
 
+The `/map` page shows a roadmap selector above the graph, backed by same-origin `GET /api/roadmaps`. That route only reads validated local snapshots and never crawls or fetches remotely inside Next.js: no query returns the ordered university directory with per-university status, `?university=<id>` returns discovered programs, and `?university=<id>&program=<id>` returns one ready roadmap. Selecting a ready program switches the graph to that program's course set and metadata while Northeastern MSCS stays the default; a reset button restores it.
+
 ### Adding another program or university
 
 1. Inspect the official catalog the same way Northeastern was inspected. Do not invent requirements, and do not crawl `robots.txt` disallowed paths.

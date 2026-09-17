@@ -15,7 +15,6 @@ import {
   mapFind,
   mapScene,
   PROGRAM_COL,
-  programMapCodes,
   relationshipControlGroups,
   relationshipSelection,
   shouldClearLineFocusOnEscape,
@@ -26,9 +25,10 @@ import {
   type GraphScope,
   type GraphViewSnapshot,
 } from "@/lib/graph";
-import type { Course } from "@/lib/types";
+import type { Course, ProgramRoadmap } from "@/lib/types";
 import { expressionLabel } from "@/lib/validation";
 import { addableLineCourses } from "@/lib/plan";
+import { resolveGraphCourses, resolveProgramScope, roadmapFocusCourse, roadmapProgramLabel } from "@/lib/roadmaps";
 import { useApp } from "./app-provider";
 import { CodeLinks, courseStatus, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
@@ -100,8 +100,12 @@ function graphStatus(course: Course | undefined, code: string, completed: Set<st
   return courseStatus(course, completed.has(code), waived.has(code), planned.has(code), prior);
 }
 
-function GraphWorkspace() {
+function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   const { catalog, openCourse, openPicker, plan, addCourses, hydrated } = useApp();
+  const overrideActive = roadmap !== null;
+  const courses = useMemo(() => resolveGraphCourses(catalog, roadmap), [catalog, roadmap]);
+  const programCodes = useMemo(() => resolveProgramScope(catalog, roadmap), [catalog, roadmap]);
+  const programLabel = roadmapProgramLabel(roadmap);
   const [focusCode, setFocusCode] = useState("CS 5010");
   const [selectedCode, setSelectedCode] = useState("CS 5010");
   const [selectedRelationship, setSelectedRelationship] = useState<ReturnType<typeof relationshipSelection.branch> | ReturnType<typeof relationshipSelection.bus> | null>(null);
@@ -125,12 +129,24 @@ function GraphWorkspace() {
   const searchRef = useRef(search);
   searchRef.current = search;
   const [lineSemesterId, setLineSemesterId] = useState("");
+  useEffect(() => {
+    const first = roadmap ? (roadmapFocusCourse(roadmap) || "CS 5010") : "CS 5010";
+    setFocusCode(first);
+    setSelectedCode(first);
+    setNavigation({ codes: [first], index: 0 });
+    setSelectedRelationship(null);
+    setDepth("course");
+    setViewStack([]);
+    setZoom(GRAPH_READABLE_ZOOM);
+    setSearch("");
+    setFindIndex(-1);
+  }, [roadmap]);
   const locateRef = useRef<(code: string, keepFind?: boolean) => void>(() => {});
   const inspectRef = useRef<(code: string) => void>(() => {});
   const enterConnectionsRef = useRef<(code: string) => void>(() => {});
   const cycleRef = useRef<(step: number) => void>(() => {});
   const matchesRef = useRef<{ code: string; title: string }[]>([]);
-  const courseMap = useMemo(() => new Map(catalog?.courses.map((course) => [course.code, course]) ?? []), [catalog]);
+  const courseMap = useMemo(() => new Map(courses.map((course) => [course.code, course])), [courses]);
   const history = useMemo(() => new Set([...plan.completedCourses, ...plan.waivedCourses]), [plan.completedCourses, plan.waivedCourses]);
   const completed = useMemo(() => new Set(plan.completedCourses), [plan.completedCourses]);
   const waived = useMemo(() => new Set(plan.waivedCourses), [plan.waivedCourses]);
@@ -147,13 +163,14 @@ function GraphWorkspace() {
       };
     }
     return mapScene({
-      courses: catalog.courses,
+      courses,
       requirements: catalog.requirements,
       scope: depth,
       focusCode,
       selectedCode,
+      programCodes,
     });
-  }, [catalog, depth, focusCode, selectedCode]);
+  }, [catalog, courses, programCodes, depth, focusCode, selectedCode]);
   const visible = scene.visible;
   const highlighted = scene.chain;
   const graph = useMemo(() => {
@@ -266,13 +283,9 @@ function GraphWorkspace() {
     const courseNodes = nodes.filter((node): node is GraphNode => node.type === "course");
     return { nodes, edges, courseNodes };
   }, [scene, highlighted, selectedCode, selectedRelationship, courseMap, history, completed, waived, planned]);
-  const programCodes = useMemo(
-    () => (catalog ? programMapCodes(catalog.courses, catalog.requirements) : new Set<string>()),
-    [catalog],
-  );
   const found = useMemo(
-    () => mapFind.query(catalog?.courses ?? [], search, programCodes),
-    [catalog, search, programCodes],
+    () => mapFind.query(courses, search, programCodes),
+    [courses, search, programCodes],
   );
   const matches = found.matches;
   matchesRef.current = matches;
@@ -533,7 +546,7 @@ function GraphWorkspace() {
             <button type="button" className="button button-secondary button-small" aria-label="Previous course" disabled={navigation.index === 0} onClick={() => { const index = navigation.index - 1; inspectCourse(navigation.codes[index]!, false); setNavigation({ ...navigation, index }); }}><ArrowLeft size={14} /> Back</button>
             <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.codes.length - 1} onClick={() => { const index = navigation.index + 1; inspectCourse(navigation.codes[index]!, false); setNavigation({ ...navigation, index }); }}><ArrowRight size={14} /></button>
           </div>
-          <span>{depth === "program" ? <>Entire <strong>MSCS Seattle</strong> program</> : depth === "1" ? <><Crosshair size={15} /> Connections for <strong>{focusCode}</strong></> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
+          <span>{depth === "program" ? <>Entire <strong>{programLabel}</strong> program</> : depth === "1" ? <><Crosshair size={15} /> Connections for <strong>{focusCode}</strong></> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
           <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode}{selectedRelationship ? ` · ${selectedRelationship.kind === "branch" ? `${selectedRelationship.source} unlocks ${selectedRelationship.target}` : `${selectedRelationship.sources.join(", ")} unlock ${selectedRelationship.target}`}` : ""}.</span>
           <div className="segmented-control" aria-label="Map display">
             <button type="button" aria-pressed={view === "graph"} className={view === "graph" ? "selected" : ""} onClick={() => setView("graph")}><Network size={15} /> Map</button>
@@ -579,8 +592,8 @@ function GraphWorkspace() {
               return <tr key={node.id} id={tableRowId(node.id)} className={node.id === selectedCode ? "graph-find-current" : undefined}>
                 <th scope="row"><button className="text-button" onClick={() => inspectCourse(node.id)} onDoubleClick={(event) => { event.preventDefault(); enterConnections(node.id); }}>{node.id}</button><span>{course?.title ?? "External reference — unknown metadata"}</span></th>
                 <td>{node.data.badgeLabel} · {node.data.statusLabel}</td>
-                <td>{node.data.prerequisites}<div className="detail-code-links"><CodeLinks codes={course?.prerequisiteCodes ?? []} limit={1000} /></div></td>
-                <td>{node.data.corequisites}<div className="detail-code-links"><CodeLinks codes={course?.corequisiteCodes ?? []} limit={1000} /></div></td>
+                <td>{node.data.prerequisites}<div className="detail-code-links"><CodeLinks codes={course?.prerequisiteCodes ?? []} limit={1000} onSelect={overrideActive ? focus : undefined} /></div></td>
+                <td>{node.data.corequisites}<div className="detail-code-links"><CodeLinks codes={course?.corequisiteCodes ?? []} limit={1000} onSelect={overrideActive ? focus : undefined} /></div></td>
               </tr>;
             })}</tbody>
           </table>
@@ -594,7 +607,7 @@ function GraphWorkspace() {
             <p className="muted small-text">The current map stays put. Exit to restore every visible relationship.</p>
           </div>
           <button type="button" className="button button-secondary" onClick={clearLineFocus}><X size={15} /> Exit line focus</button>
-          {plan.semesters.length ? <div className="line-focus-plan">
+          {!overrideActive && (plan.semesters.length ? <div className="line-focus-plan">
             <label className="field-label" htmlFor="line-focus-semester">Add this line to a semester</label>
             <div className="input-action-row">
               <select id="line-focus-semester" value={lineSemester} onChange={(event) => setLineSemesterId(event.target.value)}>
@@ -603,7 +616,7 @@ function GraphWorkspace() {
               <button type="button" className="button button-primary" disabled={!hydrated || !lineItems.length || !lineSemester} onClick={() => { if (lineSemester) addCourses(selectedRelationship.codes, lineSemester); }}><CalendarPlus size={15} /> Add {lineItems.length === 1 ? "1 course" : `${lineItems.length} courses`}</button>
             </div>
             <p className="muted small-text">{lineItems.length ? `Will add ${lineItems.map((item) => item.code).join(", ")}.` : "Every course on this line is already in your plan or history, or is an external catalog reference."}</p>
-          </div> : <p className="muted small-text">Create a semester on Build My Plan before adding this line.</p>}
+          </div> : <p className="muted small-text">Create a semester on Build My Plan before adding this line.</p>)}
         </div> : null}
         <div className="inspector-heading-meta">
           <span className={badge.className}>{badge.label}</span>
@@ -637,17 +650,17 @@ function GraphWorkspace() {
             <div className="detail-code-links"><CodeLinks codes={selected?.corequisiteCodes ?? []} limit={1000} onSelect={focus} /></div>
           </> : null}
         </div>
-        <div className="inspector-actions">
+        {!overrideActive && <div className="inspector-actions">
           {!recorded.has(selectedCode) && selected && selected.requirementType !== "external" && <button className="button button-primary" onClick={() => openPicker(undefined, selectedCode)}><Plus size={15} /> Add to Plan</button>}
           <button className="button button-secondary" onClick={() => openCourse(selectedCode)}>Full course details <ArrowRight size={14} /></button>
-        </div>
+        </div>}
         <div className="inspector-tip"><Info size={16} /><p>Arrows point at the course that lists the prerequisite. Locked cards need earlier courses first. Open Full course details for the complete catalog description. Offerings are not listed because they are unknown.</p></div>
       </aside>
     </div>
-    <p className="page-footnote">The default map follows the selected course through its cataloged prerequisites and unlocks; it does not add a downstream course’s other prerequisite branches. Choose Entire program to browse all listed MSCS Seattle courses and their cataloged external prerequisites. A shared color groups lines by destination, not by AND/OR satisfaction; read the catalog rule in the inspector. A connection does not verify course availability.</p>
+    <p className="page-footnote">The default map follows the selected course through its cataloged prerequisites and unlocks; it does not add a downstream course’s other prerequisite branches. Choose Entire program to browse all listed {programLabel} courses and their cataloged external prerequisites. A shared color groups lines by destination, not by AND/OR satisfaction; read the catalog rule in the inspector. A connection does not verify course availability.</p>
   </>;
 }
 
-export default function CourseGraph() {
-  return <GraphWorkspace />;
+export default function CourseGraph({ roadmap }: { roadmap: ProgramRoadmap | null }) {
+  return <GraphWorkspace roadmap={roadmap} />;
 }

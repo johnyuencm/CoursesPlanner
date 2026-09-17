@@ -326,6 +326,14 @@ textarea { resize: vertical; }
 .field-label { color: var(--muted); font-size: 0.65rem; font-weight: 680; }
 .input-action-row { display: flex; gap: 0.5rem; }
 .input-action-row > input, .input-action-row > select { flex: 1; }
+.roadmap-selector { display: grid; gap: 0.6rem; padding: 0.9rem 0; border-bottom: 1px solid var(--line); }
+.roadmap-selector-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.roadmap-selector-heading h2 { display: flex; align-items: center; gap: 0.45rem; margin: 0; font-size: 0.95rem; }
+.roadmap-selector-heading p { margin: 0.2rem 0 0; font-size: 0.72rem; }
+.roadmap-selector-fields { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+.roadmap-selector-fields .field-label { display: grid; gap: 0.3rem; }
+.roadmap-selector-fields select { min-width: 240px; max-width: 100%; font-size: 0.72rem; }
+.roadmap-selector-status { font-size: 0.68rem; }
 .new-semester-disclosure summary { color: var(--red-dark); font-size: 0.7rem; cursor: pointer; }
 .new-semester-disclosure > div { margin-top: 0.45rem; }
 .picker-results { max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; }
