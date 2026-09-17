@@ -1,5 +1,13 @@
-import type { CatalogSourceDefinition, PageSource } from "./source-types";
 import { parseRobots, pathDisallowed, type RobotsRules } from "./robots";
+import type { PageSource } from "./source-types";
+
+export interface OfficialFetchPolicy {
+  requestTimeoutMs: number;
+  userAgent: string;
+  robotsUrl?: string;
+  allowedOrigins: string[];
+  disallowedPathPatterns: string[];
+}
 
 export const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
 
@@ -30,9 +38,11 @@ export function createTurnWaiter(delayMs: number): Waiter {
   };
 }
 
-export function assertAllowedUrl(source: CatalogSourceDefinition, target: string): URL {
+export function assertAllowedUrl(source: OfficialFetchPolicy, target: string): URL {
   const url = new URL(target);
-  if (url.protocol !== "https:") throw new Error(`Refused non-HTTPS catalog URL ${target}`);
+  if (url.protocol !== "https:" || url.username || url.password) {
+    throw new Error(`Refused non-HTTPS or credential-bearing catalog URL ${target}`);
+  }
   if (!source.allowedOrigins.includes(url.origin)) {
     throw new Error(`Refused catalog URL outside allowlist: ${target}`);
   }
@@ -42,7 +52,7 @@ export function assertAllowedUrl(source: CatalogSourceDefinition, target: string
 }
 
 export async function loadRobots(
-  source: CatalogSourceDefinition,
+  source: OfficialFetchPolicy,
   fetchImpl: FetchImplementation,
   waitForTurn: Waiter,
   cache?: RobotsRules,
@@ -93,25 +103,36 @@ async function responseText(response: Response, url: string): Promise<string> {
 }
 
 export async function fetchOfficialHtml(
-  definition: CatalogSourceDefinition,
+  definition: OfficialFetchPolicy,
   page: PageSource,
   fetchImpl: FetchImplementation,
   waitForTurn: Waiter,
-  options: { etag?: string; lastModified?: string; robots?: RobotsRules; now?: () => Date } = {},
+  options: {
+    etag?: string;
+    lastModified?: string;
+    robots?: RobotsRules;
+    robotsForUrl?: (url: URL) => Promise<RobotsRules>;
+    now?: () => Date;
+  } = {},
 ): Promise<FetchResult> {
   const now = options.now ?? (() => new Date());
   let currentUrl = page.url;
   for (let redirects = 0; redirects <= 3; redirects += 1) {
     const parsed = assertAllowedUrl(definition, currentUrl);
-    if (options.robots && pathDisallowed(parsed.pathname, options.robots.disallowed)) {
+    const robots = options.robotsForUrl ? await options.robotsForUrl(parsed) : options.robots;
+    if (robots && pathDisallowed(parsed.pathname, robots.disallowed)) {
       throw new Error(`robots.txt disallows ${parsed.pathname}`);
     }
     await waitForTurn();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), definition.requestTimeoutMs);
     try {
+      const format = page.format ?? "html";
       const headers: Record<string, string> = {
-        Accept: "text/html,application/xhtml+xml",
+        Accept:
+          format === "xml"
+            ? "application/xml,text/xml"
+            : "text/html,application/xhtml+xml",
         "User-Agent": definition.userAgent,
       };
       if (options.etag) headers["If-None-Match"] = options.etag;
@@ -135,12 +156,20 @@ export async function fetchOfficialHtml(
       }
       if (!response.ok) throw new Error(`Catalog request failed (${response.status}) for ${currentUrl}`);
       const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-      if (contentType && !contentType.includes("html")) {
-        throw new Error(`Expected HTML from ${currentUrl}, received ${contentType}`);
+      const expectedType = format === "xml" ? "XML" : "HTML";
+      if (
+        contentType &&
+        !(format === "xml" ? contentType.includes("xml") : contentType.includes("html"))
+      ) {
+        throw new Error(`Expected ${expectedType} from ${currentUrl}, received ${contentType}`);
       }
       const html = await responseText(response, currentUrl);
-      if (!/<(?:!doctype\s+html|html)\b/i.test(html)) {
-        throw new Error(`Response from ${currentUrl} is not an HTML document`);
+      if (
+        format === "xml"
+          ? !/^\s*(?:<\?xml\b[^>]*>\s*)?<[^>]+>/i.test(html)
+          : !/<(?:!doctype\s+html|html)\b/i.test(html)
+      ) {
+        throw new Error(`Response from ${currentUrl} is not an ${expectedType} document`);
       }
       return {
         html,

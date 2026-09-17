@@ -6,6 +6,7 @@ import { validateCatalog } from "../lib/catalog";
 import type { Catalog } from "../lib/types";
 import { defaultCatalogId, enabledSources, findSource, loadRegistry, loadUniversityDirectory } from "./registry";
 import { refreshSource, storagePaths } from "./refresh";
+import { findUniversity, listRoadmapUniversities, readProgramDirectory, readReadyRoadmap } from "./roadmaps";
 import { startScheduler, type SourceStatus } from "./scheduler";
 import type { CatalogSourceDefinition, UniversityDirectoryEntry } from "./source-types";
 
@@ -67,21 +68,19 @@ export async function handleCatalogRequest(
       adapters: [...new Set(context.sources.map((source) => source.adapter))],
     });
   }
-  if (method === "GET" && url.pathname === "/universities") {
-    return json({
-      universities: context.universities.map((entry) => ({
-        id: entry.id,
-        university: entry.university,
-        region: entry.region,
-        priority: entry.priority,
-        catalogUrl: entry.catalogUrl,
-        support: entry.support,
-        enabled: entry.enabled,
-      })),
-    });
-  }
-  if (url.pathname === "/universities") {
-    return json({ error: "Method not allowed." }, 405, { Allow: "GET" });
+  const universityMatch = url.pathname.match(/^\/universities\/([a-z0-9][a-z0-9-]{0,80})\/(programs|status|roadmaps\/([a-z0-9][a-z0-9-]{0,80}))$/);
+  if (url.pathname === "/universities" || universityMatch) {
+    if (method !== "GET") return json({ error: "Method not allowed." }, 405, { Allow: "GET" });
+    try {
+      if (!universityMatch) return json({ universities: await listRoadmapUniversities(context.universities, context.rootDir) });
+      const university = findUniversity(context.universities, universityMatch[1]);
+      if (universityMatch[3]) return json(await readReadyRoadmap(university, universityMatch[3], context.rootDir));
+      const directory = await readProgramDirectory(university, context.rootDir);
+      return json(universityMatch[2] === "status" ? directory.status : directory);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return errorBody(error, message.startsWith("Unknown university:") || message.startsWith("Unknown roadmap program:") ? 404 : 503);
+    }
   }
   if (method === "GET" && url.pathname === "/catalogs") {
     return json({

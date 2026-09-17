@@ -176,8 +176,21 @@
     "region": "us",
     "priority": 20,
     "catalogUrl": "https://catalog.northeastern.edu/",
-    "support": "unverified",
-    "enabled": false
+    "support": "supported",
+    "enabled": true,
+    "crawl": {
+      "adapter": "northeastern-acalog",
+      "discoverySource": {
+        "key": "programs",
+        "url": "https://catalog.northeastern.edu/sitemap.xml",
+        "fileName": "sitemap.xml",
+        "required": true,
+        "format": "xml"
+      },
+      "requestDelayMs": 750,
+      "robotsUrl": "https://catalog.northeastern.edu/robots.txt",
+      "allowedOrigins": ["https://catalog.northeastern.edu"]
+    }
   },
   {
     "id": "oxford",

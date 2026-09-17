@@ -166,8 +166,8 @@ test("university directory loads the approved 20 US and 20 world entries", async
   assert.deepEqual(universities.slice(20).map(({ region, priority }) => [region, priority]), [
     ...Array.from({ length: 20 }, (_, index) => ["world", index + 1]),
   ]);
-  assert.deepEqual(enabledUniversities(universities), []);
-  assert.equal(universities.filter((entry) => entry.support === "unverified").length, 40);
+  assert.deepEqual(enabledUniversities(universities).map((entry) => entry.id), ["northeastern"]);
+  assert.equal(universities.filter((entry) => entry.support === "unverified").length, 39);
 });
 
 test("production university directory rejects incomplete and sparse regions", async () => {
@@ -521,20 +521,25 @@ test("catalog service HTTP handlers list sources and universities without changi
   assert.equal(directory.status, 200);
   const payload = JSON.parse(directory.body) as { universities: Array<Record<string, unknown>> };
   assert.equal(payload.universities.length, 40);
-  assert.deepEqual(payload.universities[0], {
-    id: "mit",
-    university: "MIT",
-    region: "us",
-    priority: 1,
-    catalogUrl: "https://catalog.mit.edu/",
-    support: "unverified",
-    enabled: false,
-  });
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(payload.universities[0]).filter(([key]) => key !== "status")),
+    {
+      id: "mit",
+      university: "MIT",
+      region: "us",
+      priority: 1,
+      catalogUrl: "https://catalog.mit.edu/",
+      support: "unverified",
+      enabled: false,
+    },
+  );
+  assert.equal((payload.universities[0].status as { status: string }).status, "unverified");
   assert.equal(payload.universities[19].id, "northeastern");
-  assert.equal(payload.universities[19].support, "unverified");
-  assert.equal(payload.universities[19].enabled, false);
+  assert.equal(payload.universities[19].support, "supported");
+  assert.equal(payload.universities[19].enabled, true);
   assert.equal(payload.universities[20].id, "oxford");
   assert.equal("crawl" in payload.universities[19], false);
+  assert.equal("status" in payload.universities[19], true);
 
   const wrongUniversityMethod = await handleCatalogRequest(
     "POST",

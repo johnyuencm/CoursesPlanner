@@ -3,7 +3,7 @@ import path from "node:path";
 import { validateCatalog } from "../lib/catalog";
 import type { Catalog, Course } from "../lib/types";
 import { getAdapter } from "./adapters";
-import { createTurnWaiter, fetchOfficialHtml, loadRobots } from "./crawler";
+import { assertAllowedUrl, createTurnWaiter, fetchOfficialHtml, loadRobots, type OfficialFetchPolicy } from "./crawler";
 import { defaultCatalogId, findSource, loadRegistry } from "./registry";
 import type { RobotsRules } from "./robots";
 import type { CatalogSourceDefinition, PageSource } from "./source-types";
@@ -62,7 +62,7 @@ export function storagePaths(definition: CatalogSourceDefinition, rootDir: strin
   };
 }
 
-async function readCacheMetadata(filePath: string): Promise<CacheMetadata> {
+export async function readCacheMetadata(filePath: string): Promise<CacheMetadata> {
   try {
     const parsed: unknown = JSON.parse(await readFile(filePath, "utf8"));
     if (
@@ -83,20 +83,96 @@ async function readCacheMetadata(filePath: string): Promise<CacheMetadata> {
   return { version: 2, sources: {} };
 }
 
-async function readBoundedFile(filePath: string): Promise<string> {
+export async function readBoundedFile(filePath: string): Promise<string> {
   const details = await stat(filePath);
   if (details.size > 5 * 1024 * 1024) throw new Error(`Cached response exceeds 5 MB: ${filePath}`);
   return readFile(filePath, "utf8");
 }
 
-async function atomicWrite(filePath: string, content: string): Promise<void> {
+export async function atomicWrite(filePath: string, content: string): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
   const temporary = `${filePath}.${process.pid}.${Math.random().toString(16).slice(2)}.tmp`;
   await writeFile(temporary, content, "utf8");
   await rename(temporary, filePath);
 }
 
-const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
+export const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
+
+export async function loadCachedSource(
+  definition: OfficialFetchPolicy & { cacheTtlMs: number },
+  source: PageSource,
+  options: {
+    rawDir: string;
+    recorded?: CacheEntry;
+    fetchImpl: FetchImplementation;
+    waitForTurn: () => Promise<void>;
+    robots?: RobotsRules;
+    robotsForUrl?: (url: URL) => Promise<RobotsRules>;
+    now: () => Date;
+    force?: boolean;
+    checkOnly?: boolean;
+    allowStale?: boolean;
+    warnings: string[];
+  },
+): Promise<LoadedSource> {
+  assertAllowedUrl(definition, source.url);
+  if (!/^[\w.-]+$/.test(source.fileName) || source.fileName === "." || source.fileName === "..") {
+    throw new Error("Invalid cached source file name");
+  }
+  const { rawDir, fetchImpl, waitForTurn, now, force, checkOnly, warnings } = options;
+  const recorded = options.recorded?.url === source.url ? options.recorded : undefined;
+  const cachePath = path.join(rawDir, source.fileName);
+  let cachedHtml: string | undefined;
+  let cacheTimestamp: string | undefined;
+  if (!options.recorded || recorded) {
+    try {
+      const details = await stat(cachePath);
+      cachedHtml = await readBoundedFile(cachePath);
+      cacheTimestamp = recorded && !Number.isNaN(Date.parse(recorded.fetchedAt))
+        ? recorded.fetchedAt : details.mtime.toISOString();
+      const checkedAt = recorded?.lastCheckedAt ?? cacheTimestamp;
+      const age = now().getTime() - Date.parse(checkedAt);
+      if (!force && !checkOnly && age >= 0 && age <= definition.cacheTtlMs) {
+        return {
+          source, html: cachedHtml, fetchedAt: cacheTimestamp, fromNetwork: false, changed: false,
+          etag: recorded?.etag, lastModified: recorded?.lastModified,
+        };
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  try {
+    const fetched = await fetchOfficialHtml(definition, source, fetchImpl, waitForTurn, {
+      etag: cachedHtml ? recorded?.etag : undefined,
+      lastModified: cachedHtml ? recorded?.lastModified : undefined,
+      robots: options.robots,
+      robotsForUrl: options.robotsForUrl,
+      now,
+    });
+    if (fetched.notModified) {
+      if (!cachedHtml || !cacheTimestamp) throw new Error(`304 from ${source.url} but no local cache exists`);
+      return {
+        source, html: cachedHtml, fetchedAt: cacheTimestamp, fromNetwork: false, changed: false,
+        etag: fetched.etag, lastModified: fetched.lastModified,
+      };
+    }
+    return {
+      source, html: fetched.html, fetchedAt: fetched.fetchedAt, fromNetwork: true,
+      changed: !cachedHtml || cachedHtml !== fetched.html,
+      etag: fetched.etag, lastModified: fetched.lastModified,
+    };
+  } catch (error) {
+    if (options.allowStale !== false && cachedHtml && cacheTimestamp) {
+      warnings.push(`Using stale cache for ${source.url}: ${error instanceof Error ? error.message : String(error)}`);
+      return {
+        source, html: cachedHtml, fetchedAt: cacheTimestamp, fromNetwork: false, changed: false,
+        etag: recorded?.etag, lastModified: recorded?.lastModified,
+      };
+    }
+    throw error;
+  }
+}
 
 export async function refreshSource(
   definition: CatalogSourceDefinition,
@@ -123,80 +199,10 @@ export async function refreshSource(
     );
   }
 
-  const loadSource = async (source: PageSource): Promise<LoadedSource> => {
-    const cachePath = path.join(paths.rawDir, source.fileName);
-    let cachedHtml: string | undefined;
-    let cacheTimestamp: string | undefined;
-    const recorded = metadata.sources[source.key];
-    try {
-      const details = await stat(cachePath);
-      cachedHtml = await readBoundedFile(cachePath);
-      cacheTimestamp =
-        recorded?.url === source.url && !Number.isNaN(Date.parse(recorded.fetchedAt))
-          ? recorded.fetchedAt
-          : details.mtime.toISOString();
-      const fresh = now().getTime() - Date.parse(cacheTimestamp) <= definition.cacheTtlMs;
-      if (!force && !checkOnly && fresh) {
-        return {
-          source,
-          html: cachedHtml,
-          fetchedAt: cacheTimestamp,
-          fromNetwork: false,
-          changed: false,
-          etag: recorded?.etag,
-          lastModified: recorded?.lastModified,
-        };
-      }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
-
-    try {
-      const fetched = await fetchOfficialHtml(definition, source, fetchImpl, waitForTurn, {
-        etag: recorded?.etag,
-        lastModified: recorded?.lastModified,
-        robots,
-        now,
-      });
-      if (fetched.notModified) {
-        if (!cachedHtml || !cacheTimestamp) throw new Error(`304 from ${source.url} but no local cache exists`);
-        return {
-          source,
-          html: cachedHtml,
-          fetchedAt: cacheTimestamp,
-          fromNetwork: false,
-          changed: false,
-          etag: fetched.etag,
-          lastModified: fetched.lastModified,
-        };
-      }
-      return {
-        source,
-        html: fetched.html,
-        fetchedAt: fetched.fetchedAt,
-        fromNetwork: true,
-        changed: !cachedHtml || cachedHtml !== fetched.html,
-        etag: fetched.etag,
-        lastModified: fetched.lastModified,
-      };
-    } catch (error) {
-      if (cachedHtml && cacheTimestamp) {
-        warnings.push(
-          `Using stale cache for ${source.url}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-        return {
-          source,
-          html: cachedHtml,
-          fetchedAt: cacheTimestamp,
-          fromNetwork: false,
-          changed: false,
-          etag: recorded?.etag,
-          lastModified: recorded?.lastModified,
-        };
-      }
-      throw error;
-    }
-  };
+  const loadSource = (source: PageSource) => loadCachedSource(definition, source, {
+    rawDir: paths.rawDir, recorded: metadata.sources[source.key], fetchImpl, waitForTurn,
+    robots, now, force, checkOnly, warnings,
+  });
 
   const loaded: LoadedSource[] = [];
   const programSource = await loadSource(definition.programSource);
@@ -265,7 +271,7 @@ export async function refreshSource(
   return { catalog, changed: anyChange };
 }
 
-async function fileExists(filePath: string): Promise<boolean> {
+export async function fileExists(filePath: string): Promise<boolean> {
   try {
     await stat(filePath);
     return true;

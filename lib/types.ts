@@ -120,6 +120,12 @@ export interface RoadmapCrawlStatus {
   reason?: string;
 }
 
+export interface ProgramDirectoryResponse {
+  universityId: string;
+  programs: DiscoveredProgram[];
+  status: RoadmapCrawlStatus;
+}
+
 export interface PlannedCourse {
   code: string;
   credits?: number;

@@ -15,15 +15,19 @@ function parsePageSource(value: unknown, label: string): PageSource {
   if (!isRecord(value)) throw new Error(`${label} must be an object`);
   if (typeof value.key !== "string" || !value.key) throw new Error(`${label}.key is required`);
   const url = requiredHttpsUrl(value.url, `${label}.url`);
-  if (typeof value.fileName !== "string" || !/^[\w.-]+$/.test(value.fileName)) {
+  if (typeof value.fileName !== "string" || !/^[\w.-]+$/.test(value.fileName) || value.fileName === "." || value.fileName === "..") {
     throw new Error(`${label}.fileName is invalid`);
   }
   if (typeof value.required !== "boolean") throw new Error(`${label}.required must be boolean`);
+  if (value.format !== undefined && value.format !== "html" && value.format !== "xml") {
+    throw new Error(`${label}.format must be html or xml`);
+  }
   return {
     key: value.key,
     url,
     fileName: value.fileName,
     required: value.required,
+    ...(value.format ? { format: value.format } : {}),
   };
 }
 

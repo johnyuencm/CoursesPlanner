@@ -1,8 +1,13 @@
+import type { RoadmapCrawlStatus } from "../lib/types";
+
+export type UniversityRoadmapSummary = Omit<UniversityDirectoryEntry, "crawl"> & { status: RoadmapCrawlStatus };
+
 export interface PageSource {
   key: string;
   url: string;
   fileName: string;
   required: boolean;
+  format?: "html" | "xml";
 }
 
 export type UniversityRegion = "us" | "world";

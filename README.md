@@ -72,6 +72,20 @@ The crawler is an independent Node service. It does not import Next.js. The web 
 
 The service does not fetch a second live university until that source file exists and is enabled.
 
+### Prerequisite roadmap crawling
+
+`catalog-service/universities.json` orders 20 US universities before 20 world universities. Only entries with `"support": "supported"`, `"enabled": true`, and a `crawl` config are fetched; metadata-only/unverified entries are listed but never requested. The crawler discovers official program links, extracts each program's course codes, parses the shared bulk course pages, and writes validated prerequisite roadmaps under `data/catalogs/<university-id>/` (`programs.json`, `roadmaps/<program-id>.json`, `.roadmap-crawl-status.json`). Runs are bounded and resume from persisted state.
+
+```bash
+npm run catalog:refresh -- --list-universities            # ordered directory with per-university status
+npm run catalog:refresh -- --crawl-roadmaps --limit=5     # advance the persisted queue by up to 5 steps
+npm run catalog:refresh -- --crawl-roadmaps --limit=5 --university=northeastern
+npm run catalog:refresh -- --list-programs --university=northeastern
+npm run catalog:refresh -- --roadmap=<program-id> --university=northeastern
+```
+
+Never run an unbounded crawl: `--crawl-roadmaps` requires `--limit=<1..100>`. `--retry-errors` requeues programs that previously failed. Roadmaps never fabricate `DegreeRequirement` fields; programs with no course-based requirements are marked `unsupported`.
+
 ### Main directories
 
 | Path | Purpose |
@@ -110,7 +124,7 @@ Run the catalog service for continuous checks. It ticks once a minute and refres
 npm run catalog:serve
 ```
 
-The service binds `127.0.0.1:8787` with `GET /health`, `GET /universities`, `GET /catalogs`, `GET /catalogs/:id`, and `POST /catalogs/:id/refresh`. Keep it running in a second terminal next to `npm run dev` if you want background updates. The Next.js app still works without it: Refresh Catalog falls back to in-process refresh.
+The service binds `127.0.0.1:8787` with `GET /health`, `GET /universities`, `GET /universities/:id/programs`, `GET /universities/:id/status`, `GET /universities/:id/roadmaps/:programId`, `GET /catalogs`, `GET /catalogs/:id`, and `POST /catalogs/:id/refresh`. Keep it running in a second terminal next to `npm run dev` if you want background updates. The Next.js app still works without it: Refresh Catalog falls back to in-process refresh.
 
 The refresh pipeline:
 
