@@ -346,7 +346,7 @@
     "university": "University of Melbourne",
     "region": "world",
     "priority": 19,
-    "catalogUrl": "https://study.unimelb.edu.au/find/courses/",
+    "catalogUrl": "https://study.unimelb.edu.au/find",
     "support": "unverified",
     "enabled": false
   },

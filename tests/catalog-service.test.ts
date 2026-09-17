@@ -147,7 +147,7 @@ test("university directory loads the approved 20 US and 20 world entries", async
     ["kaist", "KAIST", "https://kaist.ac.kr/en/html/edu/03.html"],
     ["seoul-national", "Seoul National University", "https://en.snu.ac.kr/academics/programs/undergraduate"],
     ["tum", "Technical University of Munich", "https://www.tum.de/en/studies/degree-programs"],
-    ["melbourne", "University of Melbourne", "https://study.unimelb.edu.au/find/courses/"],
+    ["melbourne", "University of Melbourne", "https://study.unimelb.edu.au/find"],
     ["hkust", "HKUST", "https://hkust.edu.hk/directory/academic-programs"],
   ];
 
