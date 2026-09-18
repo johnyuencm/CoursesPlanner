@@ -404,12 +404,15 @@ function plannedAcademicIndex(
 ): number | undefined {
   const index = plan.semesters.findIndex((semester) => semester.courses.some((course) => course.code === code));
   if (index < 0) return undefined;
-  const after = academic.findIndex((semester) => {
-    const at = plan.semesters.findIndex((item) => item.id === semester.id);
-    return at >= index && semester.type === "academic";
-  });
-  if (after >= 0) return after;
-  return academic.length;
+  let previous = -1;
+  for (let i = 0; i < academic.length; i++) {
+    const at = plan.semesters.findIndex((item) => item.id === academic[i].id);
+    if (at < 0) continue;
+    if (at === index) return i;
+    if (at < index) previous = i;
+  }
+  // Non-academic (coop) sits between previous and next academic terms.
+  return previous + 0.5;
 }
 
 function remainingLabel(count: number): string {
@@ -516,13 +519,14 @@ export function earliestFeasibleTerm(
   const raiseMinimum = (minimum: number, other: string, concurrent: boolean): number => {
     const at = termOf(other);
     if (at === undefined) return minimum;
-    return Math.max(minimum, at + (concurrent ? 0 : 1));
+    return Math.max(minimum, concurrent ? Math.ceil(at) : Math.floor(at) + 1);
   };
 
   const raiseMaximum = (maximum: number, other: string, concurrent: boolean): number => {
     const at = termOf(other);
     if (at === undefined) return maximum;
-    return Math.min(maximum, at - (concurrent ? 0 : 1));
+    // Concurrent + coop half-index: ceil both bounds so the next academic term stays open.
+    return Math.min(maximum, concurrent ? Math.ceil(at) : Math.ceil(at) - 1);
   };
 
   const findSharedTerm = (minimum: number, group: readonly string[], maximum = Number.POSITIVE_INFINITY): number | null => {
