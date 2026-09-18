@@ -93,12 +93,16 @@ function PlanCourseCard({
   const selected = workspaceSelection.selectedCode === item.code;
   const applyFix = (next: PrerequisiteFix) => {
     if (!catalog) return;
-    const applied = applyPrerequisiteFix(plan, next, catalog.courses);
+    let applied: ReturnType<typeof applyPrerequisiteFix> | undefined;
+    setPlan((current) => {
+      applied = applyPrerequisiteFix(current, next, catalog.courses);
+      return applied.ok ? applied.plan : current;
+    });
+    if (!applied) return;
     if (!applied.ok) {
       announce(applied.reason === "capacity" ? "That term is full." : "Could not apply that fix. Try the Move menu.");
       return;
     }
-    setPlan(applied.plan);
     announce(applied.message);
   };
   const viewDependency = (next: PrerequisiteFix) => {
@@ -241,22 +245,32 @@ export default function PlannerBoard() {
 
   const updateTerms = (change: (terms: Semester[]) => Semester[]) => setPlan((current) => ({ ...current, semesters: change(current.semesters) }));
   const moveCourse = (code: string, fromId: string, targetId: string) => {
-    const result = moveCourseToSemester(plan, code, fromId, targetId);
+    let result: ReturnType<typeof moveCourseToSemester> | undefined;
+    let targetName: string | undefined;
+    setPlan((current) => {
+      result = moveCourseToSemester(current, code, fromId, targetId);
+      targetName = current.semesters.find((semester) => semester.id === targetId)?.name;
+      return result.ok ? result.plan : current;
+    });
+    if (!result) return;
     if (!result.ok) {
       if (result.reason === "same-term") return;
       if (result.reason === "missing-term") announce("Choose an existing term before moving a course.");
-      else if (result.reason === "capacity") announce(`${plan.semesters.find((semester) => semester.id === targetId)?.name ?? "That term"} supports up to 32 planned courses.`);
+      else if (result.reason === "capacity") announce(`${targetName ?? "That term"} supports up to 32 planned courses.`);
       return;
     }
-    setPlan(result.plan);
   };
   const applyFix = (fix: PrerequisiteFix) => {
-    const applied = applyPrerequisiteFix(plan, fix, catalog.courses);
+    let applied: ReturnType<typeof applyPrerequisiteFix> | undefined;
+    setPlan((current) => {
+      applied = applyPrerequisiteFix(current, fix, catalog.courses);
+      return applied.ok ? applied.plan : current;
+    });
+    if (!applied) return;
     if (!applied.ok) {
       announce(applied.reason === "capacity" ? "That term is full." : "Could not apply that fix. Try the Move menu.");
       return;
     }
-    setPlan(applied.plan);
     announce(applied.message);
   };
   const viewDependency = (fix: PrerequisiteFix) => {
