@@ -443,6 +443,86 @@ test("a blocked course in the first academic term has no earlier-semester Apply 
   assert.equal(suggestedPrerequisiteFix(issue!, plan, addableProgramCodes(seattle.courses)), null);
 });
 
+test("queued Apply and move keep both mutations when each helper uses the latest plan", () => {
+  const start = withCourses(emptyPlan(), {
+    "fall-2026": [{ code: "CS 5010", credits: 4 }],
+    "fall-2027": [{ code: "CS 6140", credits: 4 }],
+    "spring-2028": [{ code: "CS 5800", credits: 4 }],
+  });
+  const issue = validatePlan(start, seattle).issues.find((item) => item.kind === "prerequisite" && item.courseCode === "CS 6140");
+  assert.ok(issue);
+  const fix = suggestedPrerequisiteFix(issue!, start, addableProgramCodes(seattle.courses));
+  assert.deepEqual(fix?.action, { type: "move", fromId: "spring-2028", toId: "spring-2027" });
+
+  const appliedFromStart = applyPrerequisiteFix(start, fix!, seattle.courses);
+  const movedFromStart = moveCourseToSemester(start, "CS 5010", "fall-2026", "spring-2027");
+  assert.equal(appliedFromStart.ok, true);
+  assert.equal(movedFromStart.ok, true);
+  if (movedFromStart.ok) {
+    assert.equal(movedFromStart.plan.semesters.find((semester) => semester.id === "spring-2027")?.courses.some((course) => course.code === "CS 5800"), false);
+    assert.ok(movedFromStart.plan.semesters.find((semester) => semester.id === "spring-2028")?.courses.some((course) => course.code === "CS 5800"));
+  }
+
+  let plan = start;
+  const applyQueued = (update: (current: typeof start) => typeof start) => {
+    plan = update(plan);
+  };
+  applyQueued((current) => {
+    const result = applyPrerequisiteFix(current, fix!, seattle.courses);
+    return result.ok ? result.plan : current;
+  });
+  applyQueued((current) => {
+    const result = moveCourseToSemester(current, "CS 5010", "fall-2026", "spring-2027");
+    return result.ok ? result.plan : current;
+  });
+  assert.ok(plan.semesters.find((semester) => semester.id === "spring-2027")?.courses.some((course) => course.code === "CS 5800"));
+  assert.ok(plan.semesters.find((semester) => semester.id === "spring-2027")?.courses.some((course) => course.code === "CS 5010"));
+  assert.equal(plan.semesters.find((semester) => semester.id === "fall-2026")?.courses.some((course) => course.code === "CS 5010"), false);
+  assert.equal(plan.semesters.find((semester) => semester.id === "spring-2028")?.courses.some((course) => course.code === "CS 5800"), false);
+});
+
+test("queued Apply helpers keep both independent adds instead of the stale last write", () => {
+  const start = withCourses(emptyPlan(), {
+    "fall-2027": [{ code: "CS 6140", credits: 4 }],
+    "spring-2028": [{ code: "CS 6510", credits: 4 }],
+  });
+  const issues = validatePlan(start, seattle).issues;
+  const machineLearning = issues.find((item) => item.kind === "prerequisite" && item.courseCode === "CS 6140");
+  const software = issues.find((item) => item.kind === "prerequisite" && item.courseCode === "CS 6510");
+  assert.ok(machineLearning);
+  assert.ok(software);
+  const addable = addableProgramCodes(seattle.courses);
+  const machineLearningFix = suggestedPrerequisiteFix(machineLearning!, start, addable);
+  const softwareFix = suggestedPrerequisiteFix(software!, start, addable);
+  assert.deepEqual(machineLearningFix?.action, { type: "add", toId: "spring-2027" });
+  assert.equal(machineLearningFix?.relatedCode, "CS 5800");
+  assert.ok(softwareFix?.action.type === "add");
+
+  const firstFromStart = applyPrerequisiteFix(start, machineLearningFix!, seattle.courses);
+  const secondFromStart = applyPrerequisiteFix(start, softwareFix!, seattle.courses);
+  assert.equal(firstFromStart.ok, true);
+  assert.equal(secondFromStart.ok, true);
+  if (secondFromStart.ok) {
+    assert.equal(secondFromStart.plan.semesters.find((semester) => semester.id === "spring-2027")?.courses.some((course) => course.code === "CS 5800"), false);
+  }
+
+  let plan = start;
+  for (const fix of [machineLearningFix!, softwareFix!]) {
+    const result = applyPrerequisiteFix(plan, fix, seattle.courses);
+    plan = result.ok ? result.plan : plan;
+  }
+  assert.ok(plan.semesters.find((semester) => semester.id === "spring-2027")?.courses.some((course) => course.code === "CS 5800"));
+  assert.ok(plan.semesters.some((semester) => semester.courses.some((course) => course.code === softwareFix!.relatedCode)));
+});
+
+test("planner-board Apply and move pass the setPlan current plan into helpers", () => {
+  const source = readFileSync(path.join(process.cwd(), "components", "planner-board.tsx"), "utf8");
+  assert.equal(source.includes("setPlan(applied.plan)"), false);
+  assert.equal(source.includes("setPlan(result.plan)"), false);
+  assert.equal((source.match(/applyPrerequisiteFix\(current,/g) ?? []).length, 2);
+  assert.equal((source.match(/moveCourseToSemester\(current,/g) ?? []).length, 1);
+});
+
 test("suggestedPrerequisiteFix does not suggest Apply into a full term", () => {
   const fillers = Array.from({ length: MAX_COURSES_PER_SEMESTER }, (_, index) => ({ code: `CS ${5100 + index}`, credits: 4 }));
   const plan = withCourses(emptyPlan(), {
