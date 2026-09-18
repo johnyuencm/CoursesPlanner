@@ -525,7 +525,8 @@ export function earliestFeasibleTerm(
   const raiseMaximum = (maximum: number, other: string, concurrent: boolean): number => {
     const at = termOf(other);
     if (at === undefined) return maximum;
-    return Math.min(maximum, concurrent ? Math.floor(at) : Math.ceil(at) - 1);
+    // Concurrent + coop half-index: ceil both bounds so the next academic term stays open.
+    return Math.min(maximum, concurrent ? Math.ceil(at) : Math.ceil(at) - 1);
   };
 
   const findSharedTerm = (minimum: number, group: readonly string[], maximum = Number.POSITIVE_INFINITY): number | null => {

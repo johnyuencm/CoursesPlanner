@@ -120,6 +120,20 @@ test("coop-planned CS 5010 allows a non-concurrent dependent in the next academi
   assert.equal(snapshot.earliest.placements.find((item) => item.code === "CS 5500")?.termName, "Fall 2027");
 });
 
+test("coop-planned CS 5011 allows concurrent CS 5010 in the next academic term", () => {
+  const withCoop = plan({
+    semesters: emptyPlan().semesters.map((semester) =>
+      semester.id === "summer-2027-coop" ? { ...semester, courses: [{ code: "CS 5011", credits: 0 }] } : semester,
+    ),
+  });
+  const snapshot = targetPathSnapshot("CS 5010", seattle.courses, withCoop);
+  assert.ok(snapshot.path.nodes.some((node) => node.code === "CS 5011" && node.role === "planned"));
+  assert.ok(!snapshot.path.remainingCodes.includes("CS 5011"));
+  assert.equal(snapshot.earliest.reason, "ok");
+  assert.equal(snapshot.earliest.termName, "Fall 2027");
+  assert.equal(snapshot.earliest.placements.find((item) => item.code === "CS 5010")?.termName, "Fall 2027");
+});
+
 test("a course with no prerequisites is feasible in the first academic term", () => {
   const snapshot = targetPathSnapshot("CS 7180", seattle.courses, emptyPlan());
   assert.deepEqual(snapshot.path.remainingCodes, []);
