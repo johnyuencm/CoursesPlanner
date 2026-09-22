@@ -15,15 +15,19 @@ function parsePageSource(value: unknown, label: string): PageSource {
   if (!isRecord(value)) throw new Error(`${label} must be an object`);
   if (typeof value.key !== "string" || !value.key) throw new Error(`${label}.key is required`);
   const url = requiredHttpsUrl(value.url, `${label}.url`);
-  if (typeof value.fileName !== "string" || !/^[\w.-]+$/.test(value.fileName)) {
+  if (typeof value.fileName !== "string" || !/^[\w.-]+$/.test(value.fileName) || value.fileName === "." || value.fileName === "..") {
     throw new Error(`${label}.fileName is invalid`);
   }
   if (typeof value.required !== "boolean") throw new Error(`${label}.required must be boolean`);
+  if (value.format !== undefined && value.format !== "html" && value.format !== "xml") {
+    throw new Error(`${label}.format must be html or xml`);
+  }
   return {
     key: value.key,
     url,
     fileName: value.fileName,
     required: value.required,
+    ...(value.format ? { format: value.format } : {}),
   };
 }
 
@@ -51,7 +55,7 @@ function parseAllowedOrigins(value: unknown, label: string): string[] {
   return value.map((origin, index) => {
     if (typeof origin !== "string") throw new Error(`${label}[${index}] is invalid`);
     const url = new URL(origin);
-    if (url.protocol !== "https:" || url.pathname !== "/" || url.search || url.hash) {
+    if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
       throw new Error(`${label}[${index}] must be an HTTPS origin`);
     }
     return url.origin;
@@ -66,6 +70,12 @@ function parseUniversityCrawlConfig(value: unknown, label: string): UniversityCr
   const allowedOrigins = parseAllowedOrigins(value.allowedOrigins, `${label}.allowedOrigins`);
   const robotsUrl =
     value.robotsUrl === undefined ? undefined : requiredHttpsUrl(value.robotsUrl, `${label}.robotsUrl`);
+  if (!allowedOrigins.includes(new URL(discoverySource.url).origin)) {
+    throw new Error(`${label}.discoverySource.url origin must be listed in ${label}.allowedOrigins`);
+  }
+  if (robotsUrl !== undefined && !allowedOrigins.includes(new URL(robotsUrl).origin)) {
+    throw new Error(`${label}.robotsUrl origin must be listed in ${label}.allowedOrigins`);
+  }
   return {
     adapter: value.adapter,
     discoverySource,
@@ -204,10 +214,25 @@ export function parseSourceDefinition(value: unknown, fileName: string): Catalog
   };
 }
 
+function validateProductionUniversityDirectory(
+  universities: UniversityDirectoryEntry[],
+  label: string,
+): void {
+  for (const region of ["us", "world"] as const) {
+    const priorities = universities.filter((entry) => entry.region === region).map((entry) => entry.priority);
+    if (priorities.length !== 20 || priorities.some((priority, index) => priority !== index + 1)) {
+      throw new Error(`${label} must contain exactly 20 ${region} entries with priorities exactly 1 through 20`);
+    }
+  }
+}
+
 export async function loadUniversityDirectory(
   filePath = path.join(process.cwd(), "catalog-service", "universities.json"),
 ): Promise<UniversityDirectoryEntry[]> {
-  return parseUniversityDirectory(JSON.parse(await readFile(filePath, "utf8")), path.basename(filePath));
+  const label = path.basename(filePath);
+  const universities = parseUniversityDirectory(JSON.parse(await readFile(filePath, "utf8")), label);
+  validateProductionUniversityDirectory(universities, label);
+  return universities;
 }
 
 export async function loadRegistry(

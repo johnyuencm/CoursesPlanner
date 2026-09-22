@@ -12,7 +12,7 @@ Production is on Vercel at [https://courses-planner.vercel.app](https://courses-
 
 ## What the application includes
 
-- **Explore** (`/explore`) — the default workspace. The official MSCS Seattle prerequisite map, with neighborhood zoom, upstream/downstream emphasis, and an accessible relationship table.
+- **Explore** (`/explore`) — the default workspace. The official MSCS Seattle prerequisite map, with neighborhood zoom, upstream/downstream emphasis, an accessible relationship table, and a selector for other universities' ready roadmaps.
 - **Slim Overview** (`/`) — credits, target, critical prereq, next unlock, and a CTA into the map. Not a degree-audit dashboard.
 - **Courses** with search, requirement, breadth, credit, prerequisite, eligibility, and topic filters.
 - **Plan** with academic and internship/co-op terms, drag-and-drop, keyboard drag controls, and native move menus.
@@ -64,6 +64,8 @@ AppProvider --------> pages and dialogs
 
 The crawler is an independent Node service. It does not import Next.js. The web app never scrapes on page load. `GET /api/catalog` reads the validated snapshot from disk. `POST /api/catalog` asks the catalog service to refresh, and falls back to the same refresh library in-process if the service is not running.
 
+Explore shows a roadmap selector above the graph, backed by same-origin `GET /api/roadmaps`. That route only reads validated local snapshots and never crawls or fetches remotely inside Next.js: no query returns the ordered university directory with per-university status, `?university=<id>` returns discovered programs, and `?university=<id>&program=<id>` returns one ready roadmap. Selecting a ready program switches the graph to that program's course set and metadata while Northeastern MSCS stays the default; a reset button restores it. `/map` still redirects to Explore.
+
 ### Adding another program or university
 
 1. Inspect the official catalog the same way Northeastern was inspected. Do not invent requirements, and do not crawl `robots.txt` disallowed paths.
@@ -73,6 +75,20 @@ The crawler is an independent Node service. It does not import Next.js. The web 
 5. Refresh one source with `npm run catalog:refresh -- --id=<id> --force`, then enable polling.
 
 The service does not fetch a second live university until that source file exists and is enabled. `catalog-service/universities.json` is the ordered 20-US / 20-world directory and `/universities` listing; enabled directory rows still need a matching source file and crawl config before refresh.
+
+### Prerequisite roadmap crawling
+
+`catalog-service/universities.json` orders 20 US universities before 20 world universities. Only entries with `"support": "supported"`, `"enabled": true`, and a `crawl` config are fetched; metadata-only/unverified entries are listed but never requested. The crawler discovers official program links, extracts each program's course codes, parses the shared bulk course pages, and writes validated prerequisite roadmaps under `data/catalogs/<university-id>/` (`programs.json`, `roadmaps/<program-id>.json`, `.roadmap-crawl-status.json`). Runs are bounded and resume from persisted state.
+
+```bash
+npm run catalog:refresh -- --list-universities            # ordered directory with per-university status
+npm run catalog:refresh -- --crawl-roadmaps --limit=5     # advance the persisted queue by up to 5 steps
+npm run catalog:refresh -- --crawl-roadmaps --limit=5 --university=northeastern
+npm run catalog:refresh -- --list-programs --university=northeastern
+npm run catalog:refresh -- --roadmap=<program-id> --university=northeastern
+```
+
+Never run an unbounded crawl: `--crawl-roadmaps` requires `--limit=<1..100>`. `--retry-errors` requeues programs that previously failed. Roadmaps never fabricate `DegreeRequirement` fields; programs with no course-based requirements are marked `unsupported`.
 
 ### Main directories
 
@@ -113,7 +129,7 @@ Run the catalog service for continuous checks. It ticks once a minute and refres
 npm run catalog:serve
 ```
 
-The service binds `127.0.0.1:8787` with `GET /health`, `GET /catalogs`, `GET /catalogs/:id`, and `POST /catalogs/:id/refresh`. Keep it running in a second terminal next to `npm run dev` if you want background updates. The Next.js app still works without it: Refresh Catalog falls back to in-process refresh.
+The service binds `127.0.0.1:8787` with `GET /health`, `GET /universities`, `GET /universities/:id/programs`, `GET /universities/:id/status`, `GET /universities/:id/roadmaps/:programId`, `GET /catalogs`, `GET /catalogs/:id`, and `POST /catalogs/:id/refresh`. Keep it running in a second terminal next to `npm run dev` if you want background updates. The Next.js app still works without it: Refresh Catalog falls back to in-process refresh.
 
 The refresh pipeline:
 

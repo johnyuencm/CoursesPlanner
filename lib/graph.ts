@@ -103,12 +103,14 @@ export function visibleGraphDistances(
   courses: Course[],
   requirements: DegreeRequirement,
   relations: GraphRelation[],
+  programCodes?: Iterable<string>,
 ): Map<string, number> {
   if (scope === "course") {
     return new Map([...directedCourseChain(relations, focusCode)].map((code) => [code, 0]));
   }
   if (scope === "program") {
-    return topologicalRanks(programMapCodes(courses, requirements), relations);
+    const codes = programCodes ? new Set(programCodes) : programMapCodes(courses, requirements);
+    return topologicalRanks(codes, relations);
   }
   if (scope === "prerequisites") {
     const incoming = new Map<string, Set<string>>();
@@ -452,6 +454,7 @@ export type MapSceneInput = {
   scope: GraphScope;
   focusCode: string;
   selectedCode: string;
+  programCodes?: Iterable<string>;
   compare?: (left: string, right: string) => number;
   /** When set, drop every other visible node before layout. Used by Only my planned. */
   keep?: Iterable<string>;
@@ -583,6 +586,7 @@ export function mapScene(input: MapSceneInput): MapScene {
       input.courses,
       input.requirements,
       relations,
+      input.programCodes,
     ),
     input.keep,
   );

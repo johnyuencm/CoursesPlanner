@@ -58,7 +58,7 @@
     "university": "University of Washington",
     "region": "us",
     "priority": 7,
-    "catalogUrl": "https://www.washington.edu/students/gencat/",
+    "catalogUrl": "https://www.washington.edu/students/gencat/degree_programs.html",
     "support": "unverified",
     "enabled": false
   },
@@ -103,7 +103,7 @@
     "university": "University of Michigan",
     "region": "us",
     "priority": 12,
-    "catalogUrl": "https://atlas.ai.umich.edu/",
+    "catalogUrl": "https://admissions.umich.edu/academics-majors/majors-degrees",
     "support": "unverified",
     "enabled": false
   },
@@ -130,7 +130,7 @@
     "university": "Harvard",
     "region": "us",
     "priority": 15,
-    "catalogUrl": "https://courses.my.harvard.edu/",
+    "catalogUrl": "https://www.harvard.edu/programs/",
     "support": "unverified",
     "enabled": false
   },
@@ -182,9 +182,10 @@
       "adapter": "northeastern-acalog",
       "discoverySource": {
         "key": "programs",
-        "url": "https://catalog.northeastern.edu/programs/",
-        "fileName": "programs.html",
-        "required": true
+        "url": "https://catalog.northeastern.edu/sitemap.xml",
+        "fileName": "sitemap.xml",
+        "required": true,
+        "format": "xml"
       },
       "requestDelayMs": 750,
       "robotsUrl": "https://catalog.northeastern.edu/robots.txt",
@@ -241,7 +242,7 @@
     "university": "National University of Singapore",
     "region": "world",
     "priority": 6,
-    "catalogUrl": "https://www.nus.edu.sg/oam/programmes",
+    "catalogUrl": "https://nus.edu.sg/oam/undergraduate-programmes",
     "support": "unverified",
     "enabled": false
   },
@@ -250,7 +251,7 @@
     "university": "Tsinghua",
     "region": "world",
     "priority": 7,
-    "catalogUrl": "https://www.tsinghua.edu.cn/en/Admissions/Undergraduate/Overview.htm",
+    "catalogUrl": "https://www.tsinghua.edu.cn/en/Admissions/Undergraduate/Degree_Programs.htm",
     "support": "unverified",
     "enabled": false
   },
@@ -304,7 +305,7 @@
     "university": "Peking University",
     "region": "world",
     "priority": 13,
-    "catalogUrl": "https://english.pku.edu.cn/about.html#ab6",
+    "catalogUrl": "https://dean.pku.edu.cn/web/student_info.php?id=2&type=1",
     "support": "unverified",
     "enabled": false
   },
@@ -331,7 +332,7 @@
     "university": "KAIST",
     "region": "world",
     "priority": 16,
-    "catalogUrl": "https://www.kaist.ac.kr/en/html/edu/03100101.html",
+    "catalogUrl": "https://kaist.ac.kr/en/html/edu/03.html",
     "support": "unverified",
     "enabled": false
   },
@@ -358,7 +359,7 @@
     "university": "University of Melbourne",
     "region": "world",
     "priority": 19,
-    "catalogUrl": "https://study.unimelb.edu.au/find/courses/",
+    "catalogUrl": "https://study.unimelb.edu.au/find",
     "support": "unverified",
     "enabled": false
   },

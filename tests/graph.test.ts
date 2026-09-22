@@ -305,6 +305,20 @@ test("immediate neighborhood of CS 5500 stays local while entire-program scope k
   assert.equal(neighborhood.has("CS 5800"), false);
 });
 
+test("entire-program scope honors an explicit program code set over requirements-derived codes", () => {
+  const { courses, requirements } = seattleGraph();
+  const relations = catalogRelations(courses);
+  const explicit = visibleGraphDistances(
+    "program",
+    "CS 5500",
+    courses,
+    requirements,
+    relations,
+    ["CS 5004", "CS 5500"],
+  );
+  assert.deepEqual([...explicit.keys()].sort(), ["CS 5004", "CS 5500"]);
+});
+
 test("program grid prefers a canvas-filling packing over a short wide strip", () => {
   const none = { type: "none" as const };
   const codes = Array.from({ length: 114 }, (_, index) => `E ${String(index).padStart(3, "0")}`);

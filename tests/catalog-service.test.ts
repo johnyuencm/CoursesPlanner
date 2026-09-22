@@ -115,15 +115,15 @@ test("university directory loads the approved 20 US and 20 world entries", async
     ["uc-berkeley", "UC Berkeley", "https://registrar.berkeley.edu/catalog/"],
     ["uiuc", "UIUC", "https://catalog.illinois.edu/"],
     ["georgia-tech", "Georgia Tech", "https://catalog.gatech.edu/"],
-    ["washington", "University of Washington", "https://www.washington.edu/students/gencat/"],
+    ["washington", "University of Washington", "https://www.washington.edu/students/gencat/degree_programs.html"],
     ["cornell", "Cornell", "https://courses.cornell.edu/"],
     ["princeton", "Princeton", "https://ua.princeton.edu/"],
     ["ut-austin", "UT Austin", "https://catalog.utexas.edu/"],
     ["uc-san-diego", "UC San Diego", "https://catalog.ucsd.edu/"],
-    ["michigan", "University of Michigan", "https://atlas.ai.umich.edu/"],
+    ["michigan", "University of Michigan", "https://admissions.umich.edu/academics-majors/majors-degrees"],
     ["ucla", "UCLA", "https://catalog.registrar.ucla.edu/"],
     ["columbia", "Columbia", "https://bulletin.columbia.edu/"],
-    ["harvard", "Harvard", "https://courses.my.harvard.edu/"],
+    ["harvard", "Harvard", "https://www.harvard.edu/programs/"],
     ["caltech", "Caltech", "https://catalog.caltech.edu/"],
     ["penn", "University of Pennsylvania", "https://catalog.upenn.edu/"],
     ["yale", "Yale", "https://catalog.yale.edu/"],
@@ -134,20 +134,20 @@ test("university directory loads the approved 20 US and 20 world entries", async
     ["eth-zurich", "ETH Zurich", "https://ethz.ch/en/studies/bachelor/bachelors-degree-programmes.html"],
     ["imperial", "Imperial College London", "https://www.imperial.ac.uk/study/courses/"],
     ["toronto", "University of Toronto", "https://future.utoronto.ca/programs/"],
-    ["nus", "National University of Singapore", "https://www.nus.edu.sg/oam/programmes"],
-    ["tsinghua", "Tsinghua", "https://www.tsinghua.edu.cn/en/Admissions/Undergraduate/Overview.htm"],
+    ["nus", "National University of Singapore", "https://nus.edu.sg/oam/undergraduate-programmes"],
+    ["tsinghua", "Tsinghua", "https://www.tsinghua.edu.cn/en/Admissions/Undergraduate/Degree_Programs.htm"],
     ["epfl", "EPFL", "https://www.epfl.ch/education/bachelor/programs/"],
     ["waterloo", "University of Waterloo", "https://uwaterloo.ca/future-students/programs"],
     ["ucl", "UCL", "https://www.ucl.ac.uk/prospective-students/undergraduate/degrees"],
     ["edinburgh", "University of Edinburgh", "https://study.ed.ac.uk/programmes"],
     ["ntu", "Nanyang Technological University", "https://www.ntu.edu.sg/education/degree-programmes"],
-    ["peking", "Peking University", "https://english.pku.edu.cn/about.html#ab6"],
+    ["peking", "Peking University", "https://dean.pku.edu.cn/web/student_info.php?id=2&type=1"],
     ["ubc", "University of British Columbia", "https://you.ubc.ca/programs/"],
     ["tokyo", "University of Tokyo", "https://www.u-tokyo.ac.jp/en/academics/faculties.html"],
-    ["kaist", "KAIST", "https://www.kaist.ac.kr/en/html/edu/03100101.html"],
+    ["kaist", "KAIST", "https://kaist.ac.kr/en/html/edu/03.html"],
     ["seoul-national", "Seoul National University", "https://en.snu.ac.kr/academics/programs/undergraduate"],
     ["tum", "Technical University of Munich", "https://www.tum.de/en/studies/degree-programs"],
-    ["melbourne", "University of Melbourne", "https://study.unimelb.edu.au/find/courses/"],
+    ["melbourne", "University of Melbourne", "https://study.unimelb.edu.au/find"],
     ["hkust", "HKUST", "https://hkust.edu.hk/directory/academic-programs"],
   ];
 
@@ -166,11 +166,36 @@ test("university directory loads the approved 20 US and 20 world entries", async
   assert.deepEqual(universities.slice(20).map(({ region, priority }) => [region, priority]), [
     ...Array.from({ length: 20 }, (_, index) => ["world", index + 1]),
   ]);
-  assert.deepEqual(
-    enabledUniversities(universities).map((entry) => entry.id),
-    ["northeastern"],
-  );
+  assert.deepEqual(enabledUniversities(universities).map((entry) => entry.id), ["northeastern"]);
   assert.equal(universities.filter((entry) => entry.support === "unverified").length, 39);
+});
+
+test("production university directory rejects incomplete and sparse regions", async () => {
+  const directory = JSON.parse(
+    readFileSync(path.join(process.cwd(), "catalog-service", "universities.json"), "utf8"),
+  ) as Array<Record<string, unknown>>;
+  const rootDir = await mkdtemp(path.join(tmpdir(), "university-directory-"));
+  const incompletePath = path.join(rootDir, "incomplete.json");
+  const sparsePath = path.join(rootDir, "sparse.json");
+  try {
+    await writeFile(
+      incompletePath,
+      `${JSON.stringify(directory.filter((entry) => entry.id !== "northeastern"), null, 2)}\n`,
+    );
+    await assert.rejects(() => loadUniversityDirectory(incompletePath), {
+      message: "incomplete.json must contain exactly 20 us entries with priorities exactly 1 through 20",
+    });
+
+    await writeFile(
+      sparsePath,
+      `${JSON.stringify(directory.filter((entry) => entry.id !== "cambridge"), null, 2)}\n`,
+    );
+    await assert.rejects(() => loadUniversityDirectory(sparsePath), {
+      message: "sparse.json must contain exactly 20 world entries with priorities exactly 1 through 20",
+    });
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
 });
 
 test("university directory sorts US before world and skips metadata-only entries", () => {
@@ -213,6 +238,61 @@ test("enabled universities require supported adapter and discovery crawl config"
   assert.throws(
     () => parseUniversityDirectory([withoutCrawl], "test universities"),
     /enabled requires crawl config/,
+  );
+});
+
+test("university crawl URLs must use allowed origins", () => {
+  const supported = supportedUniversity();
+  const crawl = supported.crawl as Record<string, unknown>;
+  const discoverySource = crawl.discoverySource as Record<string, unknown>;
+
+  assert.throws(
+    () =>
+      parseUniversityDirectory(
+        [
+          {
+            ...supported,
+            crawl: {
+              ...crawl,
+              allowedOrigins: ["https://user:password@catalog.northeastern.edu"],
+            },
+          },
+        ],
+        "test universities",
+      ),
+    {
+      message: "test universities[0].crawl.allowedOrigins[0] must be an HTTPS origin",
+    },
+  );
+  assert.throws(
+    () =>
+      parseUniversityDirectory(
+        [
+          {
+            ...supported,
+            crawl: {
+              ...crawl,
+              discoverySource: { ...discoverySource, url: "https://example.com/programs/" },
+            },
+          },
+        ],
+        "test universities",
+      ),
+    {
+      message:
+        "test universities[0].crawl.discoverySource.url origin must be listed in test universities[0].crawl.allowedOrigins",
+    },
+  );
+  assert.throws(
+    () =>
+      parseUniversityDirectory(
+        [{ ...supported, crawl: { ...crawl, robotsUrl: "https://example.com/robots.txt" } }],
+        "test universities",
+      ),
+    {
+      message:
+        "test universities[0].crawl.robotsUrl origin must be listed in test universities[0].crawl.allowedOrigins",
+    },
   );
 });
 
@@ -441,19 +521,36 @@ test("catalog service HTTP handlers list sources and universities without changi
   assert.equal(directory.status, 200);
   const payload = JSON.parse(directory.body) as { universities: Array<Record<string, unknown>> };
   assert.equal(payload.universities.length, 40);
-  assert.deepEqual(payload.universities[0], {
-    id: "mit",
-    university: "MIT",
-    region: "us",
-    priority: 1,
-    catalogUrl: "https://catalog.mit.edu/",
-    support: "unverified",
-    enabled: false,
-  });
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(payload.universities[0]).filter(([key]) => key !== "status")),
+    {
+      id: "mit",
+      university: "MIT",
+      region: "us",
+      priority: 1,
+      catalogUrl: "https://catalog.mit.edu/",
+      support: "unverified",
+      enabled: false,
+    },
+  );
+  assert.equal((payload.universities[0].status as { status: string }).status, "unverified");
   assert.equal(payload.universities[19].id, "northeastern");
   assert.equal(payload.universities[19].support, "supported");
+  assert.equal(payload.universities[19].enabled, true);
   assert.equal(payload.universities[20].id, "oxford");
   assert.equal("crawl" in payload.universities[19], false);
+  assert.equal("status" in payload.universities[19], true);
+
+  const wrongUniversityMethod = await handleCatalogRequest(
+    "POST",
+    new URL("http://127.0.0.1/universities"),
+    Buffer.alloc(0),
+    context,
+  );
+  assert.equal(wrongUniversityMethod.status, 405);
+  assert.equal((wrongUniversityMethod.headers as Record<string, string>).Allow, "GET");
+  assert.equal(wrongUniversityMethod.headers["Content-Type"], "application/json; charset=utf-8");
+  assert.deepEqual(JSON.parse(wrongUniversityMethod.body), { error: "Method not allowed." });
 
   const missing = await handleCatalogRequest(
     "POST",
