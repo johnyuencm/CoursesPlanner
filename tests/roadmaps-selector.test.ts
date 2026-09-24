@@ -3,8 +3,11 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import test from "node:test";
 
-import { GraphInspectorActions } from "../components/course-graph";
+import { GraphInspectorActions, graphStatus, graphStudentFacts } from "../components/course-graph";
 import { RoadmapSelectorView, type RoadmapSelectorViewProps } from "../components/roadmap-selector";
+import type { UniversityRoadmapSummary } from "../catalog-service/source-types";
+import { earliestTakeTerm, prerequisiteChecks, programMapCodes } from "../lib/graph";
+import { emptyPlan } from "../lib/plan";
 import {
   groupUniversities,
   isProgramSelectable,
@@ -18,9 +21,8 @@ import {
   sortPrograms,
   universityStatusText,
 } from "../lib/roadmaps";
-import { programMapCodes } from "../lib/graph";
-import type { Catalog, Course, DiscoveredProgram, ProgramRoadmap } from "../lib/types";
-import type { UniversityRoadmapSummary } from "../catalog-service/source-types";
+import type { Catalog, Course, DiscoveredProgram, ProgramRoadmap, StudentPlan } from "../lib/types";
+import { getEligibility } from "../lib/validation";
 
 const summary = (overrides: Partial<UniversityRoadmapSummary>): UniversityRoadmapSummary => ({
   id: "example-university",
@@ -233,4 +235,68 @@ test("roadmap override hides Northeastern inspector actions", () => {
   assert.match(defaultMarkup, /Add to Plan/);
   assert.match(defaultMarkup, /Full course details/);
   assert.equal(renderToStaticMarkup(createElement(GraphInspectorActions, { ...props, overrideActive: true })), "");
+});
+
+test("foreign roadmap does not reuse NEU plan status for overlapping course codes", () => {
+  const neuPlan: StudentPlan = {
+    ...emptyPlan(),
+    completedCourses: ["CS 5010"],
+    waivedCourses: ["CS 5500"],
+  };
+  neuPlan.semesters[0]!.courses.push({ code: "CS 5800" });
+  const overlapping = course("CS 5010");
+  const waivedTwin = course("CS 5500");
+  const dependent: Course = {
+    ...course("CS 5800"),
+    prerequisites: { type: "course", code: "CS 5010" },
+    prerequisiteCodes: ["CS 5010"],
+  };
+  const foreignRoadmap = roadmap({
+    universityId: "example-university",
+    university: "Example University",
+    programCourseCodes: ["CS 5010", "CS 5500", "CS 5800"],
+    courses: [overlapping, waivedTwin, dependent],
+  });
+
+  const neu = graphStudentFacts(false, neuPlan);
+  const foreign = graphStudentFacts(foreignRoadmap !== null, neuPlan);
+
+  assert.equal(graphStatus(overlapping, "CS 5010", neu).id, "completed");
+  assert.equal(graphStatus(overlapping, "CS 5010", foreign).id, "available");
+  assert.equal(graphStatus(waivedTwin, "CS 5500", neu).id, "completed");
+  assert.notEqual(graphStatus(waivedTwin, "CS 5500", foreign).id, "completed");
+  assert.equal(graphStatus(dependent, "CS 5800", neu).id, "in-progress");
+  assert.equal(graphStatus(dependent, "CS 5800", foreign).id, "blocked");
+
+  assert.equal(getEligibility(dependent, neu.history).status, "eligible");
+  assert.equal(getEligibility(dependent, foreign.history).status, "locked");
+  assert.deepEqual(prerequisiteChecks(["CS 5010"], neu.history), [{ code: "CS 5010", met: true }]);
+  assert.deepEqual(prerequisiteChecks(["CS 5010"], foreign.history), [{ code: "CS 5010", met: false }]);
+
+  const neuTake = earliestTakeTerm({
+    completed: neu.completed.has("CS 5010"),
+    waived: neu.waived.has("CS 5010"),
+    plannedTermName: neu.plannedByCode.get("CS 5010")?.name ?? null,
+    eligibility: getEligibility(overlapping, neu.history).status,
+    missing: getEligibility(overlapping, neu.history).missing,
+    firstAcademicTermName: neu.firstAcademicTermName,
+  });
+  const foreignTake = earliestTakeTerm({
+    completed: foreign.completed.has("CS 5010"),
+    waived: foreign.waived.has("CS 5010"),
+    plannedTermName: foreign.plannedByCode.get("CS 5010")?.name ?? null,
+    eligibility: getEligibility(overlapping, foreign.history).status,
+    missing: getEligibility(overlapping, foreign.history).missing,
+    firstAcademicTermName: foreign.firstAcademicTermName,
+  });
+  assert.equal(neuTake.label, "Already completed");
+  assert.notEqual(foreignTake.label, "Already completed");
+  assert.equal(foreign.completed.size, 0);
+  assert.equal(foreign.waived.size, 0);
+  assert.equal(foreign.planned.size, 0);
+  assert.equal(foreign.history.size, 0);
+  assert.equal(foreign.recorded.size, 0);
+  assert.equal(foreign.plannedByCode.size, 0);
+  assert.equal(foreign.currentTermId, null);
+  assert.equal(foreign.firstAcademicTermName, null);
 });
