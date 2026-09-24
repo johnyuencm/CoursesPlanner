@@ -40,7 +40,7 @@ import {
   type GraphViewSnapshot,
   type RelationshipSelection,
 } from "@/lib/graph";
-import type { Course, Pathway, ProgramRoadmap } from "@/lib/types";
+import type { Course, Pathway, ProgramRoadmap, StudentPlan } from "@/lib/types";
 import { expressionLabel, getEligibility } from "@/lib/validation";
 import { addableLineCourses } from "@/lib/plan";
 import { resolveGraphCourses, resolveProgramScope, roadmapFocusCourse, roadmapProgramLabel } from "@/lib/roadmaps";
@@ -114,22 +114,55 @@ function nodeRequirementCopy(course: { requirementType: string; unlocks: string[
   return expressionLabel(kind === "prerequisites" ? course.prerequisites : course.corequisites);
 }
 
-function graphStatus(
+export function graphStudentFacts(overrideActive: boolean, plan: StudentPlan) {
+  if (overrideActive) {
+    return {
+      completed: new Set<string>(),
+      waived: new Set<string>(),
+      planned: new Set<string>(),
+      history: new Set<string>(),
+      recorded: new Set<string>(),
+      plannedByCode: new Map<string, { id: string; name: string }>(),
+      currentTermId: null as string | null,
+      firstAcademicTermName: null as string | null,
+    };
+  }
+  const completed = new Set(plan.completedCourses);
+  const waived = new Set(plan.waivedCourses);
+  const history = new Set([...completed, ...waived]);
+  const planned = new Set<string>();
+  const plannedByCode = new Map<string, { id: string; name: string }>();
+  for (const semester of plan.semesters) {
+    for (const course of semester.courses) {
+      planned.add(course.code);
+      if (!plannedByCode.has(course.code)) plannedByCode.set(course.code, { id: semester.id, name: semester.name });
+    }
+  }
+  const currentTerm = plan.semesters.find((semester) => semester.type === "academic") ?? plan.semesters[0];
+  return {
+    completed,
+    waived,
+    planned,
+    history,
+    recorded: new Set([...history, ...planned]),
+    plannedByCode,
+    currentTermId: currentTerm?.id ?? null,
+    firstAcademicTermName: currentTerm?.name ?? null,
+  };
+}
+
+export function graphStatus(
   course: Course | undefined,
   code: string,
-  completed: Set<string>,
-  waived: Set<string>,
-  plannedTermId: string | null,
-  currentTermId: string | null,
-  prior: Set<string>,
+  facts: ReturnType<typeof graphStudentFacts>,
 ) {
   if (!course) return graphFocusStatus({ completed: false, waived: false, eligibility: "locked" });
   return graphFocusStatus({
-    completed: completed.has(code),
-    waived: waived.has(code),
-    plannedTermId,
-    currentTermId,
-    eligibility: getEligibility(course, prior).status,
+    completed: facts.completed.has(code),
+    waived: facts.waived.has(code),
+    plannedTermId: facts.plannedByCode.get(code)?.id ?? null,
+    currentTermId: facts.currentTermId,
+    eligibility: getEligibility(course, facts.history).status,
   });
 }
 
@@ -193,22 +226,8 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   const cycleRef = useRef<(step: number) => void>(() => {});
   const matchesRef = useRef<{ code: string; title: string }[]>([]);
   const courseMap = useMemo(() => new Map(courses.map((course) => [course.code, course])), [courses]);
-  const history = useMemo(() => new Set([...plan.completedCourses, ...plan.waivedCourses]), [plan.completedCourses, plan.waivedCourses]);
-  const completed = useMemo(() => new Set(plan.completedCourses), [plan.completedCourses]);
-  const waived = useMemo(() => new Set(plan.waivedCourses), [plan.waivedCourses]);
-  const planned = useMemo(() => new Set(plan.semesters.flatMap((semester) => semester.courses.map((course) => course.code))), [plan.semesters]);
-  const plannedByCode = useMemo(() => {
-    const terms = new Map<string, { id: string; name: string }>();
-    for (const semester of plan.semesters) {
-      for (const course of semester.courses) {
-        if (!terms.has(course.code)) terms.set(course.code, { id: semester.id, name: semester.name });
-      }
-    }
-    return terms;
-  }, [plan.semesters]);
-  const currentTermId = plan.semesters.find((semester) => semester.type === "academic")?.id ?? plan.semesters[0]?.id ?? null;
-  const firstAcademicTermName = plan.semesters.find((semester) => semester.type === "academic")?.name ?? plan.semesters[0]?.name ?? null;
-  const recorded = useMemo(() => new Set([...history, ...planned]), [history, planned]);
+  const facts = useMemo(() => graphStudentFacts(overrideActive, plan), [overrideActive, plan.completedCourses, plan.waivedCourses, plan.semesters]);
+  const { completed, waived, planned, history, recorded, plannedByCode, firstAcademicTermName } = facts;
   const scene = useMemo(() => {
     if (!catalog) {
       return {
@@ -242,7 +261,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
       const emphasized = selectedRelationship ? selectedRelationship.codes.has(code) : neighborhood.has(code);
       const focused = code === selectedCode;
       const badge = requirementBadge(course?.requirementType ?? "external");
-      const status = graphStatus(course, code, completed, waived, plannedByCode.get(code)?.id ?? null, currentTermId, history);
+      const status = graphStatus(course, code, facts);
       const locked = status.id === "blocked";
       return {
         id: code,
@@ -331,7 +350,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
     });
     const courseNodes = nodes.filter((node): node is GraphNode => node.type === "course");
     return { nodes, edges, courseNodes };
-  }, [scene, neighborhood, selectedCode, selectedRelationship, courseMap, history, completed, waived, plannedByCode, currentTermId]);
+  }, [scene, neighborhood, selectedCode, selectedRelationship, courseMap, facts]);
   const found = useMemo(
     () => mapFind.query(courses, search, programCodes),
     [courses, search, programCodes],
@@ -543,8 +562,8 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   const selected = courseMap.get(selectedCode);
   const relationshipTarget = selectedRelationship ? courseMap.get(selectedRelationship.target) : undefined;
   const badge = selected ? requirementBadge(selected.requirementType) : requirementBadge("external");
-  const selectedStatus = graphStatus(selected, selectedCode, completed, waived, plannedByCode.get(selectedCode)?.id ?? null, currentTermId, history);
-  const selectedEligibility = selected ? getEligibility(selected, history) : { status: "locked" as const, missing: [] as string[], reasons: [] as string[] };
+  const selectedStatus = graphStatus(selected, selectedCode, facts);
+  const selectedEligibility = selected ? getEligibility(selected, facts.history) : { status: "locked" as const, missing: [] as string[], reasons: [] as string[] };
   const takeTerm = earliestTakeTerm({
     completed: completed.has(selectedCode),
     waived: waived.has(selectedCode),
@@ -781,7 +800,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
             <div className="detail-code-links"><CodeLinks codes={selected?.corequisiteCodes ?? []} limit={1000} onSelect={selectRelated} /></div>
           </> : null}
         </div>
-        {overrideActive ? <GraphInspectorActions overrideActive selected={selected} recorded={recorded.has(selectedCode)} onAddToPlan={() => openPicker(undefined, selectedCode)} onOpenCourse={() => openCourse(selectedCode)} /> : <div className="inspector-actions">
+        {overrideActive ? null : <div className="inspector-actions">
           <SetAsTargetButton code={selectedCode} />
           {!recorded.has(selectedCode) && selected && selected.requirementType !== "external" && plan.semesters.length ? <div className="inspector-add-plan">
             <label className="field-label" htmlFor="inspector-add-semester">Add to a semester</label>
