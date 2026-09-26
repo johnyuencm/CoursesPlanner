@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { overviewSnapshot } from "../lib/overview";
 import { emptyPlan } from "../lib/plan";
-import { legacyRedirects, primaryNav, routes, targetPathHref } from "../lib/routes";
+import { criticalPathHref, legacyRedirects, primaryNav, routes, targetPathHref } from "../lib/routes";
 import type { Catalog, Course, RequirementExpression, StudentPlan } from "../lib/types";
 import { validatePlan } from "../lib/validation";
 
@@ -102,6 +102,10 @@ test("legacy /map bookmark redirects to Explore", () => {
 
 test("target path panel is anchored on Plan", () => {
   assert.equal(targetPathHref, "/planner#target-path");
+});
+
+test("critical path panel is anchored on Plan", () => {
+  assert.equal(criticalPathHref, "/planner#critical-path");
 });
 
 test("slim overview reports credits, target, critical prereq, and next unlock", () => {

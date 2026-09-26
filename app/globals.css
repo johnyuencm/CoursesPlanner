@@ -704,6 +704,10 @@ textarea { resize: vertical; }
 .why-blocked-conflicts li { display: flex; align-items: flex-start; gap: 0.35rem; }
 .why-blocked-conflicts.warning { color: #74490d; }
 .why-blocked-conflicts.error { color: var(--red); }
+.delay-impact-copy { margin: 0.45rem 0 0; font-size: 0.78rem; font-weight: 650; }
+.delay-impact-list { margin: 0.35rem 0 0; padding-left: 1.1rem; font-size: 0.72rem; color: var(--ink-soft); }
+.delay-impact-list li { margin: 0.15rem 0; }
+.critical-path-card { margin-top: 0.75rem; }
 
 @media (max-width: 1180px) {
   :root { --sidebar: 82px; }
@@ -722,7 +726,7 @@ textarea { resize: vertical; }
   .graph-layout { grid-template-columns: minmax(0, 1fr); }
   .graph-inspector { position: static; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.6rem; }
   .graph-inspector > .inspector-heading-meta, .graph-inspector > h2, .graph-inspector > .inspector-course-title, .graph-inspector > .inspector-description, .graph-inspector > .inspector-facts { grid-column: 1; }
-  .graph-inspector > .line-focus-banner, .graph-inspector > .graph-focus-controls, .graph-inspector > .target-path-card, .graph-inspector > .why-blocked-card { grid-column: 1 / -1; }
+  .graph-inspector > .line-focus-banner, .graph-inspector > .graph-focus-controls, .graph-inspector > .target-path-card, .graph-inspector > .why-blocked-card, .graph-inspector > .critical-path-card { grid-column: 1 / -1; }
   .inspector-relationships { grid-column: 2; grid-row: 1 / 7; margin-top: 0; padding: 0 0 0 1rem; border: 0; border-left: 1px solid var(--line); }
   .inspector-tip, .inspector-actions { grid-column: 1; }
 }
