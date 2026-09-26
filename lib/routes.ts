@@ -6,7 +6,7 @@ export const routes = {
   paths: "/pathways",
 } as const;
 
-/** Deep-link stub for the target path panel (Why-blocked follow-up can reuse this). */
+/** Deep-link for the target path panel (blocked-course chain UI reuses the same helpers). */
 export const targetPathHref = `${routes.plan}#target-path`;
 
 export const primaryNav = [

@@ -1,6 +1,7 @@
-import type { PlannedCourse, PlanIssue, Semester, StudentPlan } from "./types";
-import type { TermPlacement } from "./target-path";
-import { termSlug } from "./target-path";
+import type { Catalog, Course, Eligibility, PlannedCourse, PlanIssue, Semester, StudentPlan } from "./types";
+import type { TargetPathNode, TermPlacement } from "./target-path";
+import { targetPathSnapshot, termSlug } from "./target-path";
+import { getEligibility, validatePlan } from "./validation";
 
 export const STORAGE_KEY = "neu-mscs-planner-plan-v1";
 export const MAX_PLAN_BACKUP_BYTES = 1_000_000;
@@ -9,6 +10,8 @@ const MAX_COURSE_CODES = 256;
 const MAX_CREDIT_ENTRIES = 256;
 export const MAX_SEMESTERS = 32;
 export const MAX_COURSES_PER_SEMESTER = 32;
+/** Typical full-time MSCS load; adding past this is an overload warning, not a hard block. */
+export const TYPICAL_TERM_LOAD_CREDITS = 8;
 const MAX_CREDITS_PER_COURSE = 32;
 const MAX_TEXT_LENGTH = 100;
 const COURSE_CODE = /^[A-Z]{2,6} [0-9]{2,4}[A-Z]{0,2}$/;
@@ -138,6 +141,251 @@ export function applyRemainingPathToPlan(
     added.push(...result.added);
   }
   return { ok: true, plan: next, added, createdTerms };
+}
+
+export type ChainConflictKind =
+  | "capacity"
+  | "semester-limit"
+  | "missing-term"
+  | "unscheduled"
+  | "overload"
+  | "issue"
+  | "unknown-course"
+  | "cyclic"
+  | "missing-data";
+
+export type ChainConflict = {
+  severity: "error" | "warning";
+  kind: ChainConflictKind;
+  message: string;
+};
+
+export type TermLoadPreview = {
+  termName: string;
+  semesterId: string | null;
+  created: boolean;
+  existingCredits: number;
+  addedCredits: number;
+  totalCredits: number;
+  addedCodes: string[];
+  overload: boolean;
+};
+
+export type ChainInsertPreview = {
+  code: string;
+  eligibility: Eligibility["status"];
+  blocked: boolean;
+  why: string[];
+  remainingCodes: string[];
+  reusedCodes: string[];
+  nodes: TargetPathNode[];
+  earliestTermName: string | null;
+  summary: string;
+  placements: TermPlacement[];
+  addedCodes: string[];
+  createdTerms: string[];
+  termLoads: TermLoadPreview[];
+  conflicts: ChainConflict[];
+  canApply: boolean;
+  applyBlockedReason: string | null;
+};
+
+function plannedCreditsOf(
+  code: string,
+  plan: StudentPlan,
+  courses: Map<string, Pick<Course, "credits">>,
+): number {
+  for (const semester of plan.semesters) {
+    const item = semester.courses.find((course) => course.code === code);
+    if (item) return item.credits ?? courses.get(code)?.credits ?? 0;
+  }
+  return courses.get(code)?.credits ?? 0;
+}
+
+function semesterCreditTotal(
+  semester: Pick<Semester, "courses">,
+  courses: Map<string, Pick<Course, "credits">>,
+): number {
+  return semester.courses.reduce(
+    (sum, item) => sum + (item.credits ?? courses.get(item.code)?.credits ?? 0),
+    0,
+  );
+}
+
+function blockedWhy(
+  eligibility: Eligibility,
+  remainingCodes: readonly string[],
+  reusedCodes: readonly string[],
+  summary: string,
+  code: string,
+): string[] {
+  const why: string[] = [];
+  if (remainingCodes.length) {
+    why.push(`You still need ${remainingCodes.join(", ")} before ${code} is open.`);
+  } else if (reusedCodes.length && eligibility.status !== "eligible") {
+    why.push(
+      `Prerequisites are already on your plan (${reusedCodes.join(", ")}) but are not yet completed or waived.`,
+    );
+  } else if (eligibility.status === "uncertain") {
+    why.push(...eligibility.reasons.filter(Boolean));
+    if (!why.length) why.push("Prerequisite text could not be fully verified.");
+  } else if (eligibility.status === "locked") {
+    why.push(...eligibility.reasons.filter(Boolean));
+    if (!why.length) why.push("Prerequisites are not met from completed or waived history.");
+  }
+  if (summary && !why.includes(summary)) why.push(summary);
+  return why;
+}
+
+export function previewChainInsert(
+  code: string,
+  courses: readonly Course[],
+  plan: StudentPlan,
+  catalog?: Catalog,
+): ChainInsertPreview {
+  const catalogCourses = new Map(courses.map((course) => [course.code, course]));
+  const course = catalogCourses.get(code);
+  const history = new Set([...plan.completedCourses, ...plan.waivedCourses]);
+  const eligibility = course
+    ? getEligibility(course, history)
+    : { status: "locked" as const, missing: [code], reasons: [`${code} is not in this catalog.`] };
+  const snapshot = targetPathSnapshot(code, courses, plan);
+  const remainingCodes = snapshot.path.remainingCodes;
+  const reusedCodes = snapshot.path.nodes
+    .filter((node) => node.role === "completed" || node.role === "waived" || node.role === "planned")
+    .map((node) => node.code);
+  const why = blockedWhy(eligibility, remainingCodes, reusedCodes, snapshot.earliest.summary, code);
+  const blocked =
+    snapshot.earliest.reason !== "already-recorded" &&
+    (eligibility.status !== "eligible" ||
+      snapshot.path.status !== "ok" ||
+      snapshot.earliest.reason !== "ok" ||
+      remainingCodes.length > 0);
+  const conflicts: ChainConflict[] = [];
+  const schedulingKind: ChainConflictKind | null =
+    snapshot.path.status === "unknown-course"
+      ? "unknown-course"
+      : snapshot.path.status === "cyclic"
+        ? "cyclic"
+        : snapshot.path.status === "missing-data"
+          ? "missing-data"
+          : snapshot.earliest.reason === "ok" || snapshot.earliest.reason === "already-recorded"
+            ? null
+            : "unscheduled";
+  if (schedulingKind) {
+    conflicts.push({
+      severity: "error",
+      kind: schedulingKind,
+      message: snapshot.earliest.summary,
+    });
+  }
+
+  let addedCodes: string[] = [];
+  let createdTerms: string[] = [];
+  const termLoads: TermLoadPreview[] = [];
+  let canApply = snapshot.earliest.reason === "ok" && snapshot.earliest.placements.length > 0;
+  let applyBlockedReason: string | null = schedulingKind ? snapshot.earliest.summary : null;
+
+  if (snapshot.earliest.placements.length) {
+    const applied = applyRemainingPathToPlan(plan, courses, snapshot.earliest.placements);
+    if (!applied.ok) {
+      canApply = false;
+      const message =
+        applied.reason === "capacity"
+          ? `${applied.semesterName ?? "That term"} already has ${MAX_COURSES_PER_SEMESTER} planned courses. The chain was not applied.`
+          : applied.reason === "semester-limit"
+            ? `This local plan supports up to ${MAX_SEMESTERS} terms. The chain was not applied.`
+            : "A planned term for this path is missing. The chain was not applied.";
+      applyBlockedReason = message;
+      conflicts.push({ severity: "error", kind: applied.reason, message });
+    } else {
+      addedCodes = applied.added;
+      createdTerms = applied.createdTerms;
+      const byTerm = new Map<string, string[]>();
+      for (const placement of snapshot.earliest.placements) {
+        if (!applied.added.includes(placement.code)) continue;
+        const key = placement.semesterId ?? placement.termName;
+        const group = byTerm.get(key) ?? [];
+        group.push(placement.code);
+        byTerm.set(key, group);
+      }
+      for (const [key, codes] of byTerm) {
+        const placement = snapshot.earliest.placements.find(
+          (item) => (item.semesterId ?? item.termName) === key && codes.includes(item.code),
+        );
+        const termName = placement?.termName ?? key;
+        const existing = plan.semesters.find(
+          (semester) => semester.id === placement?.semesterId || semester.name === termName,
+        );
+        const created = createdTerms.includes(termName);
+        const existingCredits = existing && !created ? semesterCreditTotal(existing, catalogCourses) : 0;
+        const addedCredits = codes.reduce(
+          (sum, item) => sum + plannedCreditsOf(item, applied.plan, catalogCourses),
+          0,
+        );
+        const totalCredits = existingCredits + addedCredits;
+        const overload = (existing?.type ?? "academic") === "academic" && totalCredits > TYPICAL_TERM_LOAD_CREDITS;
+        termLoads.push({
+          termName,
+          semesterId: existing?.id ?? placement?.semesterId ?? null,
+          created,
+          existingCredits,
+          addedCredits,
+          totalCredits,
+          addedCodes: codes,
+          overload,
+        });
+        if (overload) {
+          conflicts.push({
+            severity: "warning",
+            kind: "overload",
+            message: `${termName} would be ${totalCredits} credits after adding ${codes.join(", ")} (typical load is ${TYPICAL_TERM_LOAD_CREDITS}).`,
+          });
+        }
+      }
+      if (catalog) {
+        const before = new Set(validatePlan(plan, catalog).issues.map((issue) => `${issue.kind}:${issue.courseCode}:${issue.message}`));
+        for (const issue of validatePlan(applied.plan, catalog).issues) {
+          if (before.has(`${issue.kind}:${issue.courseCode}:${issue.message}`)) continue;
+          if (!applied.added.includes(issue.courseCode) && issue.courseCode !== code) continue;
+          conflicts.push({
+            severity: issue.severity,
+            kind: "issue",
+            message: issue.message,
+          });
+        }
+      }
+      if (!addedCodes.length) {
+        canApply = false;
+        applyBlockedReason = "Every course on this path is already in your plan or history, or cannot be added.";
+      }
+    }
+  } else if (!applyBlockedReason && snapshot.earliest.reason !== "already-recorded") {
+    canApply = false;
+    applyBlockedReason = snapshot.earliest.summary;
+  } else if (snapshot.earliest.reason === "already-recorded") {
+    canApply = false;
+    applyBlockedReason = snapshot.earliest.summary;
+  }
+
+  return {
+    code,
+    eligibility: eligibility.status,
+    blocked: blocked && snapshot.earliest.reason !== "already-recorded",
+    why,
+    remainingCodes,
+    reusedCodes,
+    nodes: snapshot.path.nodes,
+    earliestTermName: snapshot.earliest.termName,
+    summary: snapshot.earliest.summary,
+    placements: snapshot.earliest.placements,
+    addedCodes,
+    createdTerms,
+    termLoads,
+    conflicts,
+    canApply,
+    applyBlockedReason,
+  };
 }
 
 export type MoveCourseResult =
