@@ -18,13 +18,13 @@ import {
   emptyPlan,
   loadPlan,
   parsePlan,
+  previewChainInsert,
   recordedCourseCodes,
   restorePlan,
   STORAGE_KEY,
   suggestedPrerequisiteFix,
   type PlanBackupDownload,
 } from "@/lib/plan";
-import { targetPathSnapshot } from "@/lib/target-path";
 import { validatePlan } from "@/lib/validation";
 
 type PickerState = { semesterId?: string; courseCode?: string } | null;
@@ -60,6 +60,7 @@ interface AppContextValue {
   courseTargetCode: string | null;
   setCourseTargetCode: (code: string | null) => void;
   addTargetChain: () => void;
+  addPrerequisiteChain: (code: string) => void;
   workspaceSelection: WorkspaceSelection;
   setWorkspaceSelection: (next: WorkspaceSelection) => void;
   notice: string;
@@ -337,22 +338,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!fix) return `${addedLabel} added to ${semesterName}. ${kind}.`;
     return `${addedLabel} added to ${semesterName}. ${kind} — ${fix.suggestion}. Open Plan to apply a fix.`;
   };
-  const addTargetChain = () => {
+  const addPrerequisiteChain = (code: string) => {
     if (!catalog) {
       announce("Catalog is still loading. Try adding the path again in a moment.");
       return;
     }
-    if (!courseTargetCode) {
-      announce("Choose a target course before adding its prerequisite chain.");
+    if (!code) {
+      announce("Choose a course before adding its prerequisite chain.");
       return;
     }
     let added: string[] = [];
     let createdTerms: string[] = [];
     let capacityTerm: string | undefined;
     let failed: "capacity" | "missing-term" | "semester-limit" | undefined;
+    let blockedReason: string | undefined;
     setPlan((current) => {
-      const snapshot = targetPathSnapshot(courseTargetCode, catalog.courses, current);
-      const result = applyRemainingPathToPlan(current, catalog.courses, snapshot.earliest.placements);
+      const preview = previewChainInsert(code, catalog.courses, current, catalog);
+      if (!preview.canApply) {
+        blockedReason = preview.applyBlockedReason ?? preview.summary;
+        return current;
+      }
+      const result = applyRemainingPathToPlan(current, catalog.courses, preview.placements);
       if (!result.ok) {
         failed = result.reason;
         capacityTerm = result.semesterName;
@@ -362,6 +368,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createdTerms = result.createdTerms;
       return result.plan;
     });
+    if (blockedReason) {
+      announce(blockedReason);
+      return;
+    }
     if (failed === "capacity") {
       announce(`${capacityTerm ?? "That term"} supports up to 32 planned courses. The missing chain was not added.`);
       return;
@@ -378,10 +388,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       announce("Every course on this path is already in your plan or history, or cannot be added.");
       return;
     }
-    announce(`${added.join(", ")} added along the path to ${courseTargetCode}${createdTerms.length ? `. Created ${createdTerms.join(", ")}` : ""}. Check the live audit for prerequisites and corequisites.`);
+    announce(`${added.join(", ")} added along the path to ${code}${createdTerms.length ? `. Created ${createdTerms.join(", ")}` : ""}. Check the live audit for prerequisites and corequisites.`);
+  };
+  const addTargetChain = () => {
+    if (!courseTargetCode) {
+      announce("Choose a target course before adding its prerequisite chain.");
+      return;
+    }
+    addPrerequisiteChain(courseTargetCode);
   };
 
-  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId, courseTargetCode, setCourseTargetCode, addTargetChain, workspaceSelection, setWorkspaceSelection, notice, announce }}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId, courseTargetCode, setCourseTargetCode, addTargetChain, addPrerequisiteChain, workspaceSelection, setWorkspaceSelection, notice, announce }}>{children}</AppContext.Provider>;
 }
 
 export function useApp() {

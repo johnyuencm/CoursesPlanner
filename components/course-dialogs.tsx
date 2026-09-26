@@ -6,7 +6,7 @@ import type { RequirementExpression } from "@/lib/types";
 import { expressionLabel, getEligibility } from "@/lib/validation";
 import { useApp } from "./app-provider";
 import { CodeLinks } from "./course-card";
-import { SetAsTargetButton } from "./target-path";
+import { SetAsTargetButton, WhyBlockedCard } from "./target-path";
 import { CreditSelect, EmptyState, Modal, OfficialLink, creditLabel } from "./ui";
 
 function RequirementTree({ expression }: { expression: RequirementExpression }) {
@@ -34,6 +34,7 @@ export function CourseDetail({ code }: { code: string }) {
     <section className="detail-section"><h3>Take together · corequisites</h3><RequirementTree expression={course.corequisites} />{course.corequisiteText && <p className="raw-rule"><strong>Catalog wording</strong>{course.corequisiteText}</p>}</section>
     <section className="detail-section"><h3><GitBranch size={16} /> What this can unlock</h3><p className="muted small-text">These courses reference {course.code}. Other requirements may still apply.</p><div className="detail-code-links">{course.unlocks.length ? <CodeLinks codes={course.unlocks} limit={1000} /> : <span className="muted">No downstream links found in this catalog.</span>}</div></section>
     <div className={`callout ${eligibility.status !== "eligible" ? "callout-warning" : ""}`}><Info size={18} /><div><strong>{eligibility.status === "eligible" ? "Prerequisite eligible from your completed history" : eligibility.status === "locked" ? "Prerequisites still to complete" : "Eligibility needs advisor review"}</strong><p>{eligibility.reasons.join(" ") || "Based on your completed and waived courses. Offerings are not verified."}</p>{eligibility.missing.length > 0 && <div className="detail-code-links"><CodeLinks codes={eligibility.missing} limit={1000} /></div>}</div></div>
+    {eligibility.status !== "eligible" && !completed && !waived ? <WhyBlockedCard code={code} /> : null}
     {course.uncertainties.length > 0 && <div className="callout callout-warning"><TriangleAlert size={18} /><div><strong>Catalog notes & uncertainty</strong><ul>{course.uncertainties.map((note, index) => <li key={index}>{note}</li>)}</ul></div></div>}
     <details className="technical-details"><summary>View parsed requirement expressions</summary><p>AND and OR groups are preserved. A reference link alone does not imply every linked course is required.</p><pre>{JSON.stringify({ prerequisites: course.prerequisites, corequisites: course.corequisites }, null, 2)}</pre></details>
     <OfficialLink href={course.officialUrl} sources={catalog?.sources}>Read the official course description</OfficialLink>

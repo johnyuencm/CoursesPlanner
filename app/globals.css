@@ -692,6 +692,18 @@ textarea { resize: vertical; }
 .target-path-node.target { border-color: var(--red); }
 .target-path-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; margin-top: 0.65rem; }
 .target-path-card.has-error { border-color: #ead6ac; background: var(--amber-soft); }
+.why-blocked-card { margin: 0.75rem 0 0; }
+.why-blocked-copy { margin: 0 0 0.55rem; }
+.why-blocked-title { margin: 0 0 0.25rem; font-size: 0.82rem; font-weight: 750; }
+.why-blocked-reasons { margin: 0; padding-left: 1.1rem; font-size: 0.72rem; }
+.why-blocked-reasons li { margin: 0.15rem 0; }
+.chain-load-list { list-style: none; margin: 0.45rem 0 0; padding: 0; display: grid; gap: 0.3rem; }
+.chain-load-list li { display: flex; flex-wrap: wrap; gap: 0.35rem 0.7rem; align-items: baseline; font-size: 0.72rem; }
+.chain-load-list li.overload { color: #74490d; }
+.why-blocked-conflicts { list-style: none; margin: 0.45rem 0 0; padding: 0; display: grid; gap: 0.3rem; font-size: 0.72rem; }
+.why-blocked-conflicts li { display: flex; align-items: flex-start; gap: 0.35rem; }
+.why-blocked-conflicts.warning { color: #74490d; }
+.why-blocked-conflicts.error { color: var(--red); }
 
 @media (max-width: 1180px) {
   :root { --sidebar: 82px; }
@@ -710,7 +722,7 @@ textarea { resize: vertical; }
   .graph-layout { grid-template-columns: minmax(0, 1fr); }
   .graph-inspector { position: static; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.6rem; }
   .graph-inspector > .inspector-heading-meta, .graph-inspector > h2, .graph-inspector > .inspector-course-title, .graph-inspector > .inspector-description, .graph-inspector > .inspector-facts { grid-column: 1; }
-  .graph-inspector > .line-focus-banner, .graph-inspector > .graph-focus-controls, .graph-inspector > .target-path-card { grid-column: 1 / -1; }
+  .graph-inspector > .line-focus-banner, .graph-inspector > .graph-focus-controls, .graph-inspector > .target-path-card, .graph-inspector > .why-blocked-card { grid-column: 1 / -1; }
   .inspector-relationships { grid-column: 2; grid-row: 1 / 7; margin-top: 0; padding: 0 0 0 1rem; border: 0; border-left: 1px solid var(--line); }
   .inspector-tip, .inspector-actions { grid-column: 1; }
 }

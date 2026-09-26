@@ -48,7 +48,7 @@ import { routes } from "@/lib/routes";
 import { useApp } from "./app-provider";
 import { CodeLinks, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
-import { TargetPathCard, SetAsTargetButton } from "./target-path";
+import { TargetPathCard, SetAsTargetButton, WhyBlockedCard } from "./target-path";
 import { PageHeading, creditLabel } from "./ui";
 import { GraphCanvas } from "./graph-canvas";
 
@@ -189,7 +189,7 @@ export function GraphInspectorActions({
 }
 
 function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
-  const { catalog, openCourse, openPicker, plan, addCourses, hydrated, careerTargetId, workspaceSelection, setWorkspaceSelection } = useApp();
+  const { catalog, openCourse, openPicker, plan, addCourses, hydrated, careerTargetId, courseTargetCode, workspaceSelection, setWorkspaceSelection } = useApp();
   const overrideActive = roadmap !== null;
   const courses = useMemo(() => resolveGraphCourses(catalog, roadmap), [catalog, roadmap]);
   const programCodes = useMemo(() => resolveProgramScope(catalog, roadmap), [catalog, roadmap]);
@@ -764,6 +764,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
             <dd>{pathway.summary}</dd>
           </div>
         </dl>
+        {overrideActive || courseTargetCode === selectedCode ? null : <WhyBlockedCard code={selectedCode} compact />}
         <div className="graph-focus-controls" aria-label="Course focus controls">
           <button type="button" className="text-button inspector-focus" aria-pressed={depth === "prerequisites"} onClick={() => applyFocusScope("prerequisites")}><ArrowLeft size={14} /> Show prerequisites</button>
           <button type="button" className="text-button inspector-focus" aria-pressed={depth === "unlocks"} onClick={() => applyFocusScope("unlocks")}><ArrowRight size={14} /> Show unlocks</button>
@@ -814,7 +815,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
           </div> : !recorded.has(selectedCode) && selected && selected.requirementType !== "external" ? <button className="button button-primary" onClick={() => openPicker(undefined, selectedCode)}><Plus size={15} /> Add to plan</button> : recorded.has(selectedCode) ? <p className="muted small-text">{completed.has(selectedCode) ? "In your completed history." : waived.has(selectedCode) ? "Waived on this plan." : `Planned in ${plannedByCode.get(selectedCode)?.name ?? "your plan"}.`}{planned.has(selectedCode) ? <> <Link className="text-link" href={routes.plan}>View in Plan</Link></> : null}</p> : null}
           <button className="button button-secondary" onClick={() => openCourse(selectedCode)}>Full course details <ArrowRight size={14} /></button>
         </div>}
-        <div className="inspector-tip"><Info size={16} /><p>Selected course, its prerequisites, and its unlocks stay readable; everything else is de-emphasized. Blocked cards still need earlier courses. Offerings are not listed because they are unknown. The path card above shows remaining prerequisites and earliest term for your target.</p></div>
+        <div className="inspector-tip"><Info size={16} /><p>Selected course, its prerequisites, and its unlocks stay readable; everything else is de-emphasized. A blocked course explains the remaining chain and earliest term, and can add that chain in one click after showing term overloads. Offerings are not listed because they are unknown.</p></div>
       </aside>
     </div>
     <p className="page-footnote">The default map follows the selected course through its cataloged prerequisites and unlocks; it does not add a downstream course’s other prerequisite branches. Choose Entire program to browse all listed {programLabel} courses and their cataloged external prerequisites. A shared color groups lines by destination, not by AND/OR satisfaction; read the catalog rule in the inspector. A connection does not verify course availability.</p>
