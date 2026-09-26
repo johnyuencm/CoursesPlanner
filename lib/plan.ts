@@ -215,12 +215,17 @@ function semesterCreditTotal(
 function blockedWhy(
   eligibility: Eligibility,
   remainingCodes: readonly string[],
+  reusedCodes: readonly string[],
   summary: string,
   code: string,
 ): string[] {
   const why: string[] = [];
   if (remainingCodes.length) {
     why.push(`You still need ${remainingCodes.join(", ")} before ${code} is open.`);
+  } else if (reusedCodes.length && eligibility.status !== "eligible") {
+    why.push(
+      `Prerequisites are already on your plan (${reusedCodes.join(", ")}) but are not yet completed or waived.`,
+    );
   } else if (eligibility.status === "uncertain") {
     why.push(...eligibility.reasons.filter(Boolean));
     if (!why.length) why.push("Prerequisite text could not be fully verified.");
@@ -249,7 +254,7 @@ export function previewChainInsert(
   const reusedCodes = snapshot.path.nodes
     .filter((node) => node.role === "completed" || node.role === "waived" || node.role === "planned")
     .map((node) => node.code);
-  const why = blockedWhy(eligibility, remainingCodes, snapshot.earliest.summary, code);
+  const why = blockedWhy(eligibility, remainingCodes, reusedCodes, snapshot.earliest.summary, code);
   const blocked =
     snapshot.earliest.reason !== "already-recorded" &&
     (eligibility.status !== "eligible" ||

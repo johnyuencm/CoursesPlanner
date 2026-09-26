@@ -416,6 +416,28 @@ test("previewChainInsert reuses planned prerequisites instead of duplicating the
   assert.equal(fall?.courses.filter((item) => item.code === "CS 5010").length, 1);
 });
 
+test("planned-but-incomplete chain explains blocked without unused OR alternatives", () => {
+  const withPlan = plan({
+    semesters: emptyPlan().semesters.map((semester) => {
+      if (semester.id === "fall-2026") {
+        return { ...semester, courses: [{ code: "CS 5010", credits: 4 }, { code: "CS 5011", credits: 0 }] };
+      }
+      if (semester.id === "spring-2027") {
+        return { ...semester, courses: [{ code: "CS 5500", credits: 4 }] };
+      }
+      return semester;
+    }),
+  });
+  const preview = previewChainInsert("CS 6510", seattle.courses, withPlan, seattle);
+  assert.deepEqual(preview.remainingCodes, []);
+  assert.equal(preview.blocked, true);
+  assert.ok(preview.why.some((reason) => /already on your plan/i.test(reason)));
+  assert.ok(!preview.why.some((reason) => /CS 5004/.test(reason)));
+  assert.ok(preview.reusedCodes.includes("CS 5500"));
+  assert.ok(preview.addedCodes.includes("CS 6510"));
+  assert.ok(!preview.addedCodes.includes("CS 5500"));
+});
+
 test("previewChainInsert surfaces a term overload warning before apply and still allows apply", () => {
   const loaded = plan({
     semesters: emptyPlan().semesters.map((semester) =>
