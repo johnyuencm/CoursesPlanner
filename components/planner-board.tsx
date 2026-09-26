@@ -50,7 +50,7 @@ import { useApp } from "./app-provider";
 import { PlanBackup } from "./plan-backup";
 import { CatalogState } from "./catalog-state";
 import { requirementBadge } from "./course-card";
-import { TargetPathCard } from "./target-path";
+import { CriticalPathCard, TargetPathCard } from "./target-path";
 import { CreditSelect, EmptyState, Meter, PageHeading, creditLabel } from "./ui";
 
 function planCourseDomId(code: string) {
@@ -295,6 +295,7 @@ export default function PlannerBoard() {
   return <>
     <PageHeading title="Build My Plan" description="Arrange semesters, test prerequisites, and see every degree requirement update as you go." actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Loading local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span><PlanBackup /><Link className="button button-secondary" href={routes.explore}>View on map</Link><button className="button button-secondary" onClick={() => document.getElementById("plan-issue-rail")?.focus()}>Review audit</button><button className="button button-secondary" onClick={() => openPicker()}><Plus size={16} /> Add course</button></div>} />
     <TargetPathCard />
+    <CriticalPathCard />
     {progress && <section className="status-card-row four" aria-label="Plan status">
       <article className="status-card"><span className="status-kicker">Total credits in plan</span><strong>{progress.totalCredits} / {progress.requiredCredits}</strong><Meter value={progress.totalCredits} max={progress.requiredCredits} label="Total credits in plan" /></article>
       <article className="status-card"><span className="status-kicker">Requirements status</span><strong>{Number(progress.core.every((item) => item.satisfied)) + Number(progress.breadth.satisfied) + Number(progress.electiveCredits >= progress.requiredElectiveCredits)} / 3</strong><p className="muted">Core, breadth, and elective credit buckets</p></article>

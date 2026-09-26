@@ -8,6 +8,7 @@ export const routes = {
 
 /** Deep-link for the target path panel (blocked-course chain UI reuses the same helpers). */
 export const targetPathHref = `${routes.plan}#target-path`;
+export const criticalPathHref = `${routes.plan}#critical-path`;
 
 export const primaryNav = [
   { href: routes.explore, label: "Explore" },

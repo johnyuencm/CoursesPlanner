@@ -43,12 +43,13 @@ import {
 import type { Course, Pathway, ProgramRoadmap, StudentPlan } from "@/lib/types";
 import { expressionLabel, getEligibility } from "@/lib/validation";
 import { addableLineCourses } from "@/lib/plan";
+import { analyzeResolvedCriticalPath, isBottleneckEdge } from "@/lib/critical-path";
 import { resolveGraphCourses, resolveProgramScope, roadmapFocusCourse, roadmapProgramLabel } from "@/lib/roadmaps";
 import { routes } from "@/lib/routes";
 import { useApp } from "./app-provider";
 import { CodeLinks, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
-import { TargetPathCard, SetAsTargetButton, WhyBlockedCard } from "./target-path";
+import { TargetPathCard, SetAsTargetButton, WhyBlockedCard, CriticalPathCard } from "./target-path";
 import { PageHeading, creditLabel } from "./ui";
 import { GraphCanvas } from "./graph-canvas";
 
@@ -189,7 +190,7 @@ export function GraphInspectorActions({
 }
 
 function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
-  const { catalog, openCourse, openPicker, plan, addCourses, hydrated, careerTargetId, courseTargetCode, workspaceSelection, setWorkspaceSelection } = useApp();
+  const { catalog, openCourse, openPicker, plan, addCourses, hydrated, careerTargetId, courseTargetCode, workspaceSelection, setWorkspaceSelection, announce } = useApp();
   const overrideActive = roadmap !== null;
   const courses = useMemo(() => resolveGraphCourses(catalog, roadmap), [catalog, roadmap]);
   const programCodes = useMemo(() => resolveProgramScope(catalog, roadmap), [catalog, roadmap]);
@@ -203,6 +204,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   const [findIndex, setFindIndex] = useState(-1);
   const [depth, setDepth] = useState<GraphScope>("course");
   const [plannedOnly, setPlannedOnly] = useState(false);
+  const [criticalPathOn, setCriticalPathOn] = useState(false);
   const [view, setView] = useState<"graph" | "table">("graph");
   const [zoom, setZoom] = useState(GRAPH_READABLE_ZOOM);
   const [fitRequest, setFitRequest] = useState(0);
@@ -228,6 +230,14 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   const courseMap = useMemo(() => new Map(courses.map((course) => [course.code, course])), [courses]);
   const facts = useMemo(() => graphStudentFacts(overrideActive, plan), [overrideActive, plan.completedCourses, plan.waivedCourses, plan.semesters]);
   const { completed, waived, planned, history, recorded, plannedByCode, firstAcademicTermName } = facts;
+  const criticalPath = useMemo(
+    () =>
+      catalog && !overrideActive
+        ? analyzeResolvedCriticalPath(courseTargetCode, careerTargetId, pathways, catalog.courses, plan)
+        : null,
+    [catalog, overrideActive, courseTargetCode, careerTargetId, plan],
+  );
+  const bottleneckCodes = criticalPathOn && criticalPath?.status === "ok" ? criticalPath.bottleneck : null;
   const scene = useMemo(() => {
     if (!catalog) {
       return {
@@ -254,11 +264,17 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   const visible = scene.visible;
   const neighborhood = scene.neighborhood;
   const graph = useMemo(() => {
+    const bottleneck = bottleneckCodes ? new Set(bottleneckCodes) : null;
+    const bottleneckChain = bottleneckCodes ?? [];
     const incoming = new Set(scene.arrows.map((edge) => edge.target));
     const outgoing = new Set(scene.arrows.map((edge) => edge.source));
     const makeNode = (code: string, x: number, y: number): GraphNode => {
       const course = courseMap.get(code);
-      const emphasized = selectedRelationship ? selectedRelationship.codes.has(code) : neighborhood.has(code);
+      const emphasized = selectedRelationship
+        ? selectedRelationship.codes.has(code)
+        : bottleneck
+          ? bottleneck.has(code)
+          : neighborhood.has(code);
       const focused = code === selectedCode;
       const badge = requirementBadge(course?.requirementType ?? "external");
       const status = graphStatus(course, code, facts);
@@ -281,7 +297,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
           prerequisites: nodeRequirementCopy(course, "prerequisites"),
           corequisites: nodeRequirementCopy(course, "corequisites"),
           emphasized,
-          dimmed: selectedRelationship ? !selectedRelationship.codes.has(code) : !neighborhood.has(code),
+          dimmed: selectedRelationship ? !selectedRelationship.codes.has(code) : bottleneck ? !bottleneck.has(code) : !neighborhood.has(code),
           focused,
           compact: true,
           hasIncoming: incoming.has(code),
@@ -321,6 +337,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
       const stroke = edge.stroke;
       const selected = relationshipSelection.isSelected(selectedRelationship, edge.source, edge.target);
       const neighborhoodEdge = isFocusNeighborhoodEdge(edge.source, edge.target, selectedCode, neighborhood);
+      const chainEdge = bottleneck ? isBottleneckEdge(edge.source, edge.target, bottleneckChain) : neighborhoodEdge;
       const bus = busMeta.get(edge.target);
       return {
         id: `${edge.source}-${edge.target}-${index}`,
@@ -339,10 +356,10 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
         markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: stroke },
         style: {
           stroke,
-          strokeWidth: selected || neighborhoodEdge ? 2.5 : 1.25,
-          opacity: selectedRelationship ? (selected ? 1 : 0.18) : neighborhoodEdge ? 1 : 0.18,
+          strokeWidth: selected || chainEdge ? 2.5 : 1.25,
+          opacity: selectedRelationship ? (selected ? 1 : 0.18) : chainEdge ? 1 : 0.18,
         },
-        zIndex: selected || neighborhoodEdge ? GRAPH_SELECTED_EDGE_Z : 0,
+        zIndex: selected || chainEdge ? GRAPH_SELECTED_EDGE_Z : 0,
         ariaLabel: `${edge.source} unlocks ${edge.target}`,
         focusable: false,
         selectable: true,
@@ -350,7 +367,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
     });
     const courseNodes = nodes.filter((node): node is GraphNode => node.type === "course");
     return { nodes, edges, courseNodes };
-  }, [scene, neighborhood, selectedCode, selectedRelationship, courseMap, facts]);
+  }, [scene, neighborhood, selectedCode, selectedRelationship, courseMap, facts, bottleneckCodes]);
   const found = useMemo(
     () => mapFind.query(courses, search, programCodes),
     [courses, search, programCodes],
@@ -587,6 +604,13 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
     ? `${selectedRelationship.source} → ${selectedRelationship.target}`
     : selectedRelationship ? `${selectedRelationship.target} shared prerequisite bus` : "";
   const clearLineFocus = () => setSelectedRelationship(null);
+  const toggleCriticalPath = () => {
+    const next = !criticalPathOn;
+    setCriticalPathOn(next);
+    if (next && (!courseTargetCode && !careerTargetId)) {
+      announce("Choose a target course or career direction to see the critical path.");
+    }
+  };
   return <>
     <PageHeading title="Explore the course map" description="Understand what every course unlocks. Select a course to see what it needs and what it opens next." />
     <div className="graph-legend" aria-label="Map legend">
@@ -664,7 +688,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
             <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.entries.length - 1} onClick={() => goNavigation(navigation.index + 1)}><ArrowRight size={14} /></button>
           </div>
           <span>{depth === "program" ? <>Entire <strong>{programLabel}</strong> program</> : depth === "1" ? <><Crosshair size={15} /> Connections for <strong>{focusCode}</strong></> : depth === "unlocks" ? <>Unlocks of <strong>{focusCode}</strong></> : depth === "prerequisites" ? <>Prerequisites of <strong>{focusCode}</strong></> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
-          <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode} · {neighborhood.size} in focus{selectedRelationship ? ` · ${selectedRelationship.kind === "branch" ? `${selectedRelationship.source} unlocks ${selectedRelationship.target}` : `${selectedRelationship.sources.join(", ")} unlock ${selectedRelationship.target}`}` : ""}.</span>
+          <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode} · {neighborhood.size} in focus{selectedRelationship ? ` · ${selectedRelationship.kind === "branch" ? `${selectedRelationship.source} unlocks ${selectedRelationship.target}` : `${selectedRelationship.sources.join(", ")} unlock ${selectedRelationship.target}`}` : criticalPathOn && bottleneckCodes?.length ? ` · critical path ${bottleneckCodes.join(" → ")}` : ""}.</span>
           <div className="segmented-control" aria-label="Map display">
             <button type="button" aria-pressed={view === "graph"} className={view === "graph" ? "selected" : ""} onClick={() => setView("graph")}><Network size={15} /> Map</button>
             <button type="button" aria-pressed={view === "table"} className={view === "table" ? "selected" : ""} onClick={() => setView("table")}><List size={15} /> Table</button>
@@ -682,7 +706,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
           </label>
           <div className="graph-focus-stubs" aria-label="Graph filters">
             {!overrideActive && <button type="button" className={`button button-secondary button-small ${plannedOnly ? "selected" : ""}`} aria-pressed={plannedOnly} onClick={() => setPlannedOnly((on) => !on)}>Only my planned</button>}
-            <button type="button" className="button button-secondary button-small" disabled title="Follow-up johnyuencm/harness#54">Critical path to target</button>
+            {!overrideActive && <button type="button" className={`button button-secondary button-small ${criticalPathOn ? "selected" : ""}`} aria-pressed={criticalPathOn} onClick={toggleCriticalPath}>Critical path to target</button>}
           </div>
           <div className="graph-view-toolbar" aria-label="Map zoom and display controls">
             <button type="button" className="icon-button" aria-label="Zoom out" disabled={zoom <= GRAPH_MIN_ZOOM} onClick={() => changeZoom(-GRAPH_ZOOM_STEP)}><ZoomOut size={15} /></button>
@@ -720,10 +744,11 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
             })}</tbody>
           </table>
         </div>}
-        {view === "graph" && <p className="graph-canvas-hint">Click a course to isolate its prerequisites and unlocks. The rest of the map stays visible but de-emphasized. Double-click a course to show its connections, then press Escape to return to the previous view. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination. Empty map / Exit line focus restores every relationship. Only my planned hides courses that are not completed, waived, or on your plan. Critical path to target is johnyuencm/harness#54.</p>}
+        {view === "graph" && <p className="graph-canvas-hint">Click a course to isolate its prerequisites and unlocks. The rest of the map stays visible but de-emphasized. Double-click a course to show its connections, then press Escape to return to the previous view. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination. Empty map / Exit line focus restores every relationship. Only my planned hides courses that are not completed, waived, or on your plan. Critical path to target highlights the longest remaining chain and delay impact for My Target or your career direction.</p>}
       </section>
       <aside className="graph-inspector" id="graph-inspector" tabIndex={-1}>
         {overrideActive ? null : <TargetPathCard compact />}
+        {overrideActive || !criticalPathOn ? null : <CriticalPathCard compact />}
         {selectedRelationship ? <div className="line-focus-banner">
           <div className="line-focus-banner-copy">
             <p><strong>Line focus</strong> {lineLabel}</p>
@@ -773,7 +798,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
           {depth !== "1" && <button type="button" className="text-button inspector-focus" onClick={() => enterConnections(selectedCode)}><Crosshair size={14} /> Show this course's connections</button>}
           {depth !== "program" && focusCode !== selectedCode && <button type="button" className="text-button inspector-focus" onClick={() => focus(selectedCode)}><Crosshair size={14} /> Focus map here</button>}
           {!overrideActive && <button type="button" className="text-button inspector-focus" aria-pressed={plannedOnly} onClick={() => setPlannedOnly((on) => !on)}>Only my planned</button>}
-          {!overrideActive && <button type="button" className="text-button inspector-focus" disabled title="Follow-up johnyuencm/harness#54">Critical path to target</button>}
+          {!overrideActive && <button type="button" className="text-button inspector-focus" aria-pressed={criticalPathOn} onClick={toggleCriticalPath}>Critical path to target</button>}
           {viewStack.length ? <button type="button" className="text-button inspector-focus" aria-keyshortcuts="Escape" onClick={restorePreviousView}><ArrowLeft size={14} /> Return to previous view</button> : null}
         </div>
         <div className="inspector-relationships">
@@ -815,7 +840,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
           </div> : !recorded.has(selectedCode) && selected && selected.requirementType !== "external" ? <button className="button button-primary" onClick={() => openPicker(undefined, selectedCode)}><Plus size={15} /> Add to plan</button> : recorded.has(selectedCode) ? <p className="muted small-text">{completed.has(selectedCode) ? "In your completed history." : waived.has(selectedCode) ? "Waived on this plan." : `Planned in ${plannedByCode.get(selectedCode)?.name ?? "your plan"}.`}{planned.has(selectedCode) ? <> <Link className="text-link" href={routes.plan}>View in Plan</Link></> : null}</p> : null}
           <button className="button button-secondary" onClick={() => openCourse(selectedCode)}>Full course details <ArrowRight size={14} /></button>
         </div>}
-        <div className="inspector-tip"><Info size={16} /><p>Selected course, its prerequisites, and its unlocks stay readable; everything else is de-emphasized. A blocked course explains the remaining chain and earliest term, and can add that chain in one click after showing term overloads. Offerings are not listed because they are unknown.</p></div>
+        <div className="inspector-tip"><Info size={16} /><p>Selected course, its prerequisites, and its unlocks stay readable; everything else is de-emphasized. A blocked course explains the remaining chain and earliest term, and can add that chain in one click after showing term overloads. Offerings are not listed because they are unknown. The path card above shows remaining prerequisites, earliest term, and delay impact for your target. Critical path to target highlights the bottleneck chain on the map.</p></div>
       </aside>
     </div>
     <p className="page-footnote">The default map follows the selected course through its cataloged prerequisites and unlocks; it does not add a downstream course’s other prerequisite branches. Choose Entire program to browse all listed {programLabel} courses and their cataloged external prerequisites. A shared color groups lines by destination, not by AND/OR satisfaction; read the catalog rule in the inspector. A connection does not verify course availability.</p>

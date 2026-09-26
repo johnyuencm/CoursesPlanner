@@ -2,11 +2,19 @@
 
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { CalendarPlus, CircleAlert, Lock, Target, TriangleAlert } from "lucide-react";
+import { CalendarPlus, CircleAlert, Lock, Route, Target, TriangleAlert } from "lucide-react";
+import pathwayConfig from "@/config/pathways.json";
+import { analyzeCriticalPath, analyzeResolvedCriticalPath, type CriticalPathAnalysis } from "@/lib/critical-path";
 import { previewChainInsert, type ChainInsertPreview } from "@/lib/plan";
-import { routes, targetPathHref } from "@/lib/routes";
+import { criticalPathHref, routes, targetPathHref } from "@/lib/routes";
 import { matchCourseTarget, targetPathSnapshot } from "@/lib/target-path";
+import type { Pathway } from "@/lib/types";
 import { useApp } from "./app-provider";
+
+const pathways = pathwayConfig as Pathway[];
+
+const roleLabel = (role: ChainInsertPreview["nodes"][number]["role"]) =>
+  role === "target" ? "Target" : role === "completed" ? "Completed" : role === "waived" ? "Waived" : role === "planned" ? "Planned" : "Remaining";
 
 export function CourseTargetControl() {
   const { catalog, courseTargetCode, setCourseTargetCode } = useApp();
@@ -57,9 +65,6 @@ export function CourseTargetControl() {
     </div>
   );
 }
-
-const roleLabel = (role: ChainInsertPreview["nodes"][number]["role"]) =>
-  role === "target" ? "Target" : role === "completed" ? "Completed" : role === "waived" ? "Waived" : role === "planned" ? "Planned" : "Remaining";
 
 export function PrerequisiteChainView({
   preview,
@@ -162,6 +167,92 @@ export function PrerequisiteChainView({
   );
 }
 
+export function CriticalPathView({
+  analysis,
+  compact = false,
+  onSelectCode,
+}: {
+  analysis: CriticalPathAnalysis;
+  compact?: boolean;
+  onSelectCode: (code: string) => void;
+}) {
+  if (analysis.status === "no-target") {
+    return <p className="muted">Choose a target course or career direction to see the longest remaining chain and delay impact.</p>;
+  }
+  if (analysis.status !== "ok") {
+    return (
+      <p className="inline-warning">
+        <CircleAlert size={15} />
+        <span>{analysis.earliestSummary || "This target set cannot be scheduled yet."}</span>
+      </p>
+    );
+  }
+  const chainLabel = analysis.bottleneck.join(" → ");
+  return (
+    <>
+      <p className="target-path-summary">
+        Bottleneck to {analysis.controllingTarget}
+        {analysis.earliestTermName ? ` · earliest ${analysis.earliestTermName}` : ""}
+      </p>
+      <ol className={`target-path-chain ${compact ? "compact" : ""}`} aria-label="Bottleneck chain">
+        {analysis.nodes.map((node) => (
+          <li key={`${node.role}-${node.code}`} className={`target-path-node ${node.role}`}>
+            <button type="button" className="code-chip" onClick={() => onSelectCode(node.code)}>
+              {node.code}
+            </button>
+            <span className="muted">{roleLabel(node.role)}</span>
+          </li>
+        ))}
+      </ol>
+      {analysis.headline ? (
+        <p className="delay-impact-copy">{analysis.headline}</p>
+      ) : (
+        <p className="muted small-text">No delay-sensitive prerequisite on this path.</p>
+      )}
+      {!compact && analysis.delayImpacts.length > 1 ? (
+        <ul className="delay-impact-list" aria-label="Delay impacts">
+          {analysis.delayImpacts.slice(1).map((item) => (
+            <li key={item.delayedCode}>{item.copy}</li>
+          ))}
+        </ul>
+      ) : null}
+      <p className="muted small-text">
+        {chainLabel}. Delaying a course on this chain is modeled as taking it one academic term later than its earliest placement.
+      </p>
+    </>
+  );
+}
+
+export function CriticalPathCard({ compact = false }: { compact?: boolean }) {
+  const { catalog, plan, courseTargetCode, careerTargetId, openCourse } = useApp();
+  const analysis = useMemo(
+    () =>
+      catalog
+        ? analyzeResolvedCriticalPath(courseTargetCode, careerTargetId, pathways, catalog.courses, plan)
+        : null,
+    [catalog, courseTargetCode, careerTargetId, plan],
+  );
+  if (!catalog || !analysis) {
+    return (
+      <section className="target-path-card critical-path-card" id="critical-path" aria-label="Critical path">
+        <p className="muted">Catalog is still loading the critical path.</p>
+      </section>
+    );
+  }
+  return (
+    <section className="target-path-card critical-path-card" id="critical-path" aria-label="Critical path">
+      <div className="target-path-heading">
+        <span className="status-kicker">
+          <Route size={15} /> Critical path
+          {analysis.label ? ` · ${analysis.label}` : ""}
+        </span>
+      </div>
+      <CriticalPathView analysis={analysis} compact={compact} onSelectCode={openCourse} />
+      {compact ? <Link className="text-link" href={criticalPathHref}>Open in Plan</Link> : null}
+    </section>
+  );
+}
+
 export function TargetPathCard({ compact = false }: { compact?: boolean }) {
   const { catalog, plan, courseTargetCode, setCourseTargetCode, addPrerequisiteChain, openCourse, hydrated } = useApp();
   const snapshot = useMemo(
@@ -170,6 +261,13 @@ export function TargetPathCard({ compact = false }: { compact?: boolean }) {
   );
   const preview = useMemo(
     () => (catalog && courseTargetCode ? previewChainInsert(courseTargetCode, catalog.courses, plan, catalog) : null),
+    [catalog, courseTargetCode, plan],
+  );
+  const delayCopy = useMemo(
+    () =>
+      catalog && courseTargetCode
+        ? analyzeCriticalPath([courseTargetCode], catalog.courses, plan).headline
+        : null,
     [catalog, courseTargetCode, plan],
   );
   if (!courseTargetCode) {
@@ -202,6 +300,7 @@ export function TargetPathCard({ compact = false }: { compact?: boolean }) {
         extraHeading={<button type="button" className="text-button" onClick={() => setCourseTargetCode(null)}>Clear target</button>}
         extraFooter={<Link className="text-link" href={targetPathHref}>Open in Plan</Link>}
       />
+      {delayCopy ? <p className="delay-impact-copy">{delayCopy}</p> : null}
       <p className="muted small-text">
         {snapshot.earliest.usedOfferings
           ? "Earliest term uses catalog term offerings where they exist."
