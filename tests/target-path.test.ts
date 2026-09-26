@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { applyRemainingPathToPlan, emptyPlan, MAX_COURSES_PER_SEMESTER, MAX_SEMESTERS } from "../lib/plan";
+import { applyRemainingPathToPlan, emptyPlan, MAX_COURSES_PER_SEMESTER, MAX_SEMESTERS, previewChainInsert, TYPICAL_TERM_LOAD_CREDITS } from "../lib/plan";
 import {
   earliestFeasibleTerm,
   matchCourseTarget,
@@ -378,4 +378,90 @@ test("matchCourseTarget accepts compact and spaced codes", () => {
   assert.equal(matchCourseTarget("CS 6510", seattle.courses), "CS 6510");
   assert.equal(matchCourseTarget("CS 9999", seattle.courses), "CS 9999");
   assert.equal(matchCourseTarget("  ", seattle.courses), null);
+});
+
+test("blocked CS 6510 explains remaining chain, earliest term, and addable placements", () => {
+  const preview = previewChainInsert("CS 6510", seattle.courses, emptyPlan(), seattle);
+  assert.equal(preview.blocked, true);
+  assert.equal(preview.eligibility, "locked");
+  assert.ok(preview.remainingCodes.includes("CS 5010"));
+  assert.ok(preview.remainingCodes.includes("CS 5500"));
+  assert.ok(preview.why.some((reason) => /CS 5010|CS 5500|still need/i.test(reason)));
+  assert.equal(preview.earliestTermName, "Fall 2027");
+  assert.match(preview.summary, /earliest Fall 2027/);
+  assert.equal(preview.canApply, true);
+  assert.ok(preview.addedCodes.includes("CS 5010"));
+  assert.ok(preview.addedCodes.includes("CS 5500"));
+  assert.ok(preview.addedCodes.includes("CS 6510"));
+  assert.ok(!preview.conflicts.some((item) => item.severity === "error"));
+});
+
+test("previewChainInsert reuses planned prerequisites instead of duplicating them", () => {
+  const withPlan = plan({
+    semesters: emptyPlan().semesters.map((semester) =>
+      semester.id === "fall-2026"
+        ? { ...semester, courses: [{ code: "CS 5010", credits: 4 }, { code: "CS 5011", credits: 0 }] }
+        : semester,
+    ),
+  });
+  const preview = previewChainInsert("CS 6510", seattle.courses, withPlan, seattle);
+  assert.ok(preview.reusedCodes.includes("CS 5010"));
+  assert.ok(!preview.remainingCodes.includes("CS 5010"));
+  assert.ok(!preview.addedCodes.includes("CS 5010"));
+  assert.ok(preview.addedCodes.includes("CS 5500"));
+  assert.equal(preview.canApply, true);
+  const applied = applyRemainingPathToPlan(withPlan, seattle.courses, preview.placements);
+  assert.equal(applied.ok, true);
+  const fall = applied.plan.semesters.find((semester) => semester.id === "fall-2026");
+  assert.equal(fall?.courses.filter((item) => item.code === "CS 5010").length, 1);
+});
+
+test("previewChainInsert surfaces a term overload warning before apply and still allows apply", () => {
+  const loaded = plan({
+    semesters: emptyPlan().semesters.map((semester) =>
+      semester.id === "fall-2026"
+        ? { ...semester, courses: [{ code: "CS 5800", credits: 4 }, { code: "CS 6140", credits: 4 }] }
+        : semester,
+    ),
+  });
+  const preview = previewChainInsert("CS 5500", seattle.courses, loaded, seattle);
+  const overload = preview.conflicts.find((item) => item.kind === "overload");
+  assert.ok(overload);
+  assert.equal(overload?.severity, "warning");
+  assert.match(overload?.message ?? "", /Fall 2026 would be \d+ credits/);
+  assert.ok(preview.termLoads.some((load) => load.termName === "Fall 2026" && load.overload));
+  assert.ok(preview.termLoads.some((load) => load.totalCredits > TYPICAL_TERM_LOAD_CREDITS));
+  assert.equal(preview.canApply, true);
+});
+
+test("previewChainInsert surfaces a capacity conflict and blocks apply", () => {
+  const fullFall = plan({
+    semesters: emptyPlan().semesters.map((semester) =>
+      semester.id === "fall-2026"
+        ? {
+            ...semester,
+            courses: Array.from({ length: MAX_COURSES_PER_SEMESTER }, (_, index) => ({
+              code: `CS ${1100 + index}`,
+            })),
+          }
+        : semester,
+    ),
+  });
+  const preview = previewChainInsert("CS 5500", seattle.courses, fullFall, seattle);
+  assert.equal(preview.canApply, false);
+  assert.ok(preview.conflicts.some((item) => item.kind === "capacity" && item.severity === "error"));
+  assert.match(preview.applyBlockedReason ?? "", /32 planned courses/);
+});
+
+test("previewChainInsert reports an unscheduled chain instead of applying", () => {
+  const withTarget = plan({
+    semesters: emptyPlan().semesters.map((semester) =>
+      semester.id === "spring-2027" ? { ...semester, courses: [{ code: "CS 6510", credits: 4 }] } : semester,
+    ),
+  });
+  const preview = previewChainInsert("CS 6510", seattle.courses, withTarget, seattle);
+  assert.equal(preview.canApply, false);
+  assert.equal(preview.blocked, true);
+  assert.ok(preview.conflicts.some((item) => item.kind === "unscheduled"));
+  assert.match(preview.summary, /cannot fit before Spring 2027/);
 });
