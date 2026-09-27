@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Check,
   Compass,
@@ -13,6 +14,9 @@ import {
 } from "lucide-react";
 import pathwayConfig from "@/config/pathways.json";
 import type { Course, Pathway } from "@/lib/types";
+import { analyzeResolvedCriticalPath } from "@/lib/critical-path";
+import { PERSONA_PROMPT, buildPathwayOverlay, overlayNodeCopy } from "@/lib/pathway-overlay";
+import { routes } from "@/lib/routes";
 import { getEligibility } from "@/lib/validation";
 import { useApp } from "@/components/app-provider";
 import { CatalogState } from "@/components/catalog-state";
@@ -44,7 +48,7 @@ function validPathways(value: unknown): value is Pathway[] {
 const defaults = pathwayConfig as Pathway[];
 
 export default function PathwaysPage() {
-  const { catalog, openCourse, openPicker, plan, announce, careerTargetId } = useApp();
+  const { catalog, openCourse, openPicker, plan, announce, careerTargetId, setCareerTargetId } = useApp();
   const [pathways, setPathways] = useState<Pathway[]>(defaults);
   const [selectedId, setSelectedId] = useState(careerTargetId && defaults.some((pathway) => pathway.id === careerTargetId) ? careerTargetId : defaults[0].id);
   const [editing, setEditing] = useState(false);
@@ -72,6 +76,15 @@ export default function PathwaysPage() {
   const courseMap = useMemo(() => new Map(catalog?.courses.map((course) => [course.code, course]) ?? []), [catalog]);
   const recorded = useMemo(() => new Set([...plan.completedCourses, ...plan.waivedCourses, ...plan.semesters.flatMap((semester) => semester.courses.map((course) => course.code))]), [plan]);
   const prior = useMemo(() => new Set([...plan.completedCourses, ...plan.waivedCourses]), [plan.completedCourses, plan.waivedCourses]);
+  const overlay = useMemo(() => {
+    if (!catalog) return null;
+    const analysis = analyzeResolvedCriticalPath(null, selected.id, pathways, catalog.courses, plan);
+    return buildPathwayOverlay({
+      persona: selected,
+      coreCourses: catalog.requirements.coreCourses,
+      bottleneck: analysis.status === "ok" ? analysis.bottleneck : [],
+    });
+  }, [catalog, selected, pathways, plan]);
   if (!catalog) return <CatalogState />;
 
   const replaceSelected = (change: (pathway: Pathway) => Pathway) => setPathways((current) => current.map((pathway) => pathway.id === selected.id ? change(pathway) : pathway));
@@ -108,10 +121,10 @@ export default function PathwaysPage() {
   const eligibleNext = recommended.filter((code) => !recorded.has(code)).map((code) => courseMap.get(code)).filter((course): course is Course => course !== undefined && getEligibility(course, prior).status === "eligible");
 
   return <>
-    <PageHeading title={`${selected.name} Pathway`} description="Personalized course recommendations for a career direction. These never change official degree rules." actions={<div className="heading-actions"><button className="button button-secondary" onClick={() => setEditing((value) => !value)}><Edit3 size={15} /> {editing ? "Stop editing" : "Edit suggestions"}</button>{editing && <button className="button button-primary" onClick={save}><Save size={15} /> Save on this device</button>}</div>} />
-    <div className="recommendation-banner"><Info size={18} /><div><strong>Suggested pathway — not a degree requirement.</strong><p>Recommendations never change your official core, breadth, elective, or credit audit. Confirm course fit and availability with your advisor.</p></div></div>
+    <PageHeading title={PERSONA_PROMPT} description="Pick a persona. CORE, RECOMMENDED, and dependency-critical ★ courses overlay the Explore map; everything else fades. These never change official degree rules." actions={<div className="heading-actions"><Link className="button button-primary" href={routes.explore}>Show on map</Link><button className="button button-secondary" onClick={() => setEditing((value) => !value)}><Edit3 size={15} /> {editing ? "Stop editing" : "Edit suggestions"}</button>{editing && <button className="button button-primary" onClick={save}><Save size={15} /> Save on this device</button>}</div>} />
+    <div className="recommendation-banner"><Info size={18} /><div><strong>Suggested persona — not a degree requirement.</strong><p>Recommendations never change your official core, breadth, elective, or credit audit. Confirm course fit and availability with your advisor.</p></div></div>
     {(loadError || message) && <div className={`global-banner ${loadError ? "warning" : "success"}`} role={loadError ? "alert" : "status"}>{loadError ? <TriangleAlert size={16} /> : <Check size={16} />}<span>{loadError ?? message}</span></div>}
-    <nav className="pathway-tabs" aria-label="Suggested paths">{pathways.map((pathway) => <button key={pathway.id} className={selected.id === pathway.id ? "selected" : ""} onClick={() => setSelectedId(pathway.id)}><strong>{pathway.name}</strong></button>)}</nav>
+    <section className="persona-picker" aria-label={PERSONA_PROMPT}>{pathways.map((pathway) => <button key={pathway.id} type="button" className={selected.id === pathway.id ? "selected" : ""} aria-pressed={selected.id === pathway.id} onClick={() => { setSelectedId(pathway.id); setCareerTargetId(pathway.id); }}><strong>{pathway.name}</strong><span>{pathway.description}</span>{careerTargetId === pathway.id ? <small>On the map</small> : null}</button>)}</section>
     <div className="pathway-layout">
       <section className="pathway-detail">
         <header>{editing ? <div>{<><label className="field-label" htmlFor="pathway-name">Pathway name</label><input id="pathway-name" value={selected.name} maxLength={100} onChange={(event) => replaceSelected((pathway) => ({ ...pathway, name: event.target.value }))} /><label className="field-label" htmlFor="pathway-description">Description</label><textarea id="pathway-description" value={selected.description} maxLength={300} rows={3} onChange={(event) => replaceSelected((pathway) => ({ ...pathway, description: event.target.value }))} /></>}</div> : <div><p>{selected.description}</p></div>}</header>
@@ -119,7 +132,8 @@ export default function PathwaysPage() {
           {editing ? <label className="pathway-code-editor"><span>Course codes · comma separated</span><textarea rows={3} value={group.courses.join(", ")} onChange={(event) => { const courses = [...new Set(event.target.value.toUpperCase().split(",").map((code) => code.trim()).filter(Boolean))]; replaceSelected((pathway) => ({ ...pathway, groups: pathway.groups.map((item, index) => index === groupIndex ? { ...item, courses } : item) })); }} /></label> : <div className="pathway-course-list">{group.courses.map((code) => {
             const course = courseMap.get(code);
             const badge = course ? requirementBadge(course.requirementType) : null;
-            return <article className={`pathway-course ${!course ? "missing" : ""}`} key={code}><button className="pathway-course-main" onClick={() => openCourse(code)}><strong>{code}</strong><span>{course?.title ?? "Not found in current catalog"}</span><small>{course ? `${creditLabel(course)} credits` : "Recommendation retained, details unverified"}</small></button><div>{badge && <span className={badge.className}>{badge.label}</span>}{recorded.has(code) ? <span className="status-label"><Check size={14} /> Recorded</span> : course ? <button className="button button-small button-add" onClick={() => openPicker(undefined, code)}><Plus size={14} /> Plan</button> : <button className="text-button" onClick={() => openCourse(code)}>Review</button>}</div></article>;
+            const overlayMark = overlayNodeCopy(code, overlay);
+            return <article className={`pathway-course ${!course ? "missing" : ""}`} key={code}><button className="pathway-course-main" onClick={() => openCourse(code)}><strong>{code}{overlayMark.starred ? <span className="graph-critical-mark" aria-label="Dependency-critical">★</span> : null}</strong><span>{course?.title ?? "Not found in current catalog"}</span><small>{course ? `${creditLabel(course)} credits` : "Recommendation retained, details unverified"}</small></button><div>{overlayMark.label ? <span className="graph-overlay-role">{overlayMark.label}</span> : null}{badge && <span className={badge.className}>{badge.label}</span>}{recorded.has(code) ? <span className="status-label"><Check size={14} /> Recorded</span> : course ? <button className="button button-small button-add" onClick={() => openPicker(undefined, code)}><Plus size={14} /> Plan</button> : <button className="text-button" onClick={() => openCourse(code)}>Review</button>}</div></article>;
           })}</div>}
         </section>)}</div>
         {editing && <div className="pathway-edit-actions"><button className="button button-secondary" onClick={() => replaceSelected((pathway) => ({ ...pathway, groups: [...pathway.groups, { label: "New group", courses: [] }] }))}><Plus size={15} /> Add recommendation group</button><button className="text-button" onClick={reset}><RotateCcw size={14} /> Restore all defaults</button></div>}
@@ -128,6 +142,10 @@ export default function PathwaysPage() {
         <section className="rail-card">
           <h2>Readiness</h2>
           <p>{inPlan} of {recommended.length} recommended courses are in your plan or history.</p>
+        </section>
+        <section className="rail-card">
+          <h3>Map overlay</h3>
+          <p>Explore keeps CORE, RECOMMENDED, and dependency-critical ★ courses for {selected.name} readable and fades the rest. Plan is unchanged.</p>
         </section>
         <section className="rail-card">
           <h3>Validation</h3>

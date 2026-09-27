@@ -48,7 +48,7 @@ export default function OverviewPage() {
             {path
               ? path.earliest.summary
               : snapshot.targetName
-                ? "Career direction for Paths."
+                ? "Persona overlay for Paths."
                 : "Choose a target course from Explore or the My Target control."}
           </p>
         </article>

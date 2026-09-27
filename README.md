@@ -18,7 +18,7 @@ Production is on Vercel at [https://courses-planner.vercel.app](https://courses-
 - **Plan** with academic and internship/co-op terms, drag-and-drop, keyboard drag controls, and native move menus.
 - **Live validation** for prerequisites, corequisites, credits, core, breadth diversity, and electives.
 - **Next-course view** on Plan that reports prerequisite eligibility separately from actual course offerings.
-- **Paths** — editable suggested pathways, including a robotics-focused starting point. Pathways never change degree requirements.
+- **Paths** — persona targets (“What are you trying to become?”) with curated course sets. CORE, RECOMMENDED, and dependency-critical ★ courses overlay the Explore map. Pathways never change degree requirements.
 - **Local persistence** in browser LocalStorage. No account, authentication service, or database is required.
 
 ## Catalog source inspection
@@ -105,7 +105,7 @@ Never run an unbounded crawl: `--crawl-roadmaps` requires `--limit=<1..100>`. `-
 | `lib/catalog.ts` | Normalized catalog trust-boundary validation and disk loading |
 | `lib/plan.ts` | LocalStorage plan validation and corruption recovery |
 | `lib/validation.ts` | Eligibility, dependency closure, and degree-progress validation |
-| `config/pathways.json` | Default recommendation-only pathway groups |
+| `config/pathways.json` | Default persona course sets (recommendation only) |
 | `data/raw/` | Cached official HTML and research fixtures |
 | `tests/` | Parser, catalog-service, validation, and persistence tests |
 | `docs/` | Source inspection, IA/redirects, acceptance checklist, and deployment notes |
