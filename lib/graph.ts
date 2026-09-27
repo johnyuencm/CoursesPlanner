@@ -671,6 +671,18 @@ export function mapScene(input: MapSceneInput): MapScene {
     ),
     input.keep,
   );
+  const present = new Set(input.courses.map((course) => course.code));
+  for (const edge of relations) {
+    if (!edge.corequisite) continue;
+    const touchesFocus =
+      edge.source === input.selectedCode ||
+      edge.target === input.selectedCode ||
+      edge.source === input.focusCode ||
+      edge.target === input.focusCode;
+    if (!touchesFocus) continue;
+    if (present.has(edge.source) && !visible.has(edge.source)) visible.set(edge.source, 0);
+    if (present.has(edge.target) && !visible.has(edge.target)) visible.set(edge.target, 0);
+  }
   const chain = directedCourseChain(relations, input.selectedCode);
   const courseByCode = new Map(input.courses.map((course) => [course.code, course] as const));
   const compare =

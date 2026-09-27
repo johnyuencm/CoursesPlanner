@@ -49,7 +49,7 @@ function PrerequisiteEdge({ sourceX, sourceY, targetX, targetY, markerEnd, style
     <path d={hitPaths.branch} fill="none" stroke="transparent" strokeWidth={GRAPH_HIT_TARGET_WIDTH} pointerEvents="stroke" onClick={selectBranch} aria-label={marker === "OR" ? "Select this OR alternative" : marker === "AND" ? "Select this AND prerequisite" : "Select this prerequisite relationship"} />
     {edgeData?.isBusOwner ? <path d={hitPaths.bus} fill="none" stroke="transparent" strokeWidth={GRAPH_HIT_TARGET_WIDTH} pointerEvents="stroke" onClick={selectBus} aria-label={marker === "OR" ? "Select OR alternatives sharing this bus" : marker === "AND" ? "Select AND prerequisites sharing this bus" : "Select all visible prerequisites sharing this bus"} /> : null}
     <circle cx={busX} cy={targetY} r={3} fill={style?.stroke ?? "#64748b"} pointerEvents="none" />
-    {edgeData?.isBusOwner && marker && marker !== "corequisite" ? <text x={busX} y={Math.min(busStartY, targetY) - 6} textAnchor="middle" fill={style?.stroke ?? "#64748b"} fontSize={10} fontWeight={700} pointerEvents="none">{marker}</text> : null}
+    {edgeData?.isBusOwner && marker && marker !== "corequisite" ? <text x={busX - 8} y={(busStartY + busEndY) / 2 + 4} textAnchor="end" fill={style?.stroke ?? "#64748b"} fontSize={10} fontWeight={700} pointerEvents="none">{marker}</text> : null}
   </>;
 }
 

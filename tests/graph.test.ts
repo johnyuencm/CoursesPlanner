@@ -965,6 +965,21 @@ test("mapScene isolates CS 5500 to its immediate neighborhood even on the progra
   assert.equal(scene.visible.has("CS 5800"), true);
 });
 
+test("CS 5010 course-chain scene keeps CS 5011 as a visible corequisite partner", () => {
+  const { courses, requirements } = seattleGraph();
+  const scene = mapScene({
+    courses,
+    requirements,
+    scope: "course",
+    focusCode: "CS 5010",
+    selectedCode: "CS 5010",
+  });
+  assert.equal(scene.visible.has("CS 5011"), true);
+  assert.deepEqual(scene.focusCorequisites, ["CS 5011"]);
+  assert.ok(scene.corequisites.some((edge) => [edge.source, edge.target].includes("CS 5011")));
+  assert.equal(scene.positions.get("CS 5010")?.x, scene.positions.get("CS 5011")?.x);
+});
+
 test("CS 5800 focus lists its catalog unlocks and no prerequisites", () => {
   const { courses, requirements } = seattleGraph();
   const scene = mapScene({
