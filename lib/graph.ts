@@ -1,10 +1,39 @@
 import type { Course, DegreeRequirement } from "./types";
+import {
+  namedPrerequisiteGroupId,
+  namedPrerequisiteJoin,
+  type GraphJoin,
+} from "./requirement-logic";
 
 export { prerequisitePathToTarget, type TargetPath, type TargetPathNode } from "./target-path";
+export {
+  busGroupKey,
+  graphJoinMarker,
+  graphJoinStrokeDasharray,
+  namedPrerequisiteGroupId,
+  namedPrerequisiteJoin,
+  relationshipExplanationCopy,
+  relationshipGroupButtonLabel,
+  requirementCodes,
+  requirementJoinGroups,
+  requirementOperatorLabel,
+  simplifyRequirement,
+  REQUIREMENT_ALL_LABEL,
+  REQUIREMENT_ANY_LABEL,
+  type GraphJoin,
+  type RequirementJoinGroup,
+  type RelationshipExplanation,
+} from "./requirement-logic";
 
 export type ClassifiableCourse = Pick<Course, "code" | "requirementType" | "prerequisites">;
 
-export type GraphRelation = { source: string; target: string; corequisite: boolean };
+export type GraphRelation = {
+  source: string;
+  target: string;
+  corequisite: boolean;
+  join?: GraphJoin;
+  groupId?: string;
+};
 
 export function listedProgramCodes(requirements: DegreeRequirement): string[] {
   return [
@@ -35,7 +64,15 @@ export function catalogRelations(courses: Course[]): GraphRelation[] {
   const coreqPairs = new Set<string>();
   for (const course of courses) {
     for (const code of course.prerequisiteCodes) {
-      result.push({ source: code, target: course.code, corequisite: false });
+      const join = namedPrerequisiteJoin(course.prerequisites, code);
+      const groupId = namedPrerequisiteGroupId(course.prerequisites, code);
+      result.push({
+        source: code,
+        target: course.code,
+        corequisite: false,
+        ...(join === "unknown" ? {} : { join }),
+        ...(groupId ? { groupId } : {}),
+      });
     }
     for (const code of course.corequisiteCodes) {
       const pair = [course.code, code].sort().join("|");
@@ -155,6 +192,8 @@ export type UnlockArrow = {
   target: string;
   emphasized: boolean;
   stroke: string;
+  join?: GraphJoin;
+  groupId?: string;
 };
 
 export const GRAPH_HIT_TARGET_WIDTH = 18;
@@ -263,37 +302,42 @@ export type PrerequisiteBusMeta = {
   busEndY: number;
 };
 
+function edgeBusKey(edge: { target: string; groupId?: string }): string {
+  return edge.groupId ? `${edge.target}::${edge.groupId}` : edge.target;
+}
+
 /**
- * Per-destination bus owner (lexicographically least source) and the vertical
- * span covering every incoming entry Y plus the target handle.
+ * Per-destination (and per AND/OR group) bus owner (lexicographically least source)
+ * and the vertical span covering every incoming entry Y plus the target handle.
  */
 export function prerequisiteBusMeta(
-  edges: readonly { source: string; target: string }[],
+  edges: readonly { source: string; target: string; groupId?: string }[],
   positions: ReadonlyMap<string, { x: number; y: number }>,
 ): Map<string, PrerequisiteBusMeta> {
   const owners = new Map<string, string>();
   const bounds = new Map<string, { start: number; end: number }>();
   for (const edge of edges) {
-    const owner = owners.get(edge.target);
+    const key = edgeBusKey(edge);
+    const owner = owners.get(key);
     if (!owner || edge.source.localeCompare(owner, undefined, { numeric: true }) < 0) {
-      owners.set(edge.target, edge.source);
+      owners.set(key, edge.source);
     }
     const source = positions.get(edge.source);
     const target = positions.get(edge.target);
     if (!source || !target) continue;
     const entryY = prerequisiteEntryY(source, target);
     const handleY = target.y + GRAPH_HANDLE_Y;
-    const previous = bounds.get(edge.target);
-    bounds.set(edge.target, {
+    const previous = bounds.get(key);
+    bounds.set(key, {
       start: Math.min(previous?.start ?? entryY, entryY, handleY),
       end: Math.max(previous?.end ?? entryY, entryY, handleY),
     });
   }
   const result = new Map<string, PrerequisiteBusMeta>();
-  for (const [target, busOwner] of owners) {
-    const span = bounds.get(target);
+  for (const [key, busOwner] of owners) {
+    const span = bounds.get(key);
     if (!span) continue;
-    result.set(target, { busOwner, busStartY: span.start, busEndY: span.end });
+    result.set(key, { busOwner, busStartY: span.start, busEndY: span.end });
   }
   return result;
 }
@@ -329,46 +373,71 @@ export function stableDestinationColor(destination: string): string {
 }
 
 export type RelationshipSelection =
-  | { kind: "branch"; source: string; target: string; codes: Set<string> }
-  | { kind: "bus"; target: string; sources: string[]; codes: Set<string> };
+  | { kind: "branch"; source: string; target: string; codes: Set<string>; join?: GraphJoin }
+  | { kind: "bus"; target: string; sources: string[]; codes: Set<string>; groupId?: string; join?: GraphJoin };
 
-type RelationInput = { source: string; target: string; corequisite?: boolean };
+type RelationInput = { source: string; target: string; corequisite?: boolean; join?: GraphJoin; groupId?: string };
 
 export type RelationshipControlGroup = {
   target: string;
   sources: string[];
   branches: RelationInput[];
+  join?: GraphJoin;
+  groupId?: string;
 };
 
 export function relationshipControlGroups(relations: readonly RelationInput[]): RelationshipControlGroup[] {
   const groups = new Map<string, RelationInput[]>();
   for (const relation of relations) {
     if (relation.corequisite) continue;
-    const target = groups.get(relation.target) ?? [];
+    const key = relation.groupId ? `${relation.target}::${relation.groupId}` : relation.target;
+    const target = groups.get(key) ?? [];
     target.push(relation);
-    groups.set(relation.target, target);
+    groups.set(key, target);
   }
   return [...groups.entries()]
-    .map(([target, branches]) => {
+    .map(([, branches]) => {
       const sorted = [...branches].sort((left, right) => left.source.localeCompare(right.source, undefined, { numeric: true }));
-      return { target, sources: sorted.map((branch) => branch.source), branches: sorted };
+      const first = sorted[0]!;
+      return {
+        target: first.target,
+        sources: sorted.map((branch) => branch.source),
+        branches: sorted,
+        ...(first.join ? { join: first.join } : {}),
+        ...(first.groupId ? { groupId: first.groupId } : {}),
+      };
     })
-    .sort((left, right) => left.target.localeCompare(right.target, undefined, { numeric: true }));
+    .sort(
+      (left, right) =>
+        left.target.localeCompare(right.target, undefined, { numeric: true }) ||
+        (left.groupId ?? "").localeCompare(right.groupId ?? "", undefined, { numeric: true }),
+    );
 }
 
 export const relationshipSelection = {
-  branch(source: string, target: string): RelationshipSelection {
-    return { kind: "branch", source, target, codes: new Set([source, target]) };
+  branch(source: string, target: string, join?: GraphJoin): RelationshipSelection {
+    return { kind: "branch", source, target, codes: new Set([source, target]), ...(join ? { join } : {}) };
   },
-  bus(relations: readonly RelationInput[], target: string): RelationshipSelection {
-    const sources = relations.filter((edge) => !edge.corequisite && edge.target === target).map((edge) => edge.source).sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
-    return { kind: "bus", target, sources, codes: new Set([...sources, target]) };
+  bus(relations: readonly RelationInput[], target: string, groupId?: string): RelationshipSelection {
+    const matching = relations.filter(
+      (edge) => !edge.corequisite && edge.target === target && (groupId === undefined || edge.groupId === groupId),
+    );
+    const sources = matching.map((edge) => edge.source).sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
+    const join = matching.find((edge) => edge.join)?.join;
+    return {
+      kind: "bus",
+      target,
+      sources,
+      codes: new Set([...sources, target]),
+      ...(groupId ? { groupId } : {}),
+      ...(join ? { join } : {}),
+    };
   },
-  isSelected(selection: RelationshipSelection | null, source: string, target: string) {
+  isSelected(selection: RelationshipSelection | null, source: string, target: string, groupId?: string) {
     if (!selection) return false;
     return selection.kind === "branch"
       ? selection.source === source && selection.target === target
-      : selection.target === target;
+      : selection.target === target && (selection.groupId === undefined || selection.groupId === groupId);
   },
 };
 
@@ -391,6 +460,8 @@ export function unlockArrowView(
       target: edge.target,
       emphasized,
       stroke: stableDestinationColor(edge.target),
+      ...(edge.join ? { join: edge.join } : {}),
+      ...(edge.groupId ? { groupId: edge.groupId } : {}),
     };
   });
 }
@@ -442,10 +513,12 @@ export type MapScene = {
   positions: Map<string, { x: number; y: number }>;
   bands: ProgramBandLabel[];
   arrows: UnlockArrow[];
+  corequisites: GraphRelation[];
   chain: Set<string>;
   neighborhood: Set<string>;
   focusPrerequisites: string[];
   focusUnlocks: string[];
+  focusCorequisites: string[];
 };
 
 export type MapSceneInput = {
@@ -522,6 +595,7 @@ export type CourseFocusNeighborhood = {
   selected: string;
   prerequisites: string[];
   unlocks: string[];
+  corequisites: string[];
   codes: Set<string>;
 };
 
@@ -529,25 +603,32 @@ function sortedCodes(codes: Iterable<string>): string[] {
   return [...codes].sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
 }
 
-/** Immediate named prerequisites and unlocks of one course, excluding corequisites. */
+/** Immediate named prerequisites, unlocks, and corequisite partners of one course. */
 export function courseFocusNeighborhood(
   relations: readonly GraphRelation[],
   selectedCode: string,
 ): CourseFocusNeighborhood {
   const prerequisites = new Set<string>();
   const unlocks = new Set<string>();
+  const corequisites = new Set<string>();
   for (const edge of relations) {
-    if (edge.corequisite) continue;
+    if (edge.corequisite) {
+      if (edge.target === selectedCode && edge.source !== selectedCode) corequisites.add(edge.source);
+      if (edge.source === selectedCode && edge.target !== selectedCode) corequisites.add(edge.target);
+      continue;
+    }
     if (edge.target === selectedCode && edge.source !== selectedCode) prerequisites.add(edge.source);
     if (edge.source === selectedCode && edge.target !== selectedCode) unlocks.add(edge.target);
   }
   const prerequisiteList = sortedCodes(prerequisites);
   const unlockList = sortedCodes(unlocks);
+  const corequisiteList = sortedCodes(corequisites);
   return {
     selected: selectedCode,
     prerequisites: prerequisiteList,
     unlocks: unlockList,
-    codes: new Set([selectedCode, ...prerequisiteList, ...unlockList]),
+    corequisites: corequisiteList,
+    codes: new Set([selectedCode, ...prerequisiteList, ...unlockList, ...corequisiteList]),
   };
 }
 
@@ -590,6 +671,18 @@ export function mapScene(input: MapSceneInput): MapScene {
     ),
     input.keep,
   );
+  const present = new Set(input.courses.map((course) => course.code));
+  for (const edge of relations) {
+    if (!edge.corequisite) continue;
+    const touchesFocus =
+      edge.source === input.selectedCode ||
+      edge.target === input.selectedCode ||
+      edge.source === input.focusCode ||
+      edge.target === input.focusCode;
+    if (!touchesFocus) continue;
+    if (present.has(edge.source) && !visible.has(edge.source)) visible.set(edge.source, 0);
+    if (present.has(edge.target) && !visible.has(edge.target)) visible.set(edge.target, 0);
+  }
   const chain = directedCourseChain(relations, input.selectedCode);
   const courseByCode = new Map(input.courses.map((course) => [course.code, course] as const));
   const compare =
@@ -599,6 +692,10 @@ export function mapScene(input: MapSceneInput): MapScene {
       left.localeCompare(right, undefined, { numeric: true }));
   const layout = layoutProgramFlow(visible.keys(), relations, input.courses, compare);
   const arrows = unlockArrowView(relations, chain, visible.keys());
+  const visibleCodes = new Set(visible.keys());
+  const corequisites = relations.filter(
+    (edge) => edge.corequisite && visibleCodes.has(edge.source) && visibleCodes.has(edge.target),
+  );
   const neighborhood = courseFocusNeighborhood(relations, input.selectedCode);
   // Reserve a separate vertical track for each destination, so unrelated buses
   // cannot merge into one ambiguous line in the gutter between columns.
@@ -617,10 +714,12 @@ export function mapScene(input: MapSceneInput): MapScene {
     positions: layout.positions,
     bands: input.scope === "program" ? layout.bands : [],
     arrows,
+    corequisites,
     chain,
     neighborhood: neighborhood.codes,
     focusPrerequisites: neighborhood.prerequisites,
     focusUnlocks: neighborhood.unlocks,
+    focusCorequisites: neighborhood.corequisites,
   };
 }
 

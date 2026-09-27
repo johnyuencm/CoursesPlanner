@@ -9,12 +9,13 @@ import {
   GRAPH_HIT_TARGET_WIDTH,
   GRAPH_MAX_ZOOM,
   GRAPH_READABLE_ZOOM,
+  graphJoinMarker,
   prerequisiteConnector,
   prerequisiteHitPaths,
   selectedGraphScroll,
 } from "@/lib/graph";
 
-// Every incoming relationship uses the same target-side bus and arrowhead.
+// Incoming AND groups share a bus. OR alternatives use a dashed stroke and a separate bus.
 function PrerequisiteEdge({ sourceX, sourceY, targetX, targetY, markerEnd, style, data }: EdgeProps) {
   const busOffset = typeof data?.busOffset === "number" ? data.busOffset : 36;
   const path = prerequisiteConnector(sourceX, sourceY, targetX, targetY, busOffset);
@@ -23,6 +24,8 @@ function PrerequisiteEdge({ sourceX, sourceY, targetX, targetY, markerEnd, style
     busStartY?: number;
     busEndY?: number;
     selected?: boolean;
+    join?: "all" | "any" | "course";
+    corequisite?: boolean;
     onSelectBranch?: () => void;
     onSelectBus?: () => void;
   } | undefined;
@@ -39,15 +42,27 @@ function PrerequisiteEdge({ sourceX, sourceY, targetX, targetY, markerEnd, style
     event.stopPropagation();
     edgeData?.onSelectBus?.();
   };
+  const marker = graphJoinMarker(edgeData?.join, edgeData?.corequisite);
+  const busX = targetX - busOffset;
   return <>
     <BaseEdge path={path} markerEnd={markerEnd} style={style} interactionWidth={0} />
-    <path d={hitPaths.branch} fill="none" stroke="transparent" strokeWidth={GRAPH_HIT_TARGET_WIDTH} pointerEvents="stroke" onClick={selectBranch} aria-label="Select this prerequisite relationship" />
-    {edgeData?.isBusOwner ? <path d={hitPaths.bus} fill="none" stroke="transparent" strokeWidth={GRAPH_HIT_TARGET_WIDTH} pointerEvents="stroke" onClick={selectBus} aria-label="Select all visible prerequisites sharing this bus" /> : null}
-    <circle cx={targetX - busOffset} cy={targetY} r={3} fill={style?.stroke ?? "#64748b"} pointerEvents="none" />
+    <path d={hitPaths.branch} fill="none" stroke="transparent" strokeWidth={GRAPH_HIT_TARGET_WIDTH} pointerEvents="stroke" onClick={selectBranch} aria-label={marker === "OR" ? "Select this OR alternative" : marker === "AND" ? "Select this AND prerequisite" : "Select this prerequisite relationship"} />
+    {edgeData?.isBusOwner ? <path d={hitPaths.bus} fill="none" stroke="transparent" strokeWidth={GRAPH_HIT_TARGET_WIDTH} pointerEvents="stroke" onClick={selectBus} aria-label={marker === "OR" ? "Select OR alternatives sharing this bus" : marker === "AND" ? "Select AND prerequisites sharing this bus" : "Select all visible prerequisites sharing this bus"} /> : null}
+    <circle cx={busX} cy={targetY} r={3} fill={style?.stroke ?? "#64748b"} pointerEvents="none" />
+    {edgeData?.isBusOwner && marker && marker !== "corequisite" ? <text x={busX - 8} y={(busStartY + busEndY) / 2 + 4} textAnchor="end" fill={style?.stroke ?? "#64748b"} fontSize={10} fontWeight={700} pointerEvents="none">{marker}</text> : null}
   </>;
 }
 
-const edgeTypes = { prerequisite: PrerequisiteEdge };
+function CorequisiteEdge({ sourceX, sourceY, targetX, targetY, style }: EdgeProps) {
+  const right = Math.max(sourceX, targetX) + 14;
+  const path = `M ${sourceX} ${sourceY} H ${right} V ${targetY} H ${Math.max(sourceX, targetX)}`;
+  return <>
+    <BaseEdge path={path} style={{ ...style, strokeDasharray: style?.strokeDasharray ?? "2 3" }} interactionWidth={0} />
+    <text x={right + 4} y={(sourceY + targetY) / 2} fill={style?.stroke ?? "#8a4d74"} fontSize={9} fontWeight={700} pointerEvents="none">corequisite</text>
+  </>;
+}
+
+const edgeTypes = { prerequisite: PrerequisiteEdge, corequisite: CorequisiteEdge };
 
 type ZoomScrollFrameProps = {
   zoom: number;

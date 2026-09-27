@@ -444,6 +444,15 @@ textarea { resize: vertical; }
 .react-flow__handle.graph-handle-hidden { opacity: 0; pointer-events: none; }
 .legend-arrow { width: 22px; height: 0; border-top: 2px solid #3d4a5c; position: relative; }
 .legend-arrow::after { content: ""; position: absolute; right: -1px; top: -5px; border: 4px solid transparent; border-left: 7px solid #3d4a5c; border-right: 0; }
+.legend-arrow.legend-or { border-top-style: dashed; }
+.legend-arrow.legend-and { border-top-style: solid; }
+.legend-arrow.legend-coreq { border-top: 2px dotted #8a4d74; }
+.legend-arrow.legend-coreq::after { border-left-color: #8a4d74; }
+.graph-course-node.graph-coreq { border-left: 3px solid #8a4d74; }
+.requirement-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+.requirement-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+.requirement-branch.requirement-any { border-left-color: #2d6a9f; }
+.requirement-branch.requirement-all { border-left-color: #8b5a2b; }
 .legend-band { font-size: 0.58rem; font-weight: 780; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-soft); }
 .graph-inspector { min-width: 0; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); align-self: start; box-shadow: var(--shadow); overflow-wrap: anywhere; }
 .graph-inspector h2 { margin: 0.45rem 0 0.15rem; color: var(--ink); font-size: 1.2rem; }
