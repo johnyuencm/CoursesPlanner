@@ -43,7 +43,7 @@
     "description": "Connect database systems, scalable processing, mining, and data platforms.",
     "groups": [
       { "label": "Foundation", "courses": ["CS 5200", "CS 5800"] },
-      { "label": "Deepen", "courses": ["CS 6220", "CS 6240", "CS 7280"] }
+      { "label": "Deepen", "courses": ["CS 6220", "CS 6240", "CS 6200"] }
     ]
   }
 ]

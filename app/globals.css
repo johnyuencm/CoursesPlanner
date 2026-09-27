@@ -410,6 +410,22 @@ textarea { resize: vertical; }
 .graph-course-node.graph-locked .course-code, .graph-course-node.graph-locked .graph-node-title, .graph-course-node.graph-locked .credits { color: var(--muted); }
 .graph-course-node.graph-emphasized { border-color: #4b6cb3; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.22); }
 .graph-course-node.graph-dimmed { opacity: 0.42; }
+.graph-course-node.graph-overlay-critical { border-color: #c9a227; }
+.graph-course-node.graph-overlay-critical.graph-emphasized { box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.32); }
+.graph-overlay-role { margin-right: 0.28rem; font-size: 0.58rem; font-weight: 800; letter-spacing: 0.04em; color: var(--ink-soft); }
+.graph-overlay-core .graph-overlay-role { color: var(--red-dark); }
+.graph-overlay-recommended .graph-overlay-role { color: var(--green); }
+.graph-overlay-critical .graph-overlay-role { color: var(--amber); }
+.graph-critical-mark { margin-left: 0.18rem; color: var(--amber); font-size: 0.85em; }
+.legend-node.overlay-core { border-top: 2px solid var(--red); }
+.legend-node.overlay-recommended { border-top: 2px solid var(--green); }
+.persona-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.55rem; margin: 0 0 1rem; }
+.persona-picker button { display: grid; gap: 0.28rem; min-height: 92px; padding: 0.75rem 0.8rem; border: 1px solid var(--line); border-radius: 12px; background: white; text-align: left; cursor: pointer; }
+.persona-picker button:hover { border-color: var(--line-strong); }
+.persona-picker button.selected { border-color: var(--red); box-shadow: 0 0 0 2px rgba(200, 16, 46, 0.16); }
+.persona-picker button strong { font-size: 0.82rem; }
+.persona-picker button span { color: var(--ink-soft); font-size: 0.68rem; }
+.persona-picker button small { color: var(--red-dark); font-size: 0.62rem; font-weight: 700; }
 .graph-course-node.graph-focused { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22); }
 .graph-node-main { width: 100%; display: flex; flex-direction: column; padding: 0.55rem 0.62rem 0.5rem; border: 0; background: none; text-align: left; cursor: pointer; pointer-events: auto; }
 .graph-node-meta { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.28rem; }
@@ -417,7 +433,7 @@ textarea { resize: vertical; }
 .graph-node-meta .status-pill { flex: 0 0 auto; white-space: nowrap; }
 .graph-node-main .course-code { margin-top: 0.35rem; color: var(--ink); font-size: 0.82rem; }
 .graph-node-title { min-height: 2.1em; margin-top: 0.12rem; font-size: 0.7rem; line-height: 1.25; color: var(--ink-soft); }
-.graph-course-node .credits { margin-top: 0.28rem; }
+.graph-course-node .credits { margin-top: 0.28rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.28rem; }
 .graph-band-label { padding: 0.15rem 0 0.1rem; color: var(--ink-soft); font-size: 0.68rem; font-weight: 780; letter-spacing: 0.08em; text-transform: uppercase; }
 .graph-legend { display: flex; flex-wrap: wrap; gap: 0.75rem 1.05rem; padding: 0.15rem 0 0.75rem; color: var(--ink-soft); font-size: 0.68rem; }
 .graph-legend span { display: flex; align-items: center; gap: 0.32rem; }

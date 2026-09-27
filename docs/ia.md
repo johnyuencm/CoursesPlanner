@@ -9,7 +9,7 @@ CoursesPlanner is graph-first. The product promise is **understand what every co
 | Explore | `/explore` | Prerequisite map (default workspace) |
 | Plan | `/planner` | Semester plan builder |
 | Courses | `/courses` | Catalog search and filters |
-| Paths | `/pathways` | Suggested career directions |
+| Paths | `/pathways` | Persona targets (“What are you trying to become?”) |
 
 The brand mark also goes to **Explore**. Overview is not a primary nav item.
 

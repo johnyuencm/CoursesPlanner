@@ -6,6 +6,7 @@ import { BookOpen, Bookmark, Check, CircleHelp, ListChecks, RefreshCw, Search, S
 import { FormEvent, useState } from "react";
 import pathwayConfig from "@/config/pathways.json";
 import { primaryNav, routes } from "@/lib/routes";
+import { PERSONA_PROMPT } from "@/lib/pathway-overlay";
 import type { Pathway } from "@/lib/types";
 import { useApp } from "./app-provider";
 import { CourseDetail, CoursePicker } from "./course-dialogs";
@@ -64,9 +65,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="top-utilities">
           <CourseTargetControl />
           <div className="target-control path-direction">
-            <label>Direction
-              <select aria-label="Career target" value={app.careerTargetId ?? ""} onChange={(event) => app.setCareerTargetId(event.target.value || null)}>
-                <option value="">Choose a direction</option>
+            <label>Become
+              <select aria-label={PERSONA_PROMPT} value={app.careerTargetId ?? ""} onChange={(event) => app.setCareerTargetId(event.target.value || null)}>
+                <option value="">Choose a persona</option>
                 {pathways.map((pathway) => <option key={pathway.id} value={pathway.id}>{pathway.name}</option>)}
               </select>
             </label>
