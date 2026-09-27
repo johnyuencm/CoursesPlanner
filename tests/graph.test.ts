@@ -929,7 +929,8 @@ test("course focus neighborhood is immediate prerequisites and unlocks, not the 
   const focus = courseFocusNeighborhood(relations, "B");
   assert.deepEqual(focus.prerequisites, ["A"]);
   assert.deepEqual(focus.unlocks, ["C"]);
-  assert.deepEqual([...focus.codes].sort(), ["A", "B", "C"]);
+  assert.deepEqual(focus.corequisites, ["X"]);
+  assert.deepEqual([...focus.codes].sort(), ["A", "B", "C", "X"]);
   assert.equal(isFocusNeighborhoodEdge("A", "B", "B", focus.codes), true);
   assert.equal(isFocusNeighborhoodEdge("B", "C", "B", focus.codes), true);
   assert.equal(isFocusNeighborhoodEdge("C", "D", "B", focus.codes), false);
