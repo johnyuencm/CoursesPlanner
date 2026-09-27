@@ -2,20 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { Check, CheckCircle2, GitBranch, Info, Plus, Search, ShieldCheck, TriangleAlert, Undo2 } from "lucide-react";
-import type { RequirementExpression } from "@/lib/types";
 import { expressionLabel, getEligibility } from "@/lib/validation";
 import { useApp } from "./app-provider";
 import { CodeLinks } from "./course-card";
+import { RequirementTree } from "./requirement-tree";
 import { SetAsTargetButton, WhyBlockedCard } from "./target-path";
 import { CreditSelect, EmptyState, Modal, OfficialLink, creditLabel } from "./ui";
-
-function RequirementTree({ expression }: { expression: RequirementExpression }) {
-  const { openCourse } = useApp();
-  if (expression.type === "none") return <span className="muted">None listed in the catalog.</span>;
-  if (expression.type === "unknown") return <div className="inline-warning"><TriangleAlert size={15} /><span>Needs review — {expression.text}</span></div>;
-  if (expression.type === "course") return <span className="requirement-leaf"><button className="code-chip" onClick={() => openCourse(expression.code)}>{expression.code}</button>{expression.minimumGrade && <small>grade ≥ {expression.minimumGrade}</small>}{expression.concurrent && <small>may be concurrent</small>}</span>;
-  return <div className="requirement-branch"><span className="rule-operator">{expression.type === "all" ? "ALL of the following (AND)" : "ANY of the following (OR)"}</span><ul>{expression.items.map((item, index) => <li key={index}><RequirementTree expression={item} /></li>)}</ul></div>;
-}
 
 export function CourseDetail({ code }: { code: string }) {
   const { catalog, plan, openCourse, openPicker, setCourseStatus, hydrated } = useApp();

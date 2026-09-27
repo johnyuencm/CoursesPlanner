@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Handle, MarkerType, Position, type Edge, type Node, type NodeProps } from "@xyflow/react";
-import { ArrowLeft, ArrowRight, CalendarPlus, Check, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Minimize2, Network, Plus, RotateCcw, Search, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarPlus, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Minimize2, Network, Plus, RotateCcw, Search, X, ZoomIn, ZoomOut } from "lucide-react";
 import pathwayConfig from "@/config/pathways.json";
 import {
   clampGraphZoom,
@@ -29,8 +29,12 @@ import {
   prerequisiteChecks,
   recordGraphNavigation,
   relationshipControlGroups,
+  relationshipExplanationCopy,
+  relationshipGroupButtonLabel,
   relationshipSelection,
   restoreGraphNavigation,
+  busGroupKey,
+  graphJoinStrokeDasharray,
   enterCourseConnectionsView,
   popGraphView,
   shouldClearLineFocusOnEscape,
@@ -59,6 +63,7 @@ import { useApp } from "./app-provider";
 import { CodeLinks, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
 import { TargetPathCard, SetAsTargetButton, WhyBlockedCard, CriticalPathCard } from "./target-path";
+import { RequirementTree } from "./requirement-tree";
 import { PageHeading, creditLabel } from "./ui";
 import { GraphCanvas } from "./graph-canvas";
 
@@ -85,6 +90,7 @@ type GraphData = {
   critical: boolean;
   hasIncoming: boolean;
   hasOutgoing: boolean;
+  hasCorequisite: boolean;
   selectCourse: (code: string) => void;
   enterConnections: (code: string) => void;
 };
@@ -96,7 +102,7 @@ const GRAPH_ZOOM_STEP = 0.25;
 const tableRowId = (code: string) => `graph-row-${code.replaceAll(" ", "-")}`;
 
 function CourseNode({ data }: NodeProps<GraphNode>) {
-  return <div className={`graph-course-node ${data.core ? "core-course" : ""} ${data.locked ? "graph-locked" : ""} ${data.emphasized ? "graph-emphasized" : ""} ${data.dimmed ? "graph-dimmed" : ""} ${data.focused ? "graph-focused" : ""} ${data.compact ? "graph-compact" : ""} ${data.overlayRole ? `graph-overlay-${data.overlayRole}` : ""}`}>
+  return <div className={`graph-course-node ${data.core ? "core-course" : ""} ${data.locked ? "graph-locked" : ""} ${data.emphasized ? "graph-emphasized" : ""} ${data.dimmed ? "graph-dimmed" : ""} ${data.focused ? "graph-focused" : ""} ${data.compact ? "graph-compact" : ""} ${data.overlayRole ? `graph-overlay-${data.overlayRole}` : ""} ${data.hasCorequisite ? "graph-coreq" : ""}`}>
     <Handle type="target" position={Position.Left} className={data.hasIncoming ? undefined : "graph-handle-hidden"} />
     <button type="button" className="graph-node-main nodrag" onClick={() => data.selectCourse(data.code)} onDoubleClick={(event) => { event.preventDefault(); data.enterConnections(data.code); }} aria-label={`Select ${data.code}${data.critical ? " ★" : ""}, ${data.title}. ${data.overlayLabel ? `${data.overlayLabel}. ` : ""}${data.badgeLabel}. ${data.statusLabel}. Double-click to show this course's connections.`}>
       <span className="graph-node-meta">
@@ -272,10 +278,12 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
         positions: new Map<string, { x: number; y: number }>(),
         bands: [],
         arrows: [],
+        corequisites: [],
         chain: new Set<string>(),
         neighborhood: new Set<string>(),
         focusPrerequisites: [] as string[],
         focusUnlocks: [] as string[],
+        focusCorequisites: [] as string[],
       };
     }
     return mapScene({
@@ -293,8 +301,14 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   const graph = useMemo(() => {
     const bottleneck = bottleneckCodes ? new Set(bottleneckCodes) : null;
     const bottleneckChain = bottleneckCodes ?? [];
-    const incoming = new Set(scene.arrows.map((edge) => edge.target));
-    const outgoing = new Set(scene.arrows.map((edge) => edge.source));
+    const incoming = new Set([
+      ...scene.arrows.map((edge) => edge.target),
+      ...scene.corequisites.flatMap((edge) => [edge.source, edge.target]),
+    ]);
+    const outgoing = new Set([
+      ...scene.arrows.map((edge) => edge.source),
+      ...scene.corequisites.flatMap((edge) => [edge.source, edge.target]),
+    ]);
     const makeNode = (code: string, x: number, y: number): GraphNode => {
       const course = courseMap.get(code);
       const overlayMark = overlayNodeCopy(code, overlay);
@@ -335,6 +349,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
           critical: overlayMark.starred,
           hasIncoming: incoming.has(code),
           hasOutgoing: outgoing.has(code),
+          hasCorequisite: Boolean(course?.corequisiteCodes.length),
           selectCourse: (code) => inspectRef.current(code),
           enterConnections: (code) => enterConnectionsRef.current(code),
         },
@@ -359,49 +374,83 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
     }
     const targetTracks = new Map<string, number>();
     const columnTracks = new Map<number, number>();
-    for (const target of [...incoming].sort((a, b) => (scene.positions.get(a)?.y ?? 0) - (scene.positions.get(b)?.y ?? 0) || a.localeCompare(b))) {
+    const trackKeys = [...new Set(scene.arrows.map((edge) => busGroupKey(edge.target, edge.groupId)))];
+    trackKeys.sort((left, right) => {
+      const leftTarget = left.split("::")[0] ?? left;
+      const rightTarget = right.split("::")[0] ?? right;
+      return (scene.positions.get(leftTarget)?.y ?? 0) - (scene.positions.get(rightTarget)?.y ?? 0)
+        || left.localeCompare(right);
+    });
+    for (const key of trackKeys) {
+      const target = key.split("::")[0] ?? key;
       const x = scene.positions.get(target)?.x ?? 0;
       const track = columnTracks.get(x) ?? 0;
-      targetTracks.set(target, 36 + track * 10);
+      targetTracks.set(key, 36 + track * 10);
       columnTracks.set(x, track + 1);
     }
     const busMeta = prerequisiteBusMeta(scene.arrows, scene.positions);
-    const edges: Edge[] = scene.arrows.map((edge, index) => {
+    const prerequisiteEdges: Edge[] = scene.arrows.map((edge, index) => {
       const stroke = edge.stroke;
-      const selected = relationshipSelection.isSelected(selectedRelationship, edge.source, edge.target);
+      const selected = relationshipSelection.isSelected(selectedRelationship, edge.source, edge.target, edge.groupId);
       const neighborhoodEdge = isFocusNeighborhoodEdge(edge.source, edge.target, selectedCode, neighborhood);
       const chainEdge = bottleneck
         ? isBottleneckEdge(edge.source, edge.target, bottleneckChain)
         : overlay
           ? overlayKeepsEdge(edge.source, edge.target, overlay.keep)
           : neighborhoodEdge;
-      const bus = busMeta.get(edge.target);
+      const key = busGroupKey(edge.target, edge.groupId);
+      const bus = busMeta.get(key);
+      const joinLabel = edge.join === "any" ? `${edge.source} is an OR alternative of ${edge.target}` : edge.join === "all" ? `${edge.source} is an AND prerequisite of ${edge.target}` : `${edge.source} unlocks ${edge.target}`;
       return {
         id: `${edge.source}-${edge.target}-${index}`,
         source: edge.source,
         target: edge.target,
         type: "prerequisite",
         data: {
-          busOffset: targetTracks.get(edge.target) ?? 36,
+          busOffset: targetTracks.get(key) ?? 36,
           busStartY: bus?.busStartY,
           busEndY: bus?.busEndY,
           isBusOwner: bus?.busOwner === edge.source,
           selected,
-          onSelectBranch: () => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target)),
-          onSelectBus: () => setSelectedRelationship(relationshipSelection.bus(scene.arrows, edge.target)),
+          join: edge.join,
+          onSelectBranch: () => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target, edge.join)),
+          onSelectBus: () => setSelectedRelationship(relationshipSelection.bus(scene.arrows, edge.target, edge.groupId)),
         },
         markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: stroke },
         style: {
           stroke,
           strokeWidth: selected || chainEdge ? 2.5 : 1.25,
           opacity: selectedRelationship ? (selected ? 1 : 0.18) : chainEdge ? 1 : 0.18,
+          strokeDasharray: graphJoinStrokeDasharray(edge.join),
         },
         zIndex: selected || chainEdge ? GRAPH_SELECTED_EDGE_Z : 0,
-        ariaLabel: `${edge.source} unlocks ${edge.target}`,
+        ariaLabel: joinLabel,
         focusable: false,
         selectable: true,
       };
     });
+    const corequisiteEdges: Edge[] = scene.corequisites.map((edge, index) => {
+      const selected = selectedRelationship?.codes.has(edge.source) && selectedRelationship.codes.has(edge.target);
+      const neighborhoodEdge = neighborhood.has(edge.source) && neighborhood.has(edge.target);
+      return {
+        id: `coreq-${edge.source}-${edge.target}-${index}`,
+        source: edge.source,
+        target: edge.target,
+        type: "corequisite",
+        data: { corequisite: true },
+        style: {
+          stroke: "#8a4d74",
+          strokeWidth: selected || neighborhoodEdge ? 2 : 1.25,
+          opacity: selectedRelationship ? (selected ? 1 : 0.18) : neighborhoodEdge ? 1 : 0.18,
+          strokeDasharray: graphJoinStrokeDasharray(undefined, true),
+        },
+        zIndex: selected || neighborhoodEdge ? GRAPH_SELECTED_EDGE_Z : 0,
+        ariaLabel: `${edge.source} and ${edge.target} are corequisites`,
+        focusable: false,
+        selectable: false,
+      };
+    });
+    const edges = [...prerequisiteEdges, ...corequisiteEdges];
     const courseNodes = nodes.filter((node): node is GraphNode => node.type === "course");
     return { nodes, edges, courseNodes };
   }, [scene, neighborhood, selectedCode, selectedRelationship, courseMap, facts, bottleneckCodes, overlay]);
@@ -634,13 +683,20 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   );
   const unlockCodes = selected?.unlocks.length ? selected.unlocks : scene.focusUnlocks;
   const findStatus = !search.trim() ? "" : matches.length ? `${findIndex >= 0 ? findIndex + 1 : 0} of ${matches.length}` : "No matches";
-  const showCorequisites = Boolean(selected?.corequisiteCodes.length);
+  const showCorequisites = Boolean(selected?.corequisiteCodes.length || scene.focusCorequisites.length);
   const relationshipGroups = relationshipControlGroups(scene.arrows);
   const lineSemester = plan.semesters.some((semester) => semester.id === lineSemesterId) ? lineSemesterId : (plan.semesters[0]?.id ?? "");
   const lineItems = selectedRelationship && catalog ? addableLineCourses(selectedRelationship.codes, catalog.courses, recorded) : [];
-  const lineLabel = selectedRelationship?.kind === "branch"
-    ? `${selectedRelationship.source} → ${selectedRelationship.target}`
-    : selectedRelationship ? `${selectedRelationship.target} shared prerequisite bus` : "";
+  const relationshipCopy = selectedRelationship
+    ? relationshipExplanationCopy({
+        kind: selectedRelationship.kind,
+        source: selectedRelationship.kind === "branch" ? selectedRelationship.source : undefined,
+        target: selectedRelationship.target,
+        sources: selectedRelationship.kind === "bus" ? selectedRelationship.sources : selectedRelationship.kind === "branch" ? [selectedRelationship.source] : [],
+        join: selectedRelationship.join,
+      })
+    : null;
+  const lineLabel = relationshipCopy?.title ?? "";
   const clearLineFocus = () => setSelectedRelationship(null);
   const toggleCriticalPath = () => {
     const next = !criticalPathOn;
@@ -670,12 +726,16 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
         <span key={status.id}><span className={`status-pill ${status.className}`}>{status.label}</span></span>
       ))}
       <span><i className="legend-arrow" aria-hidden="true" /> Unlocks after this course</span>
+      <span><i className="legend-arrow legend-and" aria-hidden="true" /> AND</span>
+      <span><i className="legend-arrow legend-or" aria-hidden="true" /> OR</span>
+      <span><i className="legend-arrow legend-coreq" aria-hidden="true" /> Take together · corequisites</span>
       {overlay ? <>
         <span><span className="graph-critical-mark">★</span> Dependency-critical</span>
         <span><i className="legend-node overlay-core" /> {OVERLAY_ROLE_LABEL.core}</span>
         <span><i className="legend-node overlay-recommended" /> {OVERLAY_ROLE_LABEL.recommended}</span>
         <span>Outside {overlay.personaName} fades</span>
       </> : null}
+      {depth === "program" && <span><span className="legend-band">No prerequisite required</span> Startable, unlinked</span>}
     </div>
     <div className="graph-layout" ref={graphLayoutRef}>
       <section className="graph-panel" aria-label="Course prerequisite relationships">
@@ -742,7 +802,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
             <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.entries.length - 1} onClick={() => goNavigation(navigation.index + 1)}><ArrowRight size={14} /></button>
           </div>
           <span>{depth === "program" ? <>Entire <strong>{programLabel}</strong> program</> : depth === "1" ? <><Crosshair size={15} /> Connections for <strong>{focusCode}</strong></> : depth === "unlocks" ? <>Unlocks of <strong>{focusCode}</strong></> : depth === "prerequisites" ? <>Prerequisites of <strong>{focusCode}</strong></> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
-          <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "unlock arrow" : "unlock arrows"}. Selected {selectedCode} · {neighborhood.size} in focus{selectedRelationship ? ` · ${selectedRelationship.kind === "branch" ? `${selectedRelationship.source} unlocks ${selectedRelationship.target}` : `${selectedRelationship.sources.join(", ")} unlock ${selectedRelationship.target}`}` : criticalPathOn && bottleneckCodes?.length ? ` · critical path ${bottleneckCodes.join(" → ")}` : overlay ? ` · ${overlay.personaName} overlay` : ""}.</span>
+          <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "relationship" : "relationships"}. Selected {selectedCode} · {neighborhood.size} in focus{selectedRelationship ? ` · ${relationshipCopy?.title ?? ""}` : criticalPathOn && bottleneckCodes?.length ? ` · critical path ${bottleneckCodes.join(" → ")}` : overlay ? ` · ${overlay.personaName} overlay` : ""}.</span>
           <div className="segmented-control" aria-label="Map display">
             <button type="button" aria-pressed={view === "graph"} className={view === "graph" ? "selected" : ""} onClick={() => setView("graph")}><Network size={15} /> Map</button>
             <button type="button" aria-pressed={view === "table"} className={view === "table" ? "selected" : ""} onClick={() => setView("table")}><List size={15} /> Table</button>
@@ -793,13 +853,13 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
               return <tr key={node.id} id={tableRowId(node.id)} className={node.id === selectedCode ? "graph-find-current" : undefined}>
                 <th scope="row"><button className="text-button" onClick={() => inspectCourse(node.id)} onDoubleClick={(event) => { event.preventDefault(); enterConnections(node.id); }}>{node.id}</button><span>{course?.title ?? "External reference — unknown metadata"}</span></th>
                 <td>{node.data.badgeLabel} · {node.data.statusLabel}{node.data.overlayLabel ? ` · ${node.data.overlayLabel}` : ""}</td>
-                <td>{node.data.prerequisites}<div className="detail-code-links"><CodeLinks codes={course?.prerequisiteCodes ?? []} limit={1000} onSelect={overrideActive ? focus : undefined} /></div></td>
-                <td>{node.data.corequisites}<div className="detail-code-links"><CodeLinks codes={course?.corequisiteCodes ?? []} limit={1000} onSelect={overrideActive ? focus : undefined} /></div></td>
+                <td><RequirementTree expression={course?.prerequisites ?? { type: "none" }} onSelect={overrideActive ? focus : selectRelated} /></td>
+                <td><RequirementTree expression={course?.corequisites ?? { type: "none" }} onSelect={overrideActive ? focus : selectRelated} /></td>
               </tr>;
             })}</tbody>
           </table>
         </div>}
-        {view === "graph" && <p className="graph-canvas-hint">Click a course to isolate its prerequisites and unlocks. The rest of the map stays visible but de-emphasized. Double-click a course to show its connections, then press Escape to return to the previous view. Select a colored branch for that exact relationship, or its shared bus for every visible prerequisite of that destination. Empty map / Exit line focus restores every relationship. Only my planned hides courses that are not completed, waived, or on your plan. Persona overlay keeps CORE, RECOMMENDED, and dependency-critical ★ courses readable and fades the rest. Critical path to target highlights the longest remaining chain and delay impact for My Target or your career direction.</p>}
+        {view === "graph" && <p className="graph-canvas-hint">Click a course to isolate its prerequisites and unlocks. The rest of the map stays visible but de-emphasized. Double-click a course to show its connections, then press Escape to return to the previous view. Select a colored branch for that exact relationship, or its AND/OR bus for the matching catalog group. Empty map / Exit line focus restores every relationship. Only my planned hides courses that are not completed, waived, or on your plan. Persona overlay keeps CORE, RECOMMENDED, and dependency-critical ★ courses readable and fades the rest. Critical path to target highlights the longest remaining chain and delay impact for My Target or your career direction.</p>}
       </section>
       <aside className="graph-inspector" id="graph-inspector" tabIndex={-1}>
         {overrideActive ? null : <TargetPathCard compact />}
@@ -862,28 +922,20 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
           {viewStack.length ? <button type="button" className="text-button inspector-focus" aria-keyshortcuts="Escape" onClick={restorePreviousView}><ArrowLeft size={14} /> Return to previous view</button> : null}
         </div>
         <div className="inspector-relationships">
-          {selectedRelationship ? <div className="graph-relationship-explanation"><h3>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} → ${selectedRelationship.target}` : `${selectedRelationship.target} shared prerequisite bus`}</h3><p>{selectedRelationship.kind === "branch" ? `${selectedRelationship.source} is named as a prerequisite of ${selectedRelationship.target}.` : `Visible incoming prerequisites: ${selectedRelationship.sources.join(", ")}.`}</p><p><strong>{selectedRelationship.target} catalog rule:</strong> {nodeRequirementCopy(relationshipTarget, "prerequisites")}</p><p className="muted small-text">A line records a named catalog link; the rule above states whether prerequisites are AND, OR, or need review.</p></div> : null}
-          {scene.arrows.length ? <><h3>Visible map relationships</h3><div className="graph-relationship-buttons">{relationshipGroups.map((group) => <Fragment key={group.target}>
-            <button key={`${group.target}-bus`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "bus" && selectedRelationship.target === group.target} aria-label={`Select every visible prerequisite of ${group.target}: ${group.sources.join(", ")}`} onClick={() => setSelectedRelationship(relationshipSelection.bus(scene.arrows, group.target))}>All into {group.target}</button>
-            {group.branches.map((edge) => <button key={`${edge.source}-${edge.target}`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "branch" && selectedRelationship.source === edge.source && selectedRelationship.target === edge.target} aria-label={`Select exact relationship ${edge.source} unlocks ${edge.target}`} onClick={() => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target))}>{edge.source} → {edge.target}</button>)}
+          {selectedRelationship && relationshipCopy ? <div className="graph-relationship-explanation"><h3>{relationshipCopy.title}</h3><p>{relationshipCopy.body}</p><p><strong>{selectedRelationship.target} catalog rule:</strong> {nodeRequirementCopy(relationshipTarget, "prerequisites")}</p><p className="muted small-text">{relationshipCopy.note}</p></div> : null}
+          {scene.arrows.length ? <><h3>Visible map relationships</h3><div className="graph-relationship-buttons">{relationshipGroups.map((group) => <Fragment key={`${group.target}:${group.groupId ?? "default"}`}>
+            {group.sources.length > 1 ? <button key={`${group.target}-${group.groupId ?? "bus"}-bus`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "bus" && selectedRelationship.target === group.target && selectedRelationship.groupId === group.groupId} aria-label={group.join === "any" ? `Select OR alternatives of ${group.target}: ${group.sources.join(", ")}` : group.join === "all" ? `Select AND prerequisites of ${group.target}: ${group.sources.join(", ")}` : `Select every visible prerequisite of ${group.target}: ${group.sources.join(", ")}`} onClick={() => setSelectedRelationship(relationshipSelection.bus(scene.arrows, group.target, group.groupId))}>{relationshipGroupButtonLabel(group)}</button> : null}
+            {group.branches.map((edge) => <button key={`${edge.source}-${edge.target}-${edge.groupId ?? ""}`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "branch" && selectedRelationship.source === edge.source && selectedRelationship.target === edge.target} aria-label={edge.join === "any" ? `Select OR alternative ${edge.source} of ${edge.target}` : `Select exact relationship ${edge.source} unlocks ${edge.target}`} onClick={() => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target, edge.join))}>{edge.source} → {edge.target}{edge.join === "any" ? " · OR" : edge.join === "all" ? " · AND" : ""}</button>)}
           </Fragment>)}</div></> : <p className="muted small-text">This course has no prerequisite or unlock relationships in this catalog.</p>}
           <h3>Prerequisites <span>{prereqItems.length}</span></h3>
           {selected?.requirementType === "external" ? <p>{nodeRequirementCopy(selected, "prerequisites")}</p> : <>
-            <p>{selected ? expressionLabel(selected.prerequisites) : "Unknown"}</p>
-            {prereqItems.length ? <ul className="inspector-prereq-list">{prereqItems.map((item) => (
-              <li key={item.code} className={item.met ? "met" : undefined}>
-                <span className="inspector-prereq-mark" aria-hidden="true">{item.met ? <Check size={13} /> : null}</span>
-                <button type="button" className="code-chip" onClick={() => selectRelated(item.code)}>{item.code}</button>
-                <span className="sr-only">{item.met ? "completed or waived" : "still needed"}</span>
-              </li>
-            ))}</ul> : <span className="muted small-text">No parsed prerequisites.</span>}
+            <RequirementTree expression={selected?.prerequisites ?? { type: "none" }} satisfied={history} onSelect={selectRelated} />
           </>}
           <h3>Unlocks <span>{unlockCodes.length}</span></h3>
           {unlockCodes.length ? <div className="detail-code-links"><CodeLinks codes={unlockCodes} limit={1000} onSelect={selectRelated} /></div> : <span className="muted small-text">No linked downstream courses in this catalog.</span>}
           {showCorequisites ? <>
             <h3>Corequisites <span>{selected?.corequisiteCodes.length ?? 0}</span></h3>
-            <p>{nodeRequirementCopy(selected, "corequisites")}</p>
-            <div className="detail-code-links"><CodeLinks codes={selected?.corequisiteCodes ?? []} limit={1000} onSelect={selectRelated} /></div>
+            <RequirementTree expression={selected?.corequisites ?? { type: "none" }} satisfied={history} onSelect={selectRelated} />
           </> : null}
         </div>
         {overrideActive ? null : <div className="inspector-actions">
@@ -903,7 +955,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
         <div className="inspector-tip"><Info size={16} /><p>Selected course, its prerequisites, and its unlocks stay readable; everything else is de-emphasized. A blocked course explains the remaining chain and earliest term, and can add that chain in one click after showing term overloads. Offerings are not listed because they are unknown. The path card above shows remaining prerequisites, earliest term, and delay impact for your target. Persona overlay fades courses that are not CORE, RECOMMENDED, or dependency-critical ★. Critical path to target highlights the bottleneck chain on the map.</p></div>
       </aside>
     </div>
-    <p className="page-footnote">The default map follows the selected course through its cataloged prerequisites and unlocks; it does not add a downstream course’s other prerequisite branches. Choose Entire program to browse all listed {programLabel} courses and their cataloged external prerequisites. A shared color groups lines by destination, not by AND/OR satisfaction; read the catalog rule in the inspector. A connection does not verify course availability.</p>
+    <p className="page-footnote">The default map follows the selected course through its cataloged prerequisites and unlocks; it does not add a downstream course’s other prerequisite branches. Choose Entire program to browse all listed {programLabel} courses and their cataloged external prerequisites. Solid lines are AND or single named prerequisites; dashed lines are OR alternatives. Take together · corequisites sit in the same column with a dotted connector. A shared color still groups lines by destination. A connection does not verify course availability.</p>
   </>;
 }
 
