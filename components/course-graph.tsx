@@ -45,6 +45,7 @@ import {
   type RelationshipSelection,
 } from "@/lib/graph";
 import type { Course, Pathway, ProgramRoadmap, StudentPlan } from "@/lib/types";
+import { consumeExploreFocus } from "@/lib/catalog-view";
 import { expressionLabel, getEligibility } from "@/lib/validation";
 import { addableLineCourses } from "@/lib/plan";
 import { analyzeResolvedCriticalPath, isBottleneckEdge } from "@/lib/critical-path";
@@ -207,14 +208,15 @@ export function GraphInspectorActions({
   </div>;
 }
 
-function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
+function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRoadmap | null; requestedFocus?: string | null }) {
   const { catalog, openCourse, openPicker, plan, addCourses, hydrated, careerTargetId, courseTargetCode, workspaceSelection, setWorkspaceSelection, announce } = useApp();
   const overrideActive = roadmap !== null;
   const courses = useMemo(() => resolveGraphCourses(catalog, roadmap), [catalog, roadmap]);
   const programCodes = useMemo(() => resolveProgramScope(catalog, roadmap), [catalog, roadmap]);
   const programLabel = roadmapProgramLabel(roadmap);
-  const initialFocusCode = roadmap ? (roadmapFocusCourse(roadmap) || "CS 5010") : workspaceSelection.focusCode;
-  const initialSelectedCode = roadmap ? initialFocusCode : workspaceSelection.selectedCode;
+  const urlFocus = overrideActive ? null : requestedFocus;
+  const initialFocusCode = roadmap ? (roadmapFocusCourse(roadmap) || "CS 5010") : (urlFocus ?? workspaceSelection.focusCode);
+  const initialSelectedCode = roadmap ? initialFocusCode : (urlFocus ?? workspaceSelection.selectedCode);
   const [focusCode, setFocusCode] = useState(initialFocusCode);
   const [selectedCode, setSelectedCode] = useState(initialSelectedCode);
   const [selectedRelationship, setSelectedRelationship] = useState<RelationshipSelection | null>(null);
@@ -238,6 +240,7 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   const fullscreenButtonRef = useRef<HTMLButtonElement>(null);
   const wasFullscreenRef = useRef(false);
   const findInputRef = useRef<HTMLInputElement>(null);
+  const appliedExploreFocus = useRef<string | null>(urlFocus ?? null);
   const searchRef = useRef(search);
   searchRef.current = search;
   const [lineSemesterId, setLineSemesterId] = useState("");
@@ -531,13 +534,18 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   }, [selectedRelationship, isFullscreen, viewStack]);
   useEffect(() => {
     if (overrideActive) return;
+    if (urlFocus && appliedExploreFocus.current === urlFocus) return;
     setSelectedCode(workspaceSelection.selectedCode);
     setFocusCode(workspaceSelection.focusCode);
-  }, [overrideActive, workspaceSelection.selectedCode, workspaceSelection.focusCode]);
+  }, [overrideActive, urlFocus, workspaceSelection.selectedCode, workspaceSelection.focusCode]);
   const rememberSelection = (nextSelected: string, nextFocus: string) => {
     if (overrideActive) return;
     setWorkspaceSelection({ selectedCode: nextSelected, focusCode: nextFocus });
   };
+  useEffect(() => {
+    if (overrideActive || !urlFocus) return;
+    rememberSelection(urlFocus, urlFocus);
+  }, [overrideActive, urlFocus]);
   const liveNavigation = (): GraphNavigationEntry => ({ selectedCode, focusCode, depth });
   const applyNavigation = (entry: GraphNavigationEntry) => {
     setSelectedCode(entry.selectedCode);
@@ -627,6 +635,12 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
     if (course) locate(course.code, true);
   };
   locateRef.current = locate;
+  useEffect(() => {
+    if (overrideActive) return;
+    const next = consumeExploreFocus(urlFocus, courseMap.keys(), appliedExploreFocus);
+    if (!next) return;
+    locateRef.current(next);
+  }, [overrideActive, urlFocus, courseMap]);
   inspectRef.current = inspectCourse;
   enterConnectionsRef.current = enterConnections;
   cycleRef.current = cycle;
@@ -959,7 +973,13 @@ function GraphWorkspace({ roadmap }: { roadmap: ProgramRoadmap | null }) {
   </>;
 }
 
-export default function CourseGraph({ roadmap = null }: { roadmap?: ProgramRoadmap | null }) {
+export default function CourseGraph({
+  roadmap = null,
+  requestedFocus = null,
+}: {
+  roadmap?: ProgramRoadmap | null;
+  requestedFocus?: string | null;
+}) {
   const graphKey = roadmap ? `${roadmap.universityId}:${roadmap.programId}` : "default";
-  return <GraphWorkspace key={graphKey} roadmap={roadmap} />;
+  return <GraphWorkspace key={graphKey} roadmap={roadmap} requestedFocus={requestedFocus} />;
 }
