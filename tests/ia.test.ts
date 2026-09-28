@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { overviewSnapshot } from "../lib/overview";
 import { emptyPlan } from "../lib/plan";
-import { criticalPathHref, legacyRedirects, primaryNav, routes, targetPathHref } from "../lib/routes";
+import { criticalPathHref, exploreFocusHref, legacyRedirects, parseExploreFocus, primaryNav, routes, targetPathHref } from "../lib/routes";
 import type { Catalog, Course, RequirementExpression, StudentPlan } from "../lib/types";
 import { validatePlan } from "../lib/validation";
 
@@ -106,6 +106,11 @@ test("target path panel is anchored on Plan", () => {
 
 test("critical path panel is anchored on Plan", () => {
   assert.equal(criticalPathHref, "/planner#critical-path");
+});
+
+test("Courses View dependency graph deep-links into Explore focus", () => {
+  assert.equal(exploreFocusHref("CS 5500"), "/explore?focus=CS%205500");
+  assert.equal(parseExploreFocus("CS5500"), "CS 5500");
 });
 
 test("slim overview reports credits, target, critical prereq, and next unlock", () => {
