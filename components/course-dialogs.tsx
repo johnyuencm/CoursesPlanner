@@ -2,15 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { Check, CheckCircle2, GitBranch, Info, Plus, Search, ShieldCheck, TriangleAlert, Undo2 } from "lucide-react";
+import pathwayConfig from "@/config/pathways.json";
+import { courseDependencyStats } from "@/lib/catalog-view";
+import { exploreFocusHref } from "@/lib/routes";
+import type { Pathway } from "@/lib/types";
 import { expressionLabel, getEligibility } from "@/lib/validation";
 import { useApp } from "./app-provider";
-import { CodeLinks } from "./course-card";
+import { CodeLinks, CourseDependencyFields } from "./course-card";
 import { RequirementTree } from "./requirement-tree";
 import { SetAsTargetButton, WhyBlockedCard } from "./target-path";
 import { CreditSelect, EmptyState, Modal, OfficialLink, creditLabel } from "./ui";
 
+const pathways = pathwayConfig as Pathway[];
+
 export function CourseDetail({ code }: { code: string }) {
-  const { catalog, plan, openCourse, openPicker, setCourseStatus, hydrated } = useApp();
+  const { catalog, plan, openCourse, openPicker, setCourseStatus, hydrated, setWorkspaceSelection, careerTargetId } = useApp();
   const course = catalog?.courses.find((item) => item.code === code);
   const [credits, setCredits] = useState(plan.completedCredits[code] ?? course?.credits ?? 0);
   if (!course) return <Modal title={code} eyebrow="Course details" onClose={() => openCourse(null)} drawer><div className="modal-body"><EmptyState icon={<Info />} title="Not in the current catalog">This referenced course is not available in the cached catalog. Its title, credits, and eligibility have not been inferred. Confirm it with your advisor or refresh the catalog.</EmptyState></div></Modal>;
@@ -18,8 +24,14 @@ export function CourseDetail({ code }: { code: string }) {
   const waived = plan.waivedCourses.includes(code);
   const semester = plan.semesters.find((term) => term.courses.some((item) => item.code === code));
   const eligibility = getEligibility(course, new Set([...plan.completedCourses, ...plan.waivedCourses]));
+  const stats = courseDependencyStats(course, pathways, careerTargetId);
+  const focusExplore = () => {
+    setWorkspaceSelection({ selectedCode: course.code, focusCode: course.code });
+    openCourse(null);
+  };
   return <Modal title={course.title} eyebrow={course.code} onClose={() => openCourse(null)} drawer><div className="modal-body">
     <div className="detail-meta"><span className={`badge ${course.requirementType === "core" ? "badge-core" : ""}`}>{course.requirementType === "core" ? "Required core" : course.requirementType === "external" ? "External prerequisite" : course.requirementType === "breadth" ? "Breadth / elective" : "Elective"}</span><strong>{creditLabel(course)} credits</strong>{completed && <span className="status-label"><CheckCircle2 size={15} /> Completed</span>}{waived && <span className="status-label"><ShieldCheck size={15} /> Waived</span>}</div>
+    <CourseDependencyFields stats={stats} graphHref={exploreFocusHref(course.code)} onViewGraph={focusExplore} />
     <p className="detail-description">{course.description || "No description is available in the current cache."}</p>
     {course.breadthCategories.length > 0 && <div className="detail-tags">{course.breadthCategories.map((id) => <span className="badge" key={id}>{catalog?.requirements.breadthRequirements.categories.find((category) => category.id === id)?.name ?? id}</span>)}</div>}
     <section className="detail-section"><h3>Prerequisites</h3><RequirementTree expression={course.prerequisites} /><p className="raw-rule"><strong>Catalog wording</strong>{course.prerequisiteText || (course.prerequisites.type === "none" ? "None listed." : "Unavailable.")}</p></section>
