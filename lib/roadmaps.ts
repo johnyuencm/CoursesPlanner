@@ -20,12 +20,13 @@ export function universityStatusText(entry: UniversityRoadmapSummary): string {
   return "Queued";
 }
 
+/**
+ * A university is only worth selecting when it actually has a ready program.
+ * "supported + queued" means the crawl has not produced data yet (production
+ * ships no data/catalogs/), so opening it leads nowhere. (D1)
+ */
 export function isUniversitySelectable(entry: UniversityRoadmapSummary): boolean {
-  return (
-    entry.support === "supported" &&
-    entry.status.status !== "unsupported" &&
-    entry.status.status !== "error"
-  );
+  return entry.support === "supported" && entry.status.status === "ready" && entry.status.counts.ready > 0;
 }
 
 export function programStatusText(program: DiscoveredProgram): string {
