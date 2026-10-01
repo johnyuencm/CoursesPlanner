@@ -109,7 +109,15 @@ test("I can take now and Blocked filters use completed/waived plan history", () 
     ),
   });
   assert.equal(catalogTakeStatus(course("CS 5010"), planned5500), "recorded");
+  // CS 5500 is planned here too, so it reads "recorded", not "blocked" (D3).
   assert.equal(catalogTakeStatus(course("CS 5500"), planned5500), "blocked");
+
+  const plannedBlocked = plan({
+    semesters: emptyPlan().semesters.map((semester, index) =>
+      index === 0 ? { ...semester, courses: [{ code: "CS 5500", credits: 4 }] } : semester,
+    ),
+  });
+  assert.equal(catalogTakeStatus(course("CS 5500"), plannedBlocked), "recorded");
 });
 
 test("No prereqs, Area, and Unlocks > N filters compose with plan+catalog state", () => {
