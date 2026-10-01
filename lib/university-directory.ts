@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { UniversityCrawlConfig, UniversityDirectoryEntry } from "./source-types";
+import { KNOWN_ADAPTER_IDS, type UniversityCrawlConfig, type UniversityDirectoryEntry } from "./source-types";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -59,6 +59,11 @@ export function parseAllowedOrigins(value: unknown, label: string): string[] {
 function parseUniversityCrawlConfig(value: unknown, label: string): UniversityCrawlConfig {
   if (!isRecord(value)) throw new Error(`${label} must be an object`);
   if (typeof value.adapter !== "string" || !value.adapter) throw new Error(`${label}.adapter is required`);
+  if (!KNOWN_ADAPTER_IDS.includes(value.adapter)) {
+    throw new Error(
+      `No catalog adapter registered for "${value.adapter}". Add an adapter in catalog-service/adapters.ts, then point a source JSON file at it.`,
+    );
+  }
   const discoverySource = parsePageSource(value.discoverySource, `${label}.discoverySource`);
   const allowedOrigins = parseAllowedOrigins(value.allowedOrigins, `${label}.allowedOrigins`);
   const robotsUrl =

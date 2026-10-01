@@ -15,10 +15,12 @@ import {
   parseUniversityDirectory,
 } from "../catalog-service/registry";
 import { refreshSource } from "../catalog-service/refresh";
+import { crawlRoadmaps } from "../catalog-service/roadmaps";
 import { parseRobots, pathDisallowed } from "../catalog-service/robots";
 import { isDue, runDueSources } from "../catalog-service/scheduler";
 import { handleCatalogRequest } from "../catalog-service/server";
-import type { CatalogSourceDefinition } from "../lib/source-types";
+import { KNOWN_ADAPTER_IDS, type CatalogSourceDefinition } from "../lib/source-types";
+import { registeredAdapters } from "../catalog-service/adapters";
 import { readCatalog } from "../lib/catalog";
 
 const fixture = (name: string) => readFileSync(path.join(process.cwd(), "data", "raw", name), "utf8");
@@ -223,6 +225,33 @@ test("university directory sorts US before world and skips metadata-only entries
     ["mit", "stanford", "oxford"],
   );
   assert.deepEqual(enabledUniversities(universities), []);
+});
+
+test("KNOWN_ADAPTER_IDS stays in sync with the adapter registry", () => {
+  assert.deepEqual([...KNOWN_ADAPTER_IDS].sort(), registeredAdapters().sort());
+});
+
+test("university directory rejects an unknown crawl adapter (A2 regression)", () => {
+  const supported = supportedUniversity();
+  const crawl = supported.crawl as Record<string, unknown>;
+  assert.throws(
+    () => parseUniversityDirectory([{ ...supported, crawl: { ...crawl, adapter: "no-such-adapter" } }], "test universities"),
+    /No catalog adapter registered for "no-such-adapter"/,
+  );
+});
+
+test("crawl path rejects an unknown adapter even when built in memory (A2 regression)", async () => {
+  const supported = supportedUniversity();
+  const crawl = supported.crawl as Record<string, unknown>;
+  await assert.rejects(
+    () =>
+      crawlRoadmaps({
+        limit: 1,
+        rootDir: process.cwd(),
+        universities: [{ ...supported, crawl: { ...crawl, adapter: "no-such-adapter" } }] as never,
+      }),
+    /No catalog adapter registered for "no-such-adapter"/,
+  );
 });
 
 test("enabled universities require supported adapter and discovery crawl config", () => {
