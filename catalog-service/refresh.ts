@@ -1,12 +1,13 @@
 import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { validateCatalog } from "../lib/catalog";
+import { readBoundedFile } from "../lib/read-bounded-file";
 import type { Catalog, Course } from "../lib/types";
 import { getAdapter } from "./adapters";
 import { assertAllowedUrl, createTurnWaiter, fetchOfficialHtml, loadRobots, type OfficialFetchPolicy } from "./crawler";
 import { defaultCatalogId, findSource, loadRegistry } from "./registry";
 import type { RobotsRules } from "./robots";
-import type { CatalogSourceDefinition, PageSource } from "./source-types";
+import type { CatalogSourceDefinition, PageSource } from "../lib/source-types";
 
 export const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -83,11 +84,7 @@ export async function readCacheMetadata(filePath: string): Promise<CacheMetadata
   return { version: 2, sources: {} };
 }
 
-export async function readBoundedFile(filePath: string): Promise<string> {
-  const details = await stat(filePath);
-  if (details.size > 5 * 1024 * 1024) throw new Error(`Cached response exceeds 5 MB: ${filePath}`);
-  return readFile(filePath, "utf8");
-}
+export { readBoundedFile } from "../lib/read-bounded-file";
 
 export async function atomicWrite(filePath: string, content: string): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });

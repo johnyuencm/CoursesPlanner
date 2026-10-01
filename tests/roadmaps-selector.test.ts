@@ -5,7 +5,7 @@ import test from "node:test";
 
 import { GraphInspectorActions, graphStatus, graphStudentFacts } from "../components/course-graph";
 import { RoadmapSelectorView, type RoadmapSelectorViewProps } from "../components/roadmap-selector";
-import type { UniversityRoadmapSummary } from "../catalog-service/source-types";
+import type { UniversityRoadmapSummary } from "../lib/source-types";
 import { earliestTakeTerm, prerequisiteChecks, programMapCodes } from "../lib/graph";
 import { emptyPlan } from "../lib/plan";
 import {

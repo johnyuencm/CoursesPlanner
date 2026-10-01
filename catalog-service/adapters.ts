@@ -7,7 +7,7 @@ import {
   parseCourses,
   parseProgramRequirements,
 } from "../scraper/parser";
-import type { PageSource } from "./source-types";
+import type { PageSource } from "../lib/source-types";
 
 export interface AdapterProgramLink {
   id: string;

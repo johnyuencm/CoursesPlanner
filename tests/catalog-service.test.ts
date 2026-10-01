@@ -18,7 +18,7 @@ import { refreshSource } from "../catalog-service/refresh";
 import { parseRobots, pathDisallowed } from "../catalog-service/robots";
 import { isDue, runDueSources } from "../catalog-service/scheduler";
 import { handleCatalogRequest } from "../catalog-service/server";
-import type { CatalogSourceDefinition } from "../catalog-service/source-types";
+import type { CatalogSourceDefinition } from "../lib/source-types";
 import { readCatalog } from "../lib/catalog";
 
 const fixture = (name: string) => readFileSync(path.join(process.cwd(), "data", "raw", name), "utf8");

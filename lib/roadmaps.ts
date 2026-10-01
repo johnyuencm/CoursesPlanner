@@ -1,6 +1,6 @@
 import { programMapCodes } from "./graph";
 import type { Catalog, Course, DiscoveredProgram, ProgramRoadmap } from "./types";
-import type { UniversityRoadmapSummary } from "@/catalog-service/source-types";
+import type { UniversityRoadmapSummary } from "@/lib/source-types";
 
 export function groupUniversities<T extends { region: "us" | "world" }>(
   entries: readonly T[],

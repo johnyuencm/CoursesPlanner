@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, RotateCcw } from "lucide-react";
 import type { DiscoveredProgram, ProgramDirectoryResponse, ProgramRoadmap } from "@/lib/types";
-import type { UniversityRoadmapSummary } from "@/catalog-service/source-types";
+import type { UniversityRoadmapSummary } from "@/lib/source-types";
 import {
   groupUniversities,
   isProgramSelectable,

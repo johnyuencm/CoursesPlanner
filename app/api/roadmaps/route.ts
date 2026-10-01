@@ -1,12 +1,12 @@
 import path from "node:path";
 import { NextResponse, type NextRequest } from "next/server";
-import { loadUniversityDirectory } from "@/catalog-service/registry";
+import { loadUniversityDirectory } from "@/lib/university-directory";
 import {
   findUniversity,
   listRoadmapUniversities,
   readProgramDirectory,
   readReadyRoadmap,
-} from "@/catalog-service/roadmaps";
+} from "@/lib/roadmap-reader";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

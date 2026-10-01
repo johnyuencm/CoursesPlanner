@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { CatalogSourceDefinition } from "./source-types";
+import type { CatalogSourceDefinition } from "../lib/source-types";
 
 export interface SourceStatus {
   id: string;

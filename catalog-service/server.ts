@@ -8,7 +8,7 @@ import { defaultCatalogId, enabledSources, findSource, loadRegistry, loadUnivers
 import { refreshSource, storagePaths } from "./refresh";
 import { findUniversity, listRoadmapUniversities, readProgramDirectory, readReadyRoadmap } from "./roadmaps";
 import { startScheduler, type SourceStatus } from "./scheduler";
-import type { CatalogSourceDefinition, UniversityDirectoryEntry } from "./source-types";
+import type { CatalogSourceDefinition, UniversityDirectoryEntry } from "../lib/source-types";
 
 const HOST = process.env.CATALOG_SERVICE_HOST ?? "127.0.0.1";
 const PORT = Number(process.env.CATALOG_SERVICE_PORT ?? 8787);
