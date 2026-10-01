@@ -58,10 +58,21 @@ function Explorer() {
             : a.code.localeCompare(b.code, undefined, { numeric: true }),
     );
   }, [catalog, plan, filters, sort]);
+  // Recomputing take-status over every course on each render was wasteful (D2).
+  const takeCounts = useMemo(() => {
+    let takeNow = 0;
+    let blocked = 0;
+    for (const course of catalog?.courses ?? []) {
+      if (course.requirementType === "external") continue;
+      const status = catalogTakeStatus(course, plan);
+      if (status === "can-take-now") takeNow += 1;
+      else if (status === "blocked") blocked += 1;
+    }
+    return { takeNow, blocked };
+  }, [catalog, plan]);
   if (!catalog) return <CatalogState />;
-  const catalogCourses = catalog.courses.filter((course) => course.requirementType !== "external");
-  const takeNowCount = catalogCourses.filter((course) => catalogTakeStatus(course, plan) === "can-take-now").length;
-  const blockedCount = catalogCourses.filter((course) => catalogTakeStatus(course, plan) === "blocked").length;
+  const takeNowCount = takeCounts.takeNow;
+  const blockedCount = takeCounts.blocked;
   const filterCount =
     Number(type !== "all") +
     Number(category !== "all") +

@@ -6,7 +6,7 @@ import test from "node:test";
 import { NextRequest } from "next/server";
 
 import { handleRoadmapsRequest } from "../app/api/roadmaps/route";
-import type { UniversityDirectoryEntry } from "../catalog-service/source-types";
+import type { UniversityDirectoryEntry } from "../lib/source-types";
 import type { Course, DiscoveredPrograms, ProgramRoadmap } from "../lib/types";
 
 const timestamp = "2026-09-16T00:00:00.000Z";

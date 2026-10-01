@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { CatalogSourceDefinition } from "./source-types";
+import type { CatalogSourceDefinition } from "../lib/source-types";
 
 export interface SourceStatus {
   id: string;
@@ -29,14 +29,22 @@ function statePath(rootDir: string) {
   return path.join(rootDir, "data", "catalogs", ".scheduler-status.json");
 }
 
+/** Only a well-formed record is trusted; anything else starts from empty (CR7). */
+function parseSchedulerState(value: unknown): SchedulerState {
+  if (typeof value !== "object" || value === null) return { version: 1, sources: {} };
+  const record = value as { version?: unknown; sources?: unknown };
+  if (record.version !== 1) return { version: 1, sources: {} };
+  if (typeof record.sources !== "object" || record.sources === null || Array.isArray(record.sources)) {
+    return { version: 1, sources: {} };
+  }
+  return { version: 1, sources: record.sources as Record<string, SourceStatus> };
+}
+
 async function readState(filePath: string): Promise<SchedulerState> {
   try {
-    const parsed: unknown = JSON.parse(await readFile(filePath, "utf8"));
-    if (typeof parsed === "object" && parsed !== null && "sources" in parsed) {
-      return parsed as SchedulerState;
-    }
+    return parseSchedulerState(JSON.parse(await readFile(filePath, "utf8")));
   } catch {
-    /* First run has no status file. */
+    /* First run has no status file, or it is unreadable. */
   }
   return { version: 1, sources: {} };
 }

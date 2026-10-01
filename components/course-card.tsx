@@ -51,7 +51,8 @@ export function CourseDependencyFields({
       <div><dt>Prereqs</dt><dd>{stats.prereqCount}</dd></div>
       <div><dt>Unlocks</dt><dd>{stats.unlockCount}</dd></div>
       <div><dt>Required by</dt><dd>{stats.requiredByPathwayCount} {pathwayLabel}</dd></div>
-      <div><dt>Terms</dt><dd>{stats.terms.length ? stats.terms.join(", ") : "Unknown"}</dd></div>
+      {/* The catalog source carries no term offerings, so only show the row when a source provides them (T3). */}
+      {stats.terms.length > 0 && <div><dt>Terms</dt><dd>{stats.terms.join(", ")}</dd></div>}
     </dl>
     <Link className="text-link view-graph-link" href={graphHref} onClick={onViewGraph}><Share2 size={14} /> View dependency graph</Link>
   </div>;

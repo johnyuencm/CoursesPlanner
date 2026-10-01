@@ -39,6 +39,23 @@ test("GET /api/catalog returns the cached catalog without a refresh token", asyn
   });
 });
 
+test("GET /api/catalog reports refreshAvailable=false when the UI cannot refresh (CR3)", async () => {
+  await withEnv({ [TOKEN_ENV]: undefined, NODE_ENV: "production" }, async () => {
+    const body = await (await GET()).json();
+    assert.equal(body.refreshAvailable, false);
+  });
+  await withEnv({ [TOKEN_ENV]: undefined, NODE_ENV: "development" }, async () => {
+    const body = await (await GET()).json();
+    assert.equal(body.refreshAvailable, true);
+  });
+  await withEnv({ [TOKEN_ENV]: TOKEN, NODE_ENV: "production" }, async () => {
+    // The browser never sends x-catalog-refresh-token, so a configured token
+    // still means the in-browser refresh would 401.
+    const body = await (await GET()).json();
+    assert.equal(body.refreshAvailable, false);
+  });
+});
+
 test("unauthenticated POST /api/catalog without a refresh token is 401", async () => {
   await withEnv({ [TOKEN_ENV]: TOKEN, NODE_ENV: "production" }, async () => {
     const response = await POST(catalogRequest("POST"));

@@ -1,5 +1,5 @@
 import { parseRobots, pathDisallowed, type RobotsRules } from "./robots";
-import type { PageSource } from "./source-types";
+import type { PageSource } from "../lib/source-types";
 
 export interface OfficialFetchPolicy {
   requestTimeoutMs: number;

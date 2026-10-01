@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, RotateCcw } from "lucide-react";
 import type { DiscoveredProgram, ProgramDirectoryResponse, ProgramRoadmap } from "@/lib/types";
-import type { UniversityRoadmapSummary } from "@/catalog-service/source-types";
+import type { UniversityRoadmapSummary } from "@/lib/source-types";
 import {
   groupUniversities,
   isProgramSelectable,
@@ -67,11 +67,18 @@ export function RoadmapSelectorView({
   const readyPrograms = useMemo(() => orderedPrograms.filter(isProgramSelectable), [orderedPrograms]);
   const otherPrograms = useMemo(() => orderedPrograms.filter((program) => !isProgramSelectable(program)), [orderedPrograms]);
   const readyCount = readyPrograms.length;
+  // The selector is only useful when at least one university can be opened.
+  // Production has no ready roadmaps (D1), so hide a control that leads nowhere.
+  const hasSelectableUniversity = universities.some(isUniversitySelectable);
   const renderProgram = (program: DiscoveredProgram) => (
     <option key={program.id} value={program.id} disabled={!isProgramSelectable(program)}>
       {programDisplayName(program)} · {programStatusText(program)}
     </option>
   );
+
+  // Keep the selector visible while loading or after a load error so the retry
+  // control stays reachable; hide only once a successful load shows nothing usable.
+  if (!loading && !error && !hasSelectableUniversity) return null;
 
   return (
     <section className="roadmap-selector" aria-label="University and program prerequisite roadmaps" aria-busy={loading || programsLoading || roadmapLoading}>

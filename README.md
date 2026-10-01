@@ -66,6 +66,17 @@ The crawler is an independent Node service. It does not import Next.js. The web 
 
 Explore shows a roadmap selector above the graph, backed by same-origin `GET /api/roadmaps`. That route only reads validated local snapshots and never crawls or fetches remotely inside Next.js: no query returns the ordered university directory with per-university status, `?university=<id>` returns discovered programs, and `?university=<id>&program=<id>` returns one ready roadmap. Selecting a ready program switches the graph to that program's course set and metadata while Northeastern MSCS stays the default; a reset button restores it. `/map` still redirects to Explore.
 
+### Production vs local
+
+Production is Vercel serverless and serves only committed files, so the crawler half of the architecture does not exist there. The UI checks what the server can do instead of assuming:
+
+| Feature | Local (`npm run dev` + `npm run catalog:serve`) | Production (Vercel) |
+| --- | --- | --- |
+| Browse the Northeastern catalog | Yes (committed snapshot under `data/`) | Yes |
+| Refresh catalog control | Shown only when the POST would be authorized (development, or a configured token) | Hidden: `GET /api/catalog` reports `refreshAvailable: false` |
+| Other-university roadmap selector | Shown once a supported university has at least one ready program, even while the rest of its crawl is still queued (after `npm run catalog:refresh -- --crawl-roadmaps` writes `data/catalogs/`); only ready programs can be opened | Hidden: no committed roadmap, so no university has ready program data (`data/catalogs/` is git-ignored) |
+| `POST /api/catalog` | Yes (development or token) | 401 unless `CATALOG_REFRESH_TOKEN` is set, and the in-process fallback cannot write the read-only filesystem |
+
 ### Adding another program or university
 
 1. Inspect the official catalog the same way Northeastern was inspected. Do not invent requirements, and do not crawl `robots.txt` disallowed paths.
@@ -75,6 +86,8 @@ Explore shows a roadmap selector above the graph, backed by same-origin `GET /ap
 5. Refresh one source with `npm run catalog:refresh -- --id=<id> --force`, then enable polling.
 
 The service does not fetch a second live university until that source file exists and is enabled. `catalog-service/universities.json` is the ordered 20-US / 20-world directory and `/universities` listing; enabled directory rows still need a matching source file and crawl config before refresh.
+
+Known limit: the saved plan keys courses by course code only (`StudentPlan` holds bare codes, not catalog ids). Switching to a foreign roadmap therefore keeps the Northeastern plan out of the graph (the `overrideActive` flag), and any future plan that spans two catalogs would collide on shared codes. This is why the roadmap view is read-only against the plan.
 
 ### Prerequisite roadmap crawling
 
@@ -150,8 +163,8 @@ The UI's **Refresh Catalog** button calls same-origin `POST /api/catalog`. That 
 
 - `data/catalog.json`: complete validated payload used by the application for the default program.
 - `data/catalogs/<id>/`: per-program snapshots written by the catalog service.
-- `data/courses.json`: normalized courses.
-- `data/requirements.json`: normalized degree rules.
+- `data/courses.json`: normalized courses. Export/inspection only: no runtime code reads it, `data/catalog.json` already embeds the same courses.
+- `data/requirements.json`: normalized degree rules. Export/inspection only, same as above.
 - `data/raw/.catalog-cache.json`: source URLs, validators, and fetch timestamps.
 
 Do not hand-edit generated prerequisite relationships. Refresh or fix the parser instead.

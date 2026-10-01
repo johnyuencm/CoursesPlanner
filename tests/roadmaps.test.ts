@@ -12,7 +12,7 @@ import {
   validateProgramRoadmap,
   validateRoadmapCrawlStatus,
 } from "../lib/catalog";
-import type { UniversityDirectoryEntry } from "../catalog-service/source-types";
+import type { UniversityDirectoryEntry } from "../lib/source-types";
 import type {
   Course,
   DiscoveredPrograms,

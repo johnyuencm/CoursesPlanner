@@ -1,11 +1,14 @@
 import { strict as assert } from "node:assert";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import test from "node:test";
 
 import { GraphInspectorActions, graphStatus, graphStudentFacts } from "../components/course-graph";
 import { RoadmapSelectorView, type RoadmapSelectorViewProps } from "../components/roadmap-selector";
-import type { UniversityRoadmapSummary } from "../catalog-service/source-types";
+import type { UniversityRoadmapSummary } from "../lib/source-types";
 import { earliestTakeTerm, prerequisiteChecks, programMapCodes } from "../lib/graph";
 import { emptyPlan } from "../lib/plan";
 import {
@@ -82,7 +85,12 @@ test("university status text and selectability cover every registry state", () =
   assert.equal(isUniversitySelectable(summary({ support: "unverified" })), false);
   assert.equal(isUniversitySelectable(summary({ support: "unsupported" })), false);
   assert.equal(isUniversitySelectable(summary({ status: statusOf("error") })), false);
-  assert.equal(isUniversitySelectable(summary({})), true);
+  // Supported + queued is not enough; a university needs ready program data (D1).
+  assert.equal(isUniversitySelectable(summary({})), false);
+  const ready = summary({
+    status: { ...statusOf("ready"), counts: { queued: 0, ready: 2, unsupported: 0, error: 0 } },
+  });
+  assert.equal(isUniversitySelectable(ready), true);
 });
 
 test("program status text and selectability accept only ready programs", () => {
@@ -191,7 +199,7 @@ test("selector render groups universities, prioritizes ready programs, and expos
   const readyUniversity = summary({
     id: "us-ready",
     university: "Ready US University",
-    status: { ...summary({}).status, status: "ready" },
+    status: { ...summary({}).status, status: "ready", counts: { queued: 0, ready: 1, unsupported: 0, error: 0 } },
   });
   const blockedUniversity = summary({
     id: "us-blocked",
@@ -221,6 +229,90 @@ test("selector render groups universities, prioritizes ready programs, and expos
 
   const errorMarkup = renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({ error: "temporary failure" })));
   assert.match(errorMarkup, /Retry loading universities/);
+});
+
+test("selector hides the university control when no university has ready data (D1)", () => {
+  // Queued is not enough: production ships no data/catalogs/, so a supported but
+  // queued university still has zero programs and must not render a dead control.
+  const statusOf = (status: UniversityRoadmapSummary["status"]["status"]): UniversityRoadmapSummary["status"] =>
+    ({ ...summary({}).status, status });
+  const queued = summary({ id: "northeastern", university: "Northeastern", status: { ...statusOf("queued"), counts: { queued: 0, ready: 0, unsupported: 0, error: 0 } } });
+  assert.equal(isUniversitySelectable(queued), false);
+  const hidden = renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({ universities: [queued] })));
+  assert.equal(hidden, "");
+
+  const ready = summary({
+    id: "example-university",
+    status: { ...statusOf("ready"), counts: { queued: 0, ready: 1, unsupported: 0, error: 0 } },
+  });
+  const shown = renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({ universities: [ready] })));
+  assert.match(shown, /id="roadmap-university"/);
+
+  const unverified = summary({ id: "mit", university: "MIT", support: "unverified" });
+  assert.equal(
+    renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({ universities: [unverified] }))),
+    "",
+  );
+});
+
+test("a partly crawled university is selectable once it has a ready program (D1)", () => {
+  // summarize() reports "queued" while ANY program is queued, so a partial local
+  // crawl (1 ready, many queued) must still open its ready roadmaps.
+  const partial = summary({
+    status: { ...summary({}).status, status: "queued", queue: ["q-1"], counts: { queued: 1, ready: 1, unsupported: 0, error: 0 } },
+  });
+  assert.equal(isUniversitySelectable(partial), true);
+  const shown = renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({ universities: [partial] })));
+  assert.match(shown, /id="roadmap-university"/);
+  assert.doesNotMatch(shown, /<option[^>]*value="example-university"[^>]*disabled/);
+});
+
+test("a supported queued university with no ready program is not selectable (D1)", () => {
+  const empty = summary({
+    status: { ...summary({}).status, status: "queued", queue: ["q-1"], counts: { queued: 1, ready: 0, unsupported: 0, error: 0 } },
+  });
+  assert.equal(isUniversitySelectable(empty), false);
+});
+
+test("a fully ready university is selectable (D1)", () => {
+  const ready = summary({
+    status: { ...summary({}).status, status: "ready", counts: { queued: 0, ready: 3, unsupported: 0, error: 0 } },
+  });
+  assert.equal(isUniversitySelectable(ready), true);
+});
+
+test("a partly crawled university lists only its ready programs as openable (D1)", () => {
+  const partial = summary({
+    status: { ...summary({}).status, status: "queued", queue: ["queued-program"], counts: { queued: 1, ready: 1, unsupported: 0, error: 0 } },
+  });
+  const markup = renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({
+    universities: [partial],
+    universityId: "example-university",
+    programs: [program({ id: "queued-program", name: "Queued Program", status: "queued" }), program({ id: "ready-program", name: "Ready Program", status: "ready" })],
+  })));
+  assert.match(markup, /Ready programs \(1\)/);
+  assert.match(markup, /<option value="ready-program">Ready Program/);
+  assert.match(markup, /<option value="queued-program" disabled="">Queued Program/);
+});
+
+test("the real shipped university list has no selectable university without catalogs (D1)", async () => {
+  const { loadUniversityDirectory } = await import("../lib/university-directory");
+  const { listRoadmapUniversities } = await import("../lib/roadmap-reader");
+  const rootDir = await mkdtemp(path.join(tmpdir(), "roadmap-no-catalogs-"));
+  try {
+    const universities = await loadUniversityDirectory(
+      path.join(process.cwd(), "catalog-service", "universities.json"),
+    );
+    const summaries = await listRoadmapUniversities(universities, rootDir);
+    assert.equal(summaries.length, 40);
+    assert.equal(summaries.filter(isUniversitySelectable).length, 0);
+    assert.equal(
+      renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({ universities: summaries }))),
+      "",
+    );
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
 });
 
 test("roadmap override hides Northeastern inspector actions", () => {

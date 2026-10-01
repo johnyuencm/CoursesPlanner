@@ -72,10 +72,20 @@ test("catalog cards render dependency fields and an Explore focus link", () => {
   assert.match(markup, />6</);
   assert.match(markup, /Required by/);
   assert.match(markup, /2 pathways/);
-  assert.match(markup, /Terms/);
-  assert.match(markup, /Unknown/);
+  // No term offerings in this catalog, so the Terms row is hidden (T3).
+  assert.doesNotMatch(markup, /Terms/);
+  assert.doesNotMatch(markup, /Unknown/);
   assert.match(markup, /View dependency graph/);
   assert.match(markup, /href="\/explore\?focus=CS%205800"/);
+
+  const withTerms = renderToStaticMarkup(
+    createElement(CourseDependencyFields, {
+      stats: { ...stats, terms: ["Fall", "Spring"] },
+      graphHref: exploreFocusHref("CS 5800"),
+    }),
+  );
+  assert.match(withTerms, /Terms/);
+  assert.match(withTerms, /Fall, Spring/);
 });
 
 test("I can take now and Blocked filters use completed/waived plan history", () => {
@@ -109,7 +119,15 @@ test("I can take now and Blocked filters use completed/waived plan history", () 
     ),
   });
   assert.equal(catalogTakeStatus(course("CS 5010"), planned5500), "recorded");
+  // CS 5500 is planned here too, so it reads "recorded", not "blocked" (D3).
   assert.equal(catalogTakeStatus(course("CS 5500"), planned5500), "blocked");
+
+  const plannedBlocked = plan({
+    semesters: emptyPlan().semesters.map((semester, index) =>
+      index === 0 ? { ...semester, courses: [{ code: "CS 5500", credits: 4 }] } : semester,
+    ),
+  });
+  assert.equal(catalogTakeStatus(course("CS 5500"), plannedBlocked), "recorded");
 });
 
 test("No prereqs, Area, and Unlocks > N filters compose with plan+catalog state", () => {

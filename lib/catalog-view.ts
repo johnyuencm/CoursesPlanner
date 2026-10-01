@@ -60,10 +60,12 @@ export function courseDependencyStats(
 export function catalogTakeStatus(course: Course, plan: StudentPlan): CatalogTakeStatus {
   const prior = new Set([...plan.completedCourses, ...plan.waivedCourses]);
   if (prior.has(course.code)) return "recorded";
+  // A course already in the plan is "recorded" regardless of prerequisites, so
+  // the status does not contradict the "Planned" badge (D3).
+  if (recordedCourseCodes(plan).has(course.code)) return "recorded";
   const eligibility = getEligibility(course, prior);
   if (eligibility.status === "locked") return "blocked";
   if (eligibility.status === "uncertain") return "review";
-  if (recordedCourseCodes(plan).has(course.code)) return "recorded";
   return "can-take-now";
 }
 

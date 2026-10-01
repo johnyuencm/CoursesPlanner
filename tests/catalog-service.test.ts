@@ -15,10 +15,12 @@ import {
   parseUniversityDirectory,
 } from "../catalog-service/registry";
 import { refreshSource } from "../catalog-service/refresh";
+import { crawlRoadmaps } from "../catalog-service/roadmaps";
 import { parseRobots, pathDisallowed } from "../catalog-service/robots";
 import { isDue, runDueSources } from "../catalog-service/scheduler";
 import { handleCatalogRequest } from "../catalog-service/server";
-import type { CatalogSourceDefinition } from "../catalog-service/source-types";
+import { KNOWN_ADAPTER_IDS, type CatalogSourceDefinition } from "../lib/source-types";
+import { registeredAdapters } from "../catalog-service/adapters";
 import { readCatalog } from "../lib/catalog";
 
 const fixture = (name: string) => readFileSync(path.join(process.cwd(), "data", "raw", name), "utf8");
@@ -225,6 +227,33 @@ test("university directory sorts US before world and skips metadata-only entries
   assert.deepEqual(enabledUniversities(universities), []);
 });
 
+test("KNOWN_ADAPTER_IDS stays in sync with the adapter registry", () => {
+  assert.deepEqual([...KNOWN_ADAPTER_IDS].sort(), registeredAdapters().sort());
+});
+
+test("university directory rejects an unknown crawl adapter (A2 regression)", () => {
+  const supported = supportedUniversity();
+  const crawl = supported.crawl as Record<string, unknown>;
+  assert.throws(
+    () => parseUniversityDirectory([{ ...supported, crawl: { ...crawl, adapter: "no-such-adapter" } }], "test universities"),
+    /No catalog adapter registered for "no-such-adapter"/,
+  );
+});
+
+test("crawl path rejects an unknown adapter even when built in memory (A2 regression)", async () => {
+  const supported = supportedUniversity();
+  const crawl = supported.crawl as Record<string, unknown>;
+  await assert.rejects(
+    () =>
+      crawlRoadmaps({
+        limit: 1,
+        rootDir: process.cwd(),
+        universities: [{ ...supported, crawl: { ...crawl, adapter: "no-such-adapter" } }] as never,
+      }),
+    /No catalog adapter registered for "no-such-adapter"/,
+  );
+});
+
 test("enabled universities require supported adapter and discovery crawl config", () => {
   const supported = supportedUniversity();
 
@@ -416,6 +445,26 @@ test("scheduler refreshes a due source once per poll interval", async () => {
   }
 });
 
+test("scheduler ignores a malformed status file instead of trusting the cast (CR7)", async () => {
+  const rootDir = await mkdtemp(path.join(tmpdir(), "catalog-scheduler-bad-"));
+  const stateFile = path.join(rootDir, "data", "catalogs", ".scheduler-status.json");
+  const definition = sourceFor("scheduler-demo");
+  definition.pollIntervalMs = 1_000;
+  try {
+    await mkdir(path.dirname(stateFile), { recursive: true });
+    await writeFile(stateFile, JSON.stringify({ version: 1, sources: "not-an-object" }), "utf8");
+    const run = await runDueSources({
+      sources: [definition],
+      rootDir,
+      now: () => new Date("2026-09-11T00:00:00.000Z"),
+      refresh: async () => ({ changed: false }),
+    });
+    assert.equal(run.length, 1);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("304 catalog check keeps lastUpdated and records If-None-Match", { timeout: 60_000 }, async () => {
   const rootDir = await mkdtemp(path.join(tmpdir(), "catalog-304-"));
   const definition = sourceFor("neu-304");
@@ -567,4 +616,53 @@ test("catalog service HTTP handlers list sources and universities without changi
     context,
   );
   assert.equal(withBody.status, 400);
+});
+
+test("catalog service refuses cross-site refresh and maps 5xx errors to safe text (CR4, CR5)", async () => {
+  const sources = await loadRegistry();
+  const universities = await loadUniversityDirectory();
+  const catalog = readCatalog();
+  const context = {
+    sources,
+    universities,
+    rootDir: process.cwd(),
+    refresh: async () => ({ catalog, changed: false }),
+    statuses: () => ({}),
+  };
+
+  const crossSite = await handleCatalogRequest(
+    "POST",
+    new URL("http://127.0.0.1/catalogs/neu-mscs-seattle/refresh"),
+    Buffer.alloc(0),
+    { ...context, headers: { "sec-fetch-site": "cross-site" } },
+  );
+  assert.equal(crossSite.status, 403);
+  assert.deepEqual(JSON.parse(crossSite.body), { error: "Cross-site catalog refresh refused." });
+
+  const foreignOrigin = await handleCatalogRequest(
+    "POST",
+    new URL("http://127.0.0.1/catalogs/neu-mscs-seattle/refresh"),
+    Buffer.alloc(0),
+    { ...context, headers: { origin: "https://evil.example" } },
+  );
+  assert.equal(foreignOrigin.status, 403);
+
+  const failing = await handleCatalogRequest(
+    "POST",
+    new URL("http://127.0.0.1/catalogs/neu-mscs-seattle/refresh"),
+    Buffer.alloc(0),
+    { ...context, refresh: async () => { throw new Error("ENOENT: no such file /srv/data/catalog.json"); } },
+  );
+  assert.equal(failing.status, 502);
+  assert.deepEqual(JSON.parse(failing.body), { error: "Catalog service operation failed." });
+  assert.doesNotMatch(failing.body, /[/\\]|ENOENT|data[/\\]/);
+
+  // The refresh above set the cooldown; the next attempt inside 30 s is 429.
+  const cooldown = await handleCatalogRequest(
+    "POST",
+    new URL("http://127.0.0.1/catalogs/neu-mscs-seattle/refresh"),
+    Buffer.alloc(0),
+    context,
+  );
+  assert.equal(cooldown.status, 429);
 });
