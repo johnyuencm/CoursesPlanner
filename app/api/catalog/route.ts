@@ -38,9 +38,9 @@ function tokenMatches(provided: string | null, expected: string): boolean {
   return providedBuffer.length === expectedBuffer.length && timingSafeEqual(providedBuffer, expectedBuffer);
 }
 
-function isRefreshAuthorized(request: NextRequest): boolean {
+function isRefreshAuthorized(request?: NextRequest): boolean {
   const expected = process.env.CATALOG_REFRESH_TOKEN;
-  if (expected) return tokenMatches(request.headers.get("x-catalog-refresh-token"), expected);
+  if (expected) return request !== undefined && tokenMatches(request.headers.get("x-catalog-refresh-token"), expected);
   return process.env.NODE_ENV === "development";
 }
 
@@ -83,7 +83,9 @@ async function refreshCatalogSnapshot(): Promise<Catalog> {
 
 export async function GET() {
   try {
-    return NextResponse.json(readCatalog(), {
+    // refreshAvailable tells the UI whether POST refresh can ever succeed, so the
+    // client can hide a control that would otherwise always answer 401 (CR3).
+    return NextResponse.json({ ...readCatalog(), refreshAvailable: isRefreshAuthorized() }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

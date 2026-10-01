@@ -36,6 +36,7 @@ interface AppContextValue {
   catalogBusy: boolean;
   catalogError: string | null;
   catalogMessage: string | null;
+  refreshAvailable: boolean;
   refreshCatalog: () => Promise<void>;
   plan: StudentPlan;
   setPlan: Dispatch<SetStateAction<StudentPlan>>;
@@ -72,7 +73,8 @@ const CAREER_TARGET_KEY = "neu-mscs-career-target-v1";
 const COURSE_TARGET_KEY = "neu-mscs-course-target-v1";
 
 let sessionCatalog: Catalog | null = null;
-let catalogGetInflight: Promise<Catalog> | null = null;
+let sessionRefreshAvailable = true;
+let catalogGetInflight: Promise<CatalogLoad> | null = null;
 
 function isCatalogPayload(data: unknown): data is Catalog {
   if (!data || typeof data !== "object") return false;
@@ -86,7 +88,9 @@ function isCatalogPayload(data: unknown): data is Catalog {
   );
 }
 
-async function loadCatalogFromNetwork(refresh: boolean): Promise<{ catalog: Catalog; refreshStatus: string | null }> {
+type CatalogLoad = { catalog: Catalog; refreshStatus: string | null; refreshAvailable: boolean };
+
+async function loadCatalogFromNetwork(refresh: boolean): Promise<CatalogLoad> {
   const response = await fetch("/api/catalog", { method: refresh ? "POST" : "GET", cache: "no-store" });
   const refreshStatus = response.headers.get("x-catalog-refresh");
   const data: unknown = await response.json();
@@ -98,19 +102,22 @@ async function loadCatalogFromNetwork(refresh: boolean): Promise<{ catalog: Cata
     );
   }
   if (!isCatalogPayload(data)) throw new Error("The catalog response is incomplete. Your previous catalog has been retained.");
+  const refreshAvailable = typeof (data as unknown as { refreshAvailable?: unknown }).refreshAvailable === "boolean"
+    ? (data as unknown as { refreshAvailable: boolean }).refreshAvailable
+    : true;
   sessionCatalog = data;
-  return { catalog: data, refreshStatus };
+  return { catalog: data, refreshStatus, refreshAvailable };
 }
 
-async function requestCatalog(refresh: boolean): Promise<{ catalog: Catalog; refreshStatus: string | null }> {
-  if (!refresh && sessionCatalog) return { catalog: sessionCatalog, refreshStatus: null };
+async function requestCatalog(refresh: boolean): Promise<CatalogLoad> {
+  if (!refresh && sessionCatalog) return { catalog: sessionCatalog, refreshStatus: null, refreshAvailable: sessionRefreshAvailable };
   if (!refresh) {
     if (!catalogGetInflight) {
-      catalogGetInflight = loadCatalogFromNetwork(false).then((result) => result.catalog).finally(() => {
+      catalogGetInflight = loadCatalogFromNetwork(false).finally(() => {
         catalogGetInflight = null;
       });
     }
-    return { catalog: await catalogGetInflight, refreshStatus: null };
+    return catalogGetInflight;
   }
   return loadCatalogFromNetwork(true);
 }
@@ -120,6 +127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [catalogBusy, setCatalogBusy] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [catalogMessage, setCatalogMessage] = useState<string | null>(null);
+  const [refreshAvailable, setRefreshAvailable] = useState(true);
   const [plan, setPlan] = useState<StudentPlan>(() => emptyPlan());
   const [hydrated, setHydrated] = useState(false);
   const [storageBlocked, setStorageBlocked] = useState(false);
@@ -140,7 +148,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCatalogMessage(null);
     try {
       if (refresh) sessionCatalog = null;
-      const { catalog: nextCatalog, refreshStatus } = await requestCatalog(refresh);
+      const { catalog: nextCatalog, refreshStatus, refreshAvailable: canRefresh } = await requestCatalog(refresh);
+      sessionRefreshAvailable = canRefresh;
+      setRefreshAvailable(canRefresh);
       setCatalog(nextCatalog);
       if (refresh) {
         setCatalogMessage(refreshStatus === "cooldown"
@@ -398,7 +408,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addPrerequisiteChain(courseTargetCode);
   };
 
-  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId, courseTargetCode, setCourseTargetCode, addTargetChain, addPrerequisiteChain, workspaceSelection, setWorkspaceSelection, notice, announce }}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId, courseTargetCode, setCourseTargetCode, addTargetChain, addPrerequisiteChain, workspaceSelection, setWorkspaceSelection, notice, announce }}>{children}</AppContext.Provider>;
 }
 
 export function useApp() {
