@@ -87,6 +87,8 @@ Production is Vercel serverless and serves only committed files, so the crawler 
 
 The service does not fetch a second live university until that source file exists and is enabled. `catalog-service/universities.json` is the ordered 20-US / 20-world directory and `/universities` listing; enabled directory rows still need a matching source file and crawl config before refresh.
 
+Known limit: the saved plan keys courses by course code only (`StudentPlan` holds bare codes, not catalog ids). Switching to a foreign roadmap therefore keeps the Northeastern plan out of the graph (the `overrideActive` flag), and any future plan that spans two catalogs would collide on shared codes. This is why the roadmap view is read-only against the plan.
+
 ### Prerequisite roadmap crawling
 
 `catalog-service/universities.json` orders 20 US universities before 20 world universities. Only entries with `"support": "supported"`, `"enabled": true`, and a `crawl` config are fetched; metadata-only/unverified entries are listed but never requested. The crawler discovers official program links, extracts each program's course codes, parses the shared bulk course pages, and writes validated prerequisite roadmaps under `data/catalogs/<university-id>/` (`programs.json`, `roadmaps/<program-id>.json`, `.roadmap-crawl-status.json`). Runs are bounded and resume from persisted state.

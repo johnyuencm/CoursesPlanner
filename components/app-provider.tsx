@@ -432,7 +432,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addPrerequisiteChain(courseTargetCode);
   };
 
-  return <AppContext.Provider value={{ catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog: () => fetchCatalog(true), plan, setPlan, progress, hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker, openPicker: (semesterId, courseCode) => { openCourse(null); setPicker({ semesterId, courseCode }); }, closePicker: () => setPicker(null), setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId, courseTargetCode, setCourseTargetCode, addTargetChain, addPrerequisiteChain, workspaceSelection, setWorkspaceSelection, notice, announce }}>{children}</AppContext.Provider>;
+  // Stable identities so the single shared context value only changes when state
+  // does (CR8). The previous inline object recreated every field on every render,
+  // re-rendering every useApp() consumer.
+  const refreshCatalog = useCallback(() => fetchCatalog(true), [fetchCatalog]);
+  const openPicker = useCallback((semesterId?: string, courseCode?: string) => {
+    openCourse(null);
+    setPicker({ semesterId, courseCode });
+  }, []);
+  const closePicker = useCallback(() => setPicker(null), []);
+  const contextValue = useMemo<AppContextValue>(() => ({
+    catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog, plan, setPlan, progress,
+    hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode,
+    openCourse, picker, openPicker, closePicker, setCourseStatus, addCourse, addCourses, careerTargetId,
+    setCareerTargetId, courseTargetCode, setCourseTargetCode, addTargetChain, addPrerequisiteChain,
+    workspaceSelection, setWorkspaceSelection, notice, announce,
+  }), [
+    catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog, plan, progress, hydrated,
+    persistence, storageError, save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker,
+    openPicker, closePicker, setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId,
+    courseTargetCode, setCourseTargetCode, addTargetChain, addPrerequisiteChain, workspaceSelection,
+    setWorkspaceSelection, notice, announce,
+  ]);
+
+  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
 
 export function useApp() {
