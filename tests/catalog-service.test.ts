@@ -568,3 +568,52 @@ test("catalog service HTTP handlers list sources and universities without changi
   );
   assert.equal(withBody.status, 400);
 });
+
+test("catalog service refuses cross-site refresh and maps 5xx errors to safe text (CR4, CR5)", async () => {
+  const sources = await loadRegistry();
+  const universities = await loadUniversityDirectory();
+  const catalog = readCatalog();
+  const context = {
+    sources,
+    universities,
+    rootDir: process.cwd(),
+    refresh: async () => ({ catalog, changed: false }),
+    statuses: () => ({}),
+  };
+
+  const crossSite = await handleCatalogRequest(
+    "POST",
+    new URL("http://127.0.0.1/catalogs/neu-mscs-seattle/refresh"),
+    Buffer.alloc(0),
+    { ...context, headers: { "sec-fetch-site": "cross-site" } },
+  );
+  assert.equal(crossSite.status, 403);
+  assert.deepEqual(JSON.parse(crossSite.body), { error: "Cross-site catalog refresh refused." });
+
+  const foreignOrigin = await handleCatalogRequest(
+    "POST",
+    new URL("http://127.0.0.1/catalogs/neu-mscs-seattle/refresh"),
+    Buffer.alloc(0),
+    { ...context, headers: { origin: "https://evil.example" } },
+  );
+  assert.equal(foreignOrigin.status, 403);
+
+  const failing = await handleCatalogRequest(
+    "POST",
+    new URL("http://127.0.0.1/catalogs/neu-mscs-seattle/refresh"),
+    Buffer.alloc(0),
+    { ...context, refresh: async () => { throw new Error("ENOENT: no such file /srv/data/catalog.json"); } },
+  );
+  assert.equal(failing.status, 502);
+  assert.deepEqual(JSON.parse(failing.body), { error: "Catalog service operation failed." });
+  assert.doesNotMatch(failing.body, /[/\\]|ENOENT|data[/\\]/);
+
+  // The refresh above set the cooldown; the next attempt inside 30 s is 429.
+  const cooldown = await handleCatalogRequest(
+    "POST",
+    new URL("http://127.0.0.1/catalogs/neu-mscs-seattle/refresh"),
+    Buffer.alloc(0),
+    context,
+  );
+  assert.equal(cooldown.status, 429);
+});

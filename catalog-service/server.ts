@@ -12,6 +12,23 @@ import type { CatalogSourceDefinition, UniversityDirectoryEntry } from "./source
 
 const HOST = process.env.CATALOG_SERVICE_HOST ?? "127.0.0.1";
 const PORT = Number(process.env.CATALOG_SERVICE_PORT ?? 8787);
+const REFRESH_COOLDOWN_MS = 30_000;
+// ponytail: in-process cooldown, same limit as the Next route; make it
+// file-backed only if multiple catalog-service processes share one data dir.
+let lastRefreshStartedAt = 0;
+
+/** A browser page that is not this loopback service must not force a crawl (CR4). */
+function isCrossSiteRequest(headers: http.IncomingHttpHeaders | undefined): boolean {
+  if (headers?.["sec-fetch-site"] === "cross-site") return true;
+  const origin = headers?.origin;
+  if (typeof origin !== "string") return false;
+  try {
+    const { hostname } = new URL(origin);
+    return hostname !== "127.0.0.1" && hostname !== "localhost" && hostname !== "::1";
+  } catch {
+    return true;
+  }
+}
 
 function json(data: unknown, status = 200, extra: Record<string, string> = {}) {
   return {
@@ -21,7 +38,9 @@ function json(data: unknown, status = 200, extra: Record<string, string> = {}) {
   };
 }
 
+/** Statuses at or above 500 are unexpected; never echo their raw messages (CR5). */
 function errorBody(error: unknown, status: number) {
+  if (status >= 500) return json({ error: "Catalog service operation failed." }, status);
   return json({ error: error instanceof Error ? error.message : String(error) }, status);
 }
 
@@ -58,6 +77,8 @@ export async function handleCatalogRequest(
       force: boolean,
     ) => Promise<{ catalog: Catalog; changed: boolean }>;
     statuses: () => Record<string, SourceStatus>;
+    /** Original request headers; used for the refresh Origin guard (CR4). */
+    headers?: http.IncomingHttpHeaders;
   },
 ) {
   if (method === "GET" && url.pathname === "/health") {
@@ -111,10 +132,16 @@ export async function handleCatalogRequest(
     }
   }
   if (method === "POST" && refreshMatch) {
+    if (isCrossSiteRequest(context.headers)) return errorBody(new Error("Cross-site catalog refresh refused."), 403);
     if (body.byteLength > 0) return errorBody(new Error("Catalog refresh does not accept a request body."), 400);
+    const now = Date.now();
+    if (now - lastRefreshStartedAt < REFRESH_COOLDOWN_MS) {
+      return errorBody(new Error("Catalog refresh cooldown active. Try again shortly."), 429);
+    }
     try {
       const source = findSource(context.sources, refreshMatch[1]);
       if (!source.enabled) return errorBody(new Error(`Catalog source ${source.id} is disabled.`), 409);
+      lastRefreshStartedAt = now;
       const result = await context.refresh(source, true);
       return json(result.catalog, 200, { "X-Catalog-Refresh": result.changed ? "updated" : "unchanged" });
     } catch (error) {
@@ -158,6 +185,7 @@ async function main() {
           rootDir,
           refresh,
           statuses: () => latestStatus,
+          headers: request.headers,
         });
         response.writeHead(result.status, result.headers);
         response.end(result.body);
