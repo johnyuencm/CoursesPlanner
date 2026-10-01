@@ -181,6 +181,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     setHydrated(true);
   }, []);
+  // Two tabs sharing this plan would otherwise overwrite each other silently
+  // (CR2). Reload the plan this tab is showing when another tab writes it, but
+  // never overwrite data that is currently unreadable.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY || event.storageArea !== window.localStorage) return;
+      if (storageBlocked) return;
+      if (event.newValue === null) return;
+      try {
+        const loaded = loadPlan(window.localStorage);
+        if (loaded.error) return;
+        setPlan((current) => (JSON.stringify(current) === JSON.stringify(loaded.plan) ? current : loaded.plan));
+        setPersistence("saved");
+        setStorageError(null);
+      } catch {
+        /* Keep the current tab's plan if the new value cannot be read. */
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [storageBlocked]);
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(CAREER_TARGET_KEY);
