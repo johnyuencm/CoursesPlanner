@@ -223,6 +223,19 @@ test("selector render groups universities, prioritizes ready programs, and expos
   assert.match(errorMarkup, /Retry loading universities/);
 });
 
+test("selector hides the university control when no university is selectable (D1)", () => {
+  const unverified = summary({ id: "mit", university: "MIT", support: "unverified" });
+  const hidden = renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({ universities: [unverified] })));
+  assert.equal(hidden, "");
+
+  const supported = summary({
+    id: "example-university",
+    status: { ...summary({}).status, status: "ready" },
+  });
+  const shown = renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({ universities: [supported] })));
+  assert.match(shown, /id="roadmap-university"/);
+});
+
 test("roadmap override hides Northeastern inspector actions", () => {
   const selected = course("CS 5500");
   const props = {
