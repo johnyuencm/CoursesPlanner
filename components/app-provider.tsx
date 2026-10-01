@@ -25,6 +25,7 @@ import {
   suggestedPrerequisiteFix,
   type PlanBackupDownload,
 } from "@/lib/plan";
+import { planAfterStorageEvent } from "@/lib/cross-tab-plan";
 import { validatePlan } from "@/lib/validation";
 
 type PickerState = { semesterId?: string; courseCode?: string } | null;
@@ -186,18 +187,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // never overwrite data that is currently unreadable.
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== STORAGE_KEY || event.storageArea !== window.localStorage) return;
       if (storageBlocked) return;
-      if (event.newValue === null) return;
+      let storage: Pick<Storage, "getItem">;
       try {
-        const loaded = loadPlan(window.localStorage);
-        if (loaded.error) return;
-        setPlan((current) => (JSON.stringify(current) === JSON.stringify(loaded.plan) ? current : loaded.plan));
+        storage = window.localStorage;
+      } catch {
+        return;
+      }
+      setPlan((current) => {
+        const next = planAfterStorageEvent(event, current, storage);
+        if (next === current) return current;
         setPersistence("saved");
         setStorageError(null);
-      } catch {
-        /* Keep the current tab's plan if the new value cannot be read. */
-      }
+        return next;
+      });
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
