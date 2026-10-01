@@ -76,6 +76,12 @@ async function refreshCatalogSnapshot(): Promise<Catalog> {
     return await refreshViaService();
   } catch (error) {
     if (!isServiceUnreachable(error)) throw error;
+    // The in-process crawler writes data/, which is read-only on Vercel, and it
+    // would bundle the crawler into the serverless function. Fail closed outside
+    // development rather than run it (verification addendum, P3).
+    if (process.env.NODE_ENV !== "development") {
+      throw new Error("Catalog service is unreachable and in-process refresh is disabled outside development.");
+    }
     const { refreshCatalog } = await import("@/scraper/refresh");
     return refreshCatalog({ force: true });
   }
