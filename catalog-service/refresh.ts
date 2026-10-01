@@ -76,10 +76,8 @@ export async function readCacheMetadata(filePath: string): Promise<CacheMetadata
       const record = parsed as CacheMetadata;
       return { version: 2, robots: record.robots, sources: record.sources };
     }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      /* Malformed sidecar must not block a valid HTML cache. */
-    }
+  } catch {
+    // A malformed sidecar must not block a valid HTML cache; start fresh.
   }
   return { version: 2, sources: {} };
 }

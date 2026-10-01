@@ -416,6 +416,26 @@ test("scheduler refreshes a due source once per poll interval", async () => {
   }
 });
 
+test("scheduler ignores a malformed status file instead of trusting the cast (CR7)", async () => {
+  const rootDir = await mkdtemp(path.join(tmpdir(), "catalog-scheduler-bad-"));
+  const stateFile = path.join(rootDir, "data", "catalogs", ".scheduler-status.json");
+  const definition = sourceFor("scheduler-demo");
+  definition.pollIntervalMs = 1_000;
+  try {
+    await mkdir(path.dirname(stateFile), { recursive: true });
+    await writeFile(stateFile, JSON.stringify({ version: 1, sources: "not-an-object" }), "utf8");
+    const run = await runDueSources({
+      sources: [definition],
+      rootDir,
+      now: () => new Date("2026-09-11T00:00:00.000Z"),
+      refresh: async () => ({ changed: false }),
+    });
+    assert.equal(run.length, 1);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("304 catalog check keeps lastUpdated and records If-None-Match", { timeout: 60_000 }, async () => {
   const rootDir = await mkdtemp(path.join(tmpdir(), "catalog-304-"));
   const definition = sourceFor("neu-304");
