@@ -123,7 +123,8 @@ async function requestCatalog(refresh: boolean): Promise<CatalogLoad> {
   return loadCatalogFromNetwork(true);
 }
 
-export function AppProvider({ children }: { children: ReactNode }) {
+/** The shared context value; exported so tests can check its identity across renders (CR8). */
+export function useAppContextValue(): AppContextValue {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogBusy, setCatalogBusy] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -266,7 +267,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(save, [save]);
 
   const progress = useMemo(() => catalog ? validatePlan(plan, catalog) : null, [plan, catalog]);
-  const resetPlan = () => {
+  const resetPlan = useCallback(() => {
     if (!window.confirm("Reset your local plan? This permanently replaces all saved semesters, completed courses, and waivers in this browser. If saved data is unreadable, it will also be replaced. This cannot be undone.")) return;
     setPlan(emptyPlan());
     setStorageBlocked(false);
@@ -274,7 +275,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPersistence("saved");
     setStorageError(null);
     announce("Your plan has been reset. No courses are marked completed or waived.");
-  };
+  }, []);
   const exportPlanBackup = useCallback(
     () => createPlanBackupDownload({
       blocked: storageBlocked,
@@ -301,7 +302,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return false;
     }
   }, [announce]);
-  const setCourseStatus = (code: string, status: CourseStatus, credits?: number) => {
+  const additionNotice = useCallback((nextPlan: StudentPlan, added: string[], semesterName: string) => {
+    const addedLabel = added.join(added.length === 2 ? " and " : ", ");
+    if (!catalog) return `${addedLabel} added to ${semesterName}. Check the live audit for prerequisites and corequisites.`;
+    const issue = validatePlan(nextPlan, catalog).issues.find(
+      (item) => added.includes(item.courseCode) && (item.kind === "prerequisite" || item.kind === "corequisite"),
+    );
+    if (!issue) return `${addedLabel} added to ${semesterName}.`;
+    const fix = suggestedPrerequisiteFix(issue, nextPlan, addableProgramCodes(catalog.courses));
+    const kind = issue.kind === "prerequisite" ? "Prerequisites not met" : "Corequisite not met";
+    if (!fix) return `${addedLabel} added to ${semesterName}. ${kind}.`;
+    return `${addedLabel} added to ${semesterName}. ${kind} — ${fix.suggestion}. Open Plan to apply a fix.`;
+  }, [catalog]);
+  const setCourseStatus = useCallback((code: string, status: CourseStatus, credits?: number) => {
     setPlan((current) => {
       const completedCredits = { ...current.completedCredits };
       delete completedCredits[code];
@@ -315,8 +328,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
     });
     announce(status === "none" ? `${code} completion or waiver undone.` : `${code} marked ${status}. ${status === "waived" ? "Waivers do not earn credits." : "Removed from planned semesters to avoid double counting."}`);
-  };
-  const addCourse = (code: string, semesterId: string, credits: number, includeCorequisite = false) => {
+  }, [catalog]);
+  const addCourse = useCallback((code: string, semesterId: string, credits: number, includeCorequisite = false) => {
     const selectedCourse = catalog?.courses.find((course) => course.code === code);
     const companionCode = selectedCourse?.corequisites.type === "course" ? selectedCourse.corequisites.code : null;
     const items = [{ code, credits }];
@@ -337,8 +350,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     announce(additionNotice(result.plan, result.added, result.semesterName));
-  };
-  const addCourses = (codes: Iterable<string>, semesterId: string) => {
+  }, [catalog, additionNotice]);
+  const addCourses = useCallback((codes: Iterable<string>, semesterId: string) => {
     if (!catalog) {
       announce("Catalog is still loading. Try adding the line again in a moment.");
       return;
@@ -359,20 +372,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     announce(additionNotice(result.plan, result.added, result.semesterName));
-  };
-  const additionNotice = (nextPlan: StudentPlan, added: string[], semesterName: string) => {
-    const addedLabel = added.join(added.length === 2 ? " and " : ", ");
-    if (!catalog) return `${addedLabel} added to ${semesterName}. Check the live audit for prerequisites and corequisites.`;
-    const issue = validatePlan(nextPlan, catalog).issues.find(
-      (item) => added.includes(item.courseCode) && (item.kind === "prerequisite" || item.kind === "corequisite"),
-    );
-    if (!issue) return `${addedLabel} added to ${semesterName}.`;
-    const fix = suggestedPrerequisiteFix(issue, nextPlan, addableProgramCodes(catalog.courses));
-    const kind = issue.kind === "prerequisite" ? "Prerequisites not met" : "Corequisite not met";
-    if (!fix) return `${addedLabel} added to ${semesterName}. ${kind}.`;
-    return `${addedLabel} added to ${semesterName}. ${kind} — ${fix.suggestion}. Open Plan to apply a fix.`;
-  };
-  const addPrerequisiteChain = (code: string) => {
+  }, [catalog, additionNotice]);
+  const addPrerequisiteChain = useCallback((code: string) => {
     if (!catalog) {
       announce("Catalog is still loading. Try adding the path again in a moment.");
       return;
@@ -423,18 +424,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     announce(`${added.join(", ")} added along the path to ${code}${createdTerms.length ? `. Created ${createdTerms.join(", ")}` : ""}. Check the live audit for prerequisites and corequisites.`);
-  };
-  const addTargetChain = () => {
+  }, [catalog]);
+  const addTargetChain = useCallback(() => {
     if (!courseTargetCode) {
       announce("Choose a target course before adding its prerequisite chain.");
       return;
     }
     addPrerequisiteChain(courseTargetCode);
-  };
+  }, [courseTargetCode, addPrerequisiteChain]);
 
   // Stable identities so the single shared context value only changes when state
-  // does (CR8). The previous inline object recreated every field on every render,
-  // re-rendering every useApp() consumer.
+  // does (CR8). Every handler above is a useCallback whose deps are only state it
+  // reads outside a functional updater (catalog, courseTargetCode); setters are
+  // stable. tests/app-provider.test.ts checks the value keeps its identity.
   const refreshCatalog = useCallback(() => fetchCatalog(true), [fetchCatalog]);
   const openPicker = useCallback((semesterId?: string, courseCode?: string) => {
     openCourse(null);
@@ -455,7 +457,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setWorkspaceSelection, notice, announce,
   ]);
 
-  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
+  return contextValue;
+}
+
+export function AppProvider({ children }: { children: ReactNode }) {
+  return <AppContext.Provider value={useAppContextValue()}>{children}</AppContext.Provider>;
 }
 
 export function useApp() {
