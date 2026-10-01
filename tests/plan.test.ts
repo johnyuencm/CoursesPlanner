@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { addableLineCourses, addableProgramCodes, appendCoursesToSemester, applyPrerequisiteFix, canRestorePlanBackup, createPlanBackupDownload, emptyPlan, isCatalogOutage, loadPlan, MAX_COURSES_PER_SEMESTER, moveCourseToSemester, parsePlan, parsePlanBackup, PLAN_BACKUP_FILENAME, PLAN_RECOVERY_FILENAME, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY, suggestedPrerequisiteFix, summarizePlan } from "../lib/plan";
+import { addableLineCourses, addableProgramCodes, appendCoursesToSemester, applyPrerequisiteFix, canRestorePlanBackup, createPlanBackupDownload, emptyPlan, isCatalogOutage, loadPlan, MAX_COURSES_PER_SEMESTER, migratePlan, moveCourseToSemester, parsePlan, parsePlanBackup, PLAN_BACKUP_FILENAME, PLAN_RECOVERY_FILENAME, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY, suggestedPrerequisiteFix, summarizePlan } from "../lib/plan";
 import type { Catalog } from "../lib/types";
 import { validatePlan } from "../lib/validation";
 
@@ -126,6 +126,15 @@ test("loadPlan returns parsed storage without writing or replacing it", () => {
   assert.equal(loaded.error, null);
   assert.equal(loaded.raw, saved);
   assert.deepEqual(loaded.plan, emptyPlan());
+});
+
+test("loadPlan and parsePlanBackup route through migratePlan (D4)", () => {
+  // The current schema is version 1, so migration is an identity pass-through;
+  // the hook exists so the first schema bump has a place to migrate.
+  assert.deepEqual(migratePlan({ version: 1 }), { version: 1 });
+  const saved = JSON.stringify(emptyPlan());
+  assert.deepEqual(loadPlan({ getItem: () => saved }).plan, emptyPlan());
+  assert.deepEqual(parsePlanBackup(saved), emptyPlan());
 });
 
 test("loadPlan safely recovers from absent, corrupt, and unavailable storage", () => {

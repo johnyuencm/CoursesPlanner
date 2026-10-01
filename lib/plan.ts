@@ -612,6 +612,15 @@ function parseSemester(value: unknown, path: string): Semester {
   };
 }
 
+/**
+ * Schema migration hook (D4). The stored schema is version 1, so this is an
+ * identity pass-through today; when the first schema bump lands, add a
+ * `1 -> 2` step here instead of letting old plans fall into the unreadable path.
+ */
+export function migratePlan(input: unknown): unknown {
+  return input;
+}
+
 export function parsePlan(input: unknown): StudentPlan {
   if (!isRecord(input)) fail("plan", "expected an object");
   if (input.version !== 1) fail("plan.version", "expected version 1");
@@ -756,7 +765,7 @@ export function parsePlanBackup(text: string): StudentPlan {
     throw new Error("Plan backup is too large.");
   }
   try {
-    return parsePlan(JSON.parse(text));
+    return parsePlan(migratePlan(JSON.parse(text)));
   } catch (error) {
     if (error instanceof SyntaxError) throw new Error("Plan backup must be valid JSON.");
     throw error;
@@ -780,7 +789,7 @@ export function loadPlan(storage: Pick<Storage, "getItem">): {
     if (value === null) return { plan: emptyPlan(), error: null, raw: null };
     if (typeof value !== "string") throw new Error("storage returned a non-text value");
     stored = value;
-    return { plan: parsePlan(JSON.parse(stored)), error: null, raw: stored };
+    return { plan: parsePlan(migratePlan(JSON.parse(stored))), error: null, raw: stored };
   } catch (error) {
     const detail = error instanceof Error ? error.message : "unknown storage error";
     return { plan: emptyPlan(), error: `Could not load the saved plan: ${detail}`, raw: stored };
