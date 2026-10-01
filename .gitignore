@@ -16,3 +16,4 @@ test-results/
 .vercel/*
 !.vercel/project.json
 next-env.d.ts
+UI/
