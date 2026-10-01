@@ -255,6 +255,46 @@ test("selector hides the university control when no university has ready data (D
   );
 });
 
+test("a partly crawled university is selectable once it has a ready program (D1)", () => {
+  // summarize() reports "queued" while ANY program is queued, so a partial local
+  // crawl (1 ready, many queued) must still open its ready roadmaps.
+  const partial = summary({
+    status: { ...summary({}).status, status: "queued", queue: ["q-1"], counts: { queued: 1, ready: 1, unsupported: 0, error: 0 } },
+  });
+  assert.equal(isUniversitySelectable(partial), true);
+  const shown = renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({ universities: [partial] })));
+  assert.match(shown, /id="roadmap-university"/);
+  assert.doesNotMatch(shown, /<option[^>]*value="example-university"[^>]*disabled/);
+});
+
+test("a supported queued university with no ready program is not selectable (D1)", () => {
+  const empty = summary({
+    status: { ...summary({}).status, status: "queued", queue: ["q-1"], counts: { queued: 1, ready: 0, unsupported: 0, error: 0 } },
+  });
+  assert.equal(isUniversitySelectable(empty), false);
+});
+
+test("a fully ready university is selectable (D1)", () => {
+  const ready = summary({
+    status: { ...summary({}).status, status: "ready", counts: { queued: 0, ready: 3, unsupported: 0, error: 0 } },
+  });
+  assert.equal(isUniversitySelectable(ready), true);
+});
+
+test("a partly crawled university lists only its ready programs as openable (D1)", () => {
+  const partial = summary({
+    status: { ...summary({}).status, status: "queued", queue: ["queued-program"], counts: { queued: 1, ready: 1, unsupported: 0, error: 0 } },
+  });
+  const markup = renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({
+    universities: [partial],
+    universityId: "example-university",
+    programs: [program({ id: "queued-program", name: "Queued Program", status: "queued" }), program({ id: "ready-program", name: "Ready Program", status: "ready" })],
+  })));
+  assert.match(markup, /Ready programs \(1\)/);
+  assert.match(markup, /<option value="ready-program">Ready Program/);
+  assert.match(markup, /<option value="queued-program" disabled="">Queued Program/);
+});
+
 test("the real shipped university list has no selectable university without catalogs (D1)", async () => {
   const { loadUniversityDirectory } = await import("../lib/university-directory");
   const { listRoadmapUniversities } = await import("../lib/roadmap-reader");

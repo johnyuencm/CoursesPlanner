@@ -21,12 +21,14 @@ export function universityStatusText(entry: UniversityRoadmapSummary): string {
 }
 
 /**
- * A university is only worth selecting when it actually has a ready program.
- * "supported + queued" means the crawl has not produced data yet (production
- * ships no data/catalogs/), so opening it leads nowhere. (D1)
+ * A university is worth selecting once it has at least one ready program (D1).
+ * The overall status stays "queued" while any program is still queued, so a
+ * partial local crawl must still count; production ships no data/catalogs/, so
+ * every university there has `counts.ready === 0` and the selector stays hidden.
  */
 export function isUniversitySelectable(entry: UniversityRoadmapSummary): boolean {
-  return entry.support === "supported" && entry.status.status === "ready" && entry.status.counts.ready > 0;
+  const { status, counts } = entry.status;
+  return entry.support === "supported" && status !== "unsupported" && status !== "error" && counts.ready > 0;
 }
 
 export function programStatusText(program: DiscoveredProgram): string {

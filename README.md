@@ -74,7 +74,7 @@ Production is Vercel serverless and serves only committed files, so the crawler 
 | --- | --- | --- |
 | Browse the Northeastern catalog | Yes (committed snapshot under `data/`) | Yes |
 | Refresh catalog control | Shown only when the POST would be authorized (development, or a configured token) | Hidden: `GET /api/catalog` reports `refreshAvailable: false` |
-| Other-university roadmap selector | Shown once a university has at least one ready program (after `npm run catalog:refresh -- --crawl-roadmaps` writes `data/catalogs/`) | Hidden: no committed roadmap, so no university has ready program data (`data/catalogs/` is git-ignored) |
+| Other-university roadmap selector | Shown once a supported university has at least one ready program, even while the rest of its crawl is still queued (after `npm run catalog:refresh -- --crawl-roadmaps` writes `data/catalogs/`); only ready programs can be opened | Hidden: no committed roadmap, so no university has ready program data (`data/catalogs/` is git-ignored) |
 | `POST /api/catalog` | Yes (development or token) | 401 unless `CATALOG_REFRESH_TOKEN` is set, and the in-process fallback cannot write the read-only filesystem |
 
 ### Adding another program or university
