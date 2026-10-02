@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "universityId": "northeastern",
+  "university": "Northeastern",
+  "adapter": "northeastern-acalog",
+  "sourceUrl": "https://catalog.northeastern.edu/sitemap.xml",
+  "discoveredAt": "2026-09-12T01:09:37.140Z",
+  "programs": [
+    {
+      "id": "computer-science-mscs-sea-8b0d00dbda",
+      "universityId": "northeastern",
+      "university": "Northeastern",
+      "name": "Computer Science, MSCS (Seattle)",
+      "kind": "degree",
+      "officialUrl": "https://catalog.northeastern.edu/graduate/computer-information-science/computer-science/computer-science-mscs-sea/",
+      "status": "ready",
+      "statusUpdatedAt": "2026-09-12T01:09:37.140Z"
+    }
+  ]
+}

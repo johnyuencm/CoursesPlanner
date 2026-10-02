@@ -8,7 +8,11 @@ out/
 .DS_Store
 npm-debug.log*
 .agents-scratch.md
-data/catalogs/
+data/catalogs/**
+!data/catalogs/northeastern/
+!data/catalogs/northeastern/programs.json
+!data/catalogs/northeastern/roadmaps/
+!data/catalogs/northeastern/roadmaps/computer-science-mscs-sea-8b0d00dbda.json
 .ycm-harness/.migration-v3.tmp/
 .ycm-harness/legacy/
 playwright-report/
