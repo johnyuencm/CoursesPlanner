@@ -74,7 +74,7 @@ Production is Vercel serverless and serves only committed files, so the crawler 
 | --- | --- | --- |
 | Browse the Northeastern catalog | Yes (committed snapshot under `data/`) | Yes |
 | Refresh catalog control | Shown only when the POST would be authorized (development, or a configured token) | Hidden: `GET /api/catalog` reports `refreshAvailable: false` |
-| Other-university roadmap selector | Shown once a supported university has at least one ready program, even while the rest of its crawl is still queued (after `npm run catalog:refresh -- --crawl-roadmaps` writes `data/catalogs/`); only ready programs can be opened | Hidden: no committed roadmap, so no university has ready program data (`data/catalogs/` is git-ignored) |
+| Other-university roadmap selector | Shown once a supported university has at least one ready program, even while the rest of its crawl is still queued (after `npm run catalog:refresh -- --crawl-roadmaps` writes `data/catalogs/`); only ready programs can be opened | Yes: one committed roadmap (Northeastern MSCS Seattle) makes its university selectable. Other universities stay hidden until a crawl writes more `data/catalogs/` entries |
 | `POST /api/catalog` | Yes (development or token) | 401 unless `CATALOG_REFRESH_TOKEN` is set, and the in-process fallback cannot write the read-only filesystem |
 
 ### Adding another program or university
@@ -162,7 +162,7 @@ The UI's **Refresh Catalog** button calls same-origin `POST /api/catalog`. That 
 ### Generated files
 
 - `data/catalog.json`: complete validated payload used by the application for the default program.
-- `data/catalogs/<id>/`: per-program snapshots written by the catalog service.
+- `data/catalogs/<id>/`: per-program snapshots written by the catalog service. `data/catalogs/` is git-ignored except the committed Northeastern roadmap (`data/catalogs/northeastern/programs.json` and `roadmaps/computer-science-mscs-sea-8b0d00dbda.json`), which is regenerated offline from the tracked 2026-09-12 cache and keeps that source date. `next.config.ts` traces just the registry and those two files into the `/api/roadmaps` bundle.
 - `data/courses.json`: normalized courses. Export/inspection only: no runtime code reads it, `data/catalog.json` already embeds the same courses.
 - `data/requirements.json`: normalized degree rules. Export/inspection only, same as above.
 - `data/raw/.catalog-cache.json`: source URLs, validators, and fetch timestamps.
