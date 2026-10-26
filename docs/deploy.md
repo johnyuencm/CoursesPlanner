@@ -1,6 +1,6 @@
 # Deployment
 
-Live production: [https://courses-planner.vercel.app](https://courses-planner.vercel.app)
+Live production: [https://coursesplanner.johnyc.com](https://coursesplanner.johnyc.com) (custom domain, added 2026-10-26). The Vercel URL [https://courses-planner.vercel.app](https://courses-planner.vercel.app) still works.
 
 This file is operator notes. Students using the planner do not need it.
 
@@ -8,7 +8,8 @@ This file is operator notes. Students using the planner do not need it.
 
 | Item | Value |
 | --- | --- |
-| Production URL | https://courses-planner.vercel.app |
+| Production URL | https://coursesplanner.johnyc.com (custom domain) and https://courses-planner.vercel.app |
+| Custom domain DNS | Cloudflare zone `johnyc.com`: CNAME `coursesplanner` → `e0273d0e708952dd.vercel-dns-017.com`, DNS only. Shared map in [johnyuencm/johnyc-infra](https://github.com/johnyuencm/johnyc-infra). |
 | Vercel project slug | `courses-planner` |
 | Vercel team slug | `johnyuen97gmailcoms-projects` |
 | Vercel team name | johnyuen97gmailcom's projects |
@@ -23,7 +24,7 @@ The production URL was confirmed live (HTTP 200, Next.js on Vercel). The team ID
 
 Vercel → `courses-planner` → Settings → General → Project ID.
 
-A create-time ID of `prj_8Kn1vTklOGl4BQ3HXCSwP9ghX4HS` was recorded elsewhere; treat it as unconfirmed until it matches that settings page.
+`vercel project inspect courses-planner` confirmed the project ID `prj_8Kn1vTklOGl4BQ3HXCSwP9ghX4HS` on 2026-10-26. The same team also has a second project, `coursesplanner` (`prj_UrjPGD8KWbTsIZlGJzVW4HE88N0I`), created 19 seconds earlier; it is not production.
 
 `.vercel/project.json` is not in this repo yet. After `npx vercel link` (or after you confirm both IDs), that file may be committed. It contains `orgId` and `projectId` only. Never commit tokens, `.env*` files, or `.vercel/output`.
 
