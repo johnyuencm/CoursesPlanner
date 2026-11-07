@@ -44,9 +44,9 @@ CPU timing in Node 24 (`NODE_ENV=production`), as a stand-in for Workers V8. Loc
 | # | Severity | Area | Finding | Action |
 |---|---|---|---|---|
 | 1 | High (cutover) | DNS | The `coursesplanner` CNAME still points to Vercel (`johnyc-infra` README). A Worker custom domain cannot attach while that record exists. Merged work is not live until the switch. | Delete the CNAME, then run `npm run deploy`. Expect a few minutes of downtime. Update the `johnyc-infra` subdomain map. |
-| 2 | Medium | CPU | The first API call in a new isolate costs about 6 to 13 ms. The memoized calls cost under 1 ms. Workers Free allows 10 ms, but does not cut off each request at that point, and gives no guarantee. Pages come from the prerender cache and use little CPU. | After the first deploy, read CPU time per route in the dashboard. If it is high, move validation to module scope (startup limit) or serve the JSON as static assets. |
+| 2 | Medium | CPU | The first API call in a new isolate costs about 6 to 13 ms. The memoized calls cost under 1 ms. Workers Free allows 10 ms. It does not stop each request at that point, but it gives no guarantee. Pages come from the prerender cache and use little CPU. | After the first deploy, read CPU time per route in the dashboard. If it is high, move validation to module scope (startup limit) or serve the JSON as static assets. |
 | 3 | Medium | Runtime drift | `npm run dev` still runs Next/Turbopack. Production runs vinext 1.4.4, which is new. A change can pass in dev and fail in production. | Use `npm run dev:vinext`, or `npm run build` and `npm start`, before you accept a UI or route change. Say this in `AGENTS.md`. |
-| 4 | Medium | Docs and CI | `docs/deploy.md` mentions Vercel 31 times and the README 4 times. `.github/workflows/ci.yml` keeps the Vercel deploy job and has no Workers deploy. GitHub Actions on the org is blocked by billing. | Rewrite `docs/deploy.md` for Workers. Delete the Vercel job. Deploy by hand with `npm run deploy` until Actions works. |
+| 4 | Medium | Docs and CI | "Vercel" is on 31 lines of `docs/deploy.md` and 4 lines of the README. `.github/workflows/ci.yml` keeps the Vercel deploy job and has no Workers deploy. GitHub Actions on the org is blocked by billing. | Rewrite `docs/deploy.md` for Workers. Delete the Vercel job. Deploy by hand with `npm run deploy` until Actions works. |
 | 5 | Low | Scale | `lib/embedded-snapshot.ts` lists each snapshot file by hand. Each new program needs a code change and makes the bundle larger. | Accept for 1 program. For more programs, put roadmaps in static assets and read them through the `ASSETS` binding. |
 | 6 | Low | Cache | HTML responses send `Cache-Control: s-maxage=31536000, stale-while-revalidate`. | After the first redeploy, confirm that the live pages show the new build. |
 | 7 | Info | Fallback | `readCatalog` falls back to the bundled JSON on any `statSync` error, also in Node. The bundled JSON is the same file at build time, so the effect is nil now. | No action. |
@@ -59,3 +59,18 @@ flowchart LR
   B --> C["Open 3 live pages,<br/>check CPU per route"]
   C --> D["Update docs/deploy.md,<br/>ci.yml, johnyc-infra map"]
 ```
+
+## Changed after review
+
+An independent check on 2026-11-06 compared this review with the port. The findings above stay as written. They describe the 23:24 PST working tree.
+
+| Item | State at the check |
+|---|---|
+| Commit | The port is commit `d7b5010` on `feat/cloudflare-workers` (23:31 PST), pushed. It is not merged to `master`. |
+| New files in the commit | `app/global-not-found.tsx`, plus changes to `.github/workflows/ci.yml`, `README.md`, `docs/deploy.md` and `docs/ia.md`. `next.config.ts` turns on `experimental.globalNotFound`. |
+| Finding 1 (DNS) | Done. `coursesplanner.johnyc.com` has no CNAME. The response has `Server: cloudflare` and `X-Vinext-Cache: HIT`. Production now runs a branch that `master` does not contain. |
+| Finding 2 (CPU) | Real Workers CPU is now measured in `docs/deploy.md` (`wrangler tail`, `cpuTime`). Pages: p50 2-4 ms. API routes: p50 4-5 ms, p90 8-10 ms. |
+| New risk | The same table shows an unknown course 404 (`/courses/zz-9999`) at p50 10 ms. 13 of 28 requests are over 10 ms. Route misses got a lighter page (`app/global-not-found.tsx`), but `/courses/[code]` misses did not. |
+| Finding 4 (docs and CI) | Done. `ci.yml` has no Vercel job. `docs/deploy.md` is rewritten for Workers. "Vercel" stays only in the old-host and rollback notes. The README has no "Vercel". |
+| Finding 3 (runtime drift) | `AGENTS.md` does not mention `dev:vinext` yet. |
+| Verdict | No change. Merge `feat/cloudflare-workers` to `master` so that `master` matches production. |
