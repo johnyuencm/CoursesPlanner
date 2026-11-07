@@ -11,6 +11,7 @@ import type {
   RoadmapCrawlStatus,
 } from "./types";
 import type { UniversityDirectoryEntry, UniversityRoadmapSummary } from "./source-types";
+import { embeddedJson } from "./embedded-snapshot";
 import { readBoundedFile } from "./read-bounded-file";
 
 const validId = (id: string) => /^[a-z0-9][a-z0-9-]{0,80}$/.test(id);
@@ -26,6 +27,8 @@ export async function readOptionalJson(filePath: string): Promise<unknown> {
   try {
     return JSON.parse(await readBoundedFile(filePath));
   } catch (error) {
+    const embedded = embeddedJson(filePath);
+    if (embedded !== undefined) return embedded;
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     throw error;
   }

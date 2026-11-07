@@ -21,3 +21,6 @@ test-results/
 !.vercel/project.json
 next-env.d.ts
 UI/
+/dist/
+.vinext/
+.wrangler/

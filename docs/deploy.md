@@ -1,84 +1,110 @@
 # Deployment
 
-Live production: [https://coursesplanner.johnyc.com](https://coursesplanner.johnyc.com) (custom domain, added 2026-10-26). The Vercel URL [https://courses-planner.vercel.app](https://courses-planner.vercel.app) still works.
+Production: [https://coursesplanner.johnyc.com](https://coursesplanner.johnyc.com). It is the Cloudflare Worker `coursesplanner` on the Workers Free plan ($0).
 
-This file is operator notes. Students using the planner do not need it.
+This file is operator notes. Students who use the planner do not need it.
 
 ## Project
 
 | Item | Value |
 | --- | --- |
-| Production URL | https://coursesplanner.johnyc.com (custom domain) and https://courses-planner.vercel.app |
-| Custom domain DNS | Cloudflare zone `johnyc.com`: CNAME `coursesplanner` → `e0273d0e708952dd.vercel-dns-017.com`, DNS only. Shared map in [johnyuencm/johnyc-infra](https://github.com/johnyuencm/johnyc-infra). |
-| Vercel project slug | `courses-planner` |
-| Vercel team slug | `johnyuen97gmailcoms-projects` |
-| Vercel team name | johnyuen97gmailcom's projects |
-| Vercel team / org ID | `team_TElYupD3mNDEAbAvFYHpdJe5` |
-| Vercel plan | Hobby |
-| Framework | Next.js |
-| Root directory | `./` |
+| Production URL | https://coursesplanner.johnyc.com |
+| Runtime | Cloudflare Worker `coursesplanner`, Workers Free plan, no paid add-ons |
+| Build | [vinext](https://github.com/cloudflare/vinext) 1.4.4 (Vite version of the Next.js API), `@vinext/cloudflare` 1.3.3 |
+| Config | [`wrangler.jsonc`](../wrangler.jsonc) (routes, assets), [`vite.config.ts`](../vite.config.ts) (vinext, static-assets cache) |
+| Custom domain | `routes: [{ pattern: "coursesplanner.johnyc.com", custom_domain: true }]`. `workers_dev` and `preview_urls` are off (house rule for every app under `johnyc.com`) |
+| DNS | Cloudflare zone `johnyc.com`. A Worker custom domain makes the record. Shared map: [johnyuencm/johnyc-infra](https://github.com/johnyuencm/johnyc-infra) |
+| Cloudflare account | `99ea46219cc098a0c9db852d9e1fd0f6` |
 | Production Git branch | `master` (this repo does not use `main`) |
-| GitHub repository | [johnyuencm/CoursesPlanner](https://github.com/johnyuencm/CoursesPlanner) (currently **public**) |
+| Old host | Vercel Hobby project `courses-planner` (team `johnyuen97gmailcoms-projects`). Git deploys are disconnected since 2026-11-06. It still holds the 2026-10-30 build. The owner decides when to delete it |
 
-The production URL was confirmed live (HTTP 200, Next.js on Vercel). The team ID above was confirmed from Vercel team settings. The Vercel **project ID** (`prj_…`) could not be re-read from project settings in the same pass, so it is not committed and should be copied from the dashboard before enabling the Actions CLI deploy:
+## How it works
 
-Vercel → `courses-planner` → Settings → General → Project ID.
-
-`vercel project inspect courses-planner` confirmed the project ID `prj_8Kn1vTklOGl4BQ3HXCSwP9ghX4HS` on 2026-10-26. The same team also has a second project, `coursesplanner` (`prj_UrjPGD8KWbTsIZlGJzVW4HE88N0I`), created 19 seconds earlier; it is not production.
-
-`.vercel/project.json` is not in this repo yet. After `npx vercel link` (or after you confirm both IDs), that file may be committed. It contains `orgId` and `projectId` only. Never commit tokens, `.env*` files, or `.vercel/output`.
-
-## How continuous deployment works
-
-**Primary path:** Vercel Git integration. The Hobby project is linked to this GitHub repository. Pushes to `master` create production deployments. Pull requests and other branches create preview deployments. The Vercel GitHub app comments preview URLs on PRs. GitHub Actions does **not** create preview deployments; that would duplicate the Git integration.
-
-**Checks path:** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on pull requests and on pushes to `master`. It uses Node 22, then `npm ci`, `npm run typecheck`, `npm test`, and `npm run build`. Any failed step fails the job. PRs run this job only; they do not production-deploy from Actions.
-
-**Optional CLI path:** the same workflow has a `deploy` job that `needs: ci` and runs only on push to `master`. It follows Vercel’s documented GitHub Actions pattern (`vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod`). It is gated on repository secrets. If those secrets are missing, the job succeeds and skips the CLI deploy. Vercel Git integration still deploys `master`.
-
-Until the secrets exist, Git integration is the only production deploy. After they exist, a push to `master` can produce **two** production deployments (Git integration immediately, then Actions after CI). If that duplication is unwanted, either leave the Actions secrets unset and keep Git integration as the only CD, or ignore Git production builds in the Vercel project and let Actions own production after CI is green.
-
-Catalog refresh is not part of deploy or CI. Production serves the committed snapshot under `data/`. Refresh remains a local/operator CLI (`npm run catalog:refresh`). `POST /api/catalog` stays locked down outside development.
-
-## Hobby plan and a public GitHub repo
-
-Hobby can use Vercel Git integration against this repository because the GitHub repo is **public**. Making the repository private again requires **Vercel Pro** for the team’s private Git deploys. Do not privatize the repo on Hobby without first confirming that Git deploys will still run, or production updates will stop.
-
-Tokens and org/project IDs are not affected by that Git-visibility rule; they only matter for CLI and Actions.
-
-## GitHub Actions secrets (optional CLI deploy)
-
-The `deploy` job needs all three repository secrets. They are not required for CI, PR checks, or Vercel Git integration.
-
-| Secret | Where to get it |
-| --- | --- |
-| `VERCEL_TOKEN` | [Vercel account tokens](https://vercel.com/account/tokens) (or `npx vercel tokens create`). Grant access to the Hobby team that owns `courses-planner`. |
-| `VERCEL_ORG_ID` | The team ID: `team_TElYupD3mNDEAbAvFYHpdJe5`. Also written as `orgId` in `.vercel/project.json` after `vercel link`. |
-| `VERCEL_PROJECT_ID` | Vercel → `courses-planner` → Settings → General → Project ID. Also `projectId` in `.vercel/project.json`. |
-
-Set them in GitHub → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**. Do not put them in workflow YAML, README, or committed JSON.
-
-Local/CI `vercel pull` can use either committed `.vercel/project.json` or the `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` environment variables. This repo currently relies on the secrets (or a future `project.json`) because the project ID is unconfirmed.
-
-## Re-deploy production
-
-Any one of:
-
-1. Push or merge to `master` (Vercel Git integration; primary).
-2. Vercel dashboard → `courses-planner` → Deployments → ⋮ on a deployment → **Redeploy**.
-3. After `npx vercel link` to this project: `npx vercel deploy --prod`.
-4. Push to `master` once the three Actions secrets are set (CLI deploy job in `ci.yml`, after CI is green).
-
-Rollback: Vercel dashboard → Deployments → promote an earlier production deployment, or `npx vercel rollback` when linked.
-
-## Local Vercel CLI
-
-Requires Node 22+ and a Vercel login with access to the Hobby team.
-
-```bash
-npx vercel login
-npx vercel link --scope johnyuen97gmailcoms-projects --project courses-planner --yes
-npx vercel pull --yes --environment=production
+```mermaid
+flowchart LR
+  B[npm run build] --> P[vinext prerenders 126 routes]
+  P --> A[dist/client: static assets]
+  B --> W[dist/server: Worker code]
+  A --> D[npm run deploy]
+  W --> D
+  D --> CF[Worker coursesplanner]
+  R[Request] --> CF
+  CF -->|prerendered page| A
+  CF -->|/api/*, /sitemap.xml, 404| S[server code + bundled snapshot]
 ```
 
-`vercel link` writes `.vercel/project.json`. Commit that file only after the IDs match the dashboard. Keep using `.gitignore` so `.vercel/output` and pulled env files stay untracked.
+- `npm run build` runs `vite build`. vinext prerenders every static page at build time: `/`, `/explore`, `/planner`, `/courses`, all `/courses/<slug>`, all `/pathways/<id>`. The Worker serves them from static assets (`X-Vinext-Cache: HIT`).
+- `/api/catalog`, `/api/roadmaps`, `/sitemap.xml`, `/robots.txt` and 404 pages run in the Worker.
+- Workers has no project filesystem. [`lib/embedded-snapshot.ts`](../lib/embedded-snapshot.ts) bundles the committed JSON (`data/catalog.json`, `catalog-service/universities.json`, the Northeastern programs and roadmap). The readers try disk first (dev, tests, CLI) and use the bundle when the file is missing.
+- `POST /api/catalog` (refresh) stays off in production: it answers 401. Refresh the catalog with `npm run catalog:refresh`, commit `data/`, then deploy.
+- `app/global-not-found.tsx` renders route misses without the root layout, because a full layout render costs more CPU than the Free plan allows.
+
+## Deploy
+
+Deploy is manual. CI does not deploy, because a deploy job needs a Cloudflare API token as a GitHub secret.
+
+```bash
+npm ci
+npm run typecheck
+npm test
+npm run deploy
+```
+
+`npm run deploy` runs `vinext-cloudflare deploy`: it builds, then uploads with Wrangler. It needs a Wrangler login (`npx wrangler login`) with Workers write access on the account above.
+
+If the upload fails with `fetch failed` (network), the build in `dist/` is still good. Run the upload again:
+
+```bash
+npx wrangler deploy --config dist/server/wrangler.json
+```
+
+Run the production Worker on your PC (workerd, port 3000):
+
+```bash
+npm run build
+npm run start
+```
+
+## Rollback
+
+- Worker version: `npx wrangler rollback` (pick the earlier version), or `npx wrangler deployments list` to see versions.
+- Full rollback to Vercel (only while the Vercel project exists): remove the Worker custom domain, then create the DNS-only CNAME `coursesplanner` → `e0273d0e708952dd.vercel-dns-017.com` again with the `cf` CLI. Vercel serves the frozen 2026-10-30 build.
+
+## CPU per request (Workers Free limit: 10 ms)
+
+Measured on 2026-11-07 with `wrangler tail --format json` (field `cpuTime`) on a temporary custom domain. Each route got 30 sequential requests from Seattle. Worker startup time: 11-22 ms (limit 1 s).
+
+| Route | p50 | p90 | Over 10 ms |
+| --- | --- | --- | --- |
+| Prerendered pages (`/`, `/explore`, `/planner`, `/courses`, `/courses/cs-5010`, `/pathways/systems`) | 2-4 ms | 4-6 ms | 0 of 30 per route, after warm-up |
+| `/sitemap.xml` | 3 ms | 8 ms | 0 of 30 |
+| `/robots.txt` | 1 ms | 2 ms | 0 of 30 |
+| `/api/catalog` | 5 ms | 10 ms | 1 of 29 |
+| `/api/roadmaps` | 4 ms | 8 ms | 1 of 30 |
+| `/api/roadmaps?university=…&program=…` | 4 ms | 10 ms | 5 of 60 |
+| Route miss 404 (`/nothing`, `/favicon.ico`) | 6 ms | 10-28 ms | 2-3 of 30 |
+| Unknown course 404 (`/courses/zz-9999`) | 10 ms | 28 ms | 13 of 28 |
+
+- The first requests on a new isolate cost more (up to about 30 ms on `/`). The p90 values include them.
+- The two API routes keep the serialized JSON body in memory for each isolate. Before that change, `/api/roadmaps?…&program=…` had p50 8 ms and p90 21 ms.
+- Before `app/global-not-found.tsx`, every 404 rendered the full layout at p50 14 ms and p90 45-70 ms. Browsers ask for `/favicon.ico` on each visit, and the app has no favicon, so that cost hit every visit.
+- Every request in these runs had outcome `ok`. Cloudflare did not stop any request that went over 10 ms. Do not rely on this: an over-limit request can fail with error 1102.
+- Known ceiling: an unknown `/courses/<slug>` still renders the root layout (it is a `notFound()` inside the route, not a route miss). Only typos and bots ask for these URLs.
+
+Measure again after a large change:
+
+```bash
+npx wrangler tail coursesplanner --format json > tail.jsonl
+```
+
+Send requests in a second terminal, then read `cpuTime` for each event.
+
+## Free plan limits that matter
+
+| Limit (Workers Free) | This app |
+| --- | --- |
+| 100,000 requests per day | Each page view is 1 request, plus `/api/catalog` and `/api/roadmaps` on Explore and Planner. Static `/_next/static/*` files do not count, because they skip the Worker |
+| 10 ms CPU per request | See the table above |
+| 3 MB Worker size (gzip) | 614 KiB gzip |
+
+Over the daily request limit, Cloudflare returns errors until the next day. It does not bill. Do not turn on Workers Paid, Cloudflare Images or other paid add-ons without the owner's explicit yes.

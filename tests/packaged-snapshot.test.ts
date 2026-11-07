@@ -79,14 +79,14 @@ test("the route serves the committed directory and roadmap with 200", async () =
   assert.equal((await roadmap.json()).programId, PROGRAM_ID);
 });
 
-test("the serverless trace ships both snapshot files and no crawler", () => {
-  const config = readFileSync(path.join(ROOT, "next.config.ts"), "utf8");
+test("the Worker bundle embeds both snapshot files and no crawler", () => {
+  const embedded = readFileSync(path.join(ROOT, "lib/embedded-snapshot.ts"), "utf8");
   for (const file of [
     "catalog-service/universities.json",
     "data/catalogs/northeastern/programs.json",
     `data/catalogs/northeastern/roadmaps/${PROGRAM_ID}.json`,
   ]) {
-    assert.match(config, new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(embedded, new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   const route = readFileSync(path.join(ROOT, "app/api/roadmaps/route.ts"), "utf8");
   assert.doesNotMatch(route, /cheerio|catalog-service\/(adapters|crawler|refresh|roadmaps)/);

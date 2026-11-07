@@ -87,12 +87,22 @@ async function refreshCatalogSnapshot(): Promise<Catalog> {
   }
 }
 
+// Serializing the ~150 KB catalog costs several ms of CPU, and Workers Free allows
+// 10 ms per request. readCatalog() returns the same object until the file changes,
+// so build the body once per catalog object.
+let catalogBody: { catalog: Catalog; refreshAvailable: boolean; body: string } | null = null;
+
 export async function GET() {
   try {
     // refreshAvailable tells the UI whether POST refresh can ever succeed, so the
     // client can hide a control that would otherwise always answer 401 (CR3).
-    return NextResponse.json({ ...readCatalog(), refreshAvailable: isRefreshAuthorized() }, {
-      headers: { "Cache-Control": "no-store" },
+    const catalog = readCatalog();
+    const refreshAvailable = isRefreshAuthorized();
+    if (catalogBody?.catalog !== catalog || catalogBody.refreshAvailable !== refreshAvailable) {
+      catalogBody = { catalog, refreshAvailable, body: JSON.stringify({ ...catalog, refreshAvailable }) };
+    }
+    return new NextResponse(catalogBody.body, {
+      headers: { "Cache-Control": "no-store", "Content-Type": "application/json" },
     });
   } catch (error) {
     return errorResponse(error, 503);

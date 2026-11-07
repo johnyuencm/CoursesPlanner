@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { embeddedJson } from "./embedded-snapshot";
 import type {
   Catalog,
   Course,
@@ -565,7 +566,17 @@ export function defaultCatalogFilePath(): string {
 let catalogDiskCache: { filePath: string; mtimeMs: number; catalog: Catalog } | null = null;
 
 export function readCatalog(filePath = defaultCatalogFilePath()): Catalog {
-  const details = statSync(filePath);
+  let details;
+  try {
+    details = statSync(filePath);
+  } catch (error) {
+    const embedded = embeddedJson(filePath);
+    if (embedded === undefined) throw error;
+    if (catalogDiskCache?.filePath === filePath && catalogDiskCache.mtimeMs === -1) return catalogDiskCache.catalog;
+    validateCatalog(embedded);
+    catalogDiskCache = { filePath, mtimeMs: -1, catalog: embedded };
+    return embedded;
+  }
   if (catalogDiskCache && catalogDiskCache.filePath === filePath && catalogDiskCache.mtimeMs === details.mtimeMs) {
     return catalogDiskCache.catalog;
   }

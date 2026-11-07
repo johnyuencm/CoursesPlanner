@@ -1,0 +1,25 @@
+import type { Metadata } from "next";
+import "./globals.css";
+
+// Route misses skip the root layout and its client providers. A full layout
+// render cost 14-95 ms of CPU on Workers, over the 10 ms Free plan limit.
+export const metadata: Metadata = {
+  title: "Page not found · NEU MSCS Course Map",
+  robots: { index: false },
+};
+
+export default function GlobalNotFound() {
+  return (
+    <html lang="en">
+      <body>
+        <main style={{ maxWidth: "36rem", margin: "4rem auto", padding: "0 1rem" }}>
+          <h1>Page not found</h1>
+          <p>This page does not exist in the course map.</p>
+          <p>
+            <a href="/">Overview</a> · <a href="/courses">All courses</a> · <a href="/explore">Explore</a>
+          </p>
+        </main>
+      </body>
+    </html>
+  );
+}
