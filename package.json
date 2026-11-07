@@ -5,12 +5,14 @@
   "description": "A local-first Northeastern MSCS Seattle course map: understand what every course unlocks.",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "vite build",
+    "start": "wrangler dev --config dist/server/wrangler.json --port 3000",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "catalog:refresh": "tsx catalog-service/cli.ts",
-    "catalog:serve": "tsx catalog-service/server.ts"
+    "catalog:serve": "tsx catalog-service/server.ts",
+    "dev:vinext": "vite dev --port 3001",
+    "deploy": "vinext-cloudflare deploy --config dist/server/wrangler.json"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -19,20 +21,29 @@
     "@dnd-kit/core": "6.3.1",
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
+    "@vinext/cloudflare": "1.3.3",
     "@xyflow/react": "12.12.0",
     "cheerio": "1.2.0",
     "lucide-react": "1.55.0",
     "next": "16.4.1",
-    "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-server-dom-webpack": "19.3.1",
+    "vinext": "1.4.4"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "1.67.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "22.20.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "@vitejs/plugin-rsc": "0.5.39",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",
-    "typescript": "7.0.2"
-  }
+    "typescript": "7.0.2",
+    "vite": "8.3.6",
+    "wrangler": "4.158.0"
+  },
+  "type": "module"
 }

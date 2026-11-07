@@ -8,7 +8,7 @@ Primary navigation is **Explore · Plan · Courses · Paths**. Route redirects a
 
 ## Deployment
 
-Production is on Vercel at [https://courses-planner.vercel.app](https://courses-planner.vercel.app). The production Git branch is `master` (not `main`). Pushes and pull requests on the linked GitHub repo deploy through Vercel Git integration; GitHub Actions runs typecheck, tests, and a production build on pull requests and on `master`. Operator notes, Hobby-plan caveats, and optional CLI deploy secrets are in [`docs/deploy.md`](docs/deploy.md).
+Production is the Cloudflare Worker `coursesplanner` (Workers Free plan) at [https://coursesplanner.johnyc.com](https://coursesplanner.johnyc.com). It is built with [vinext](https://github.com/cloudflare/vinext), the Vite version of the Next.js API. The production Git branch is `master` (not `main`). GitHub Actions runs typecheck, tests, and a production build on pull requests and on `master`. Deploy is manual: `npm run deploy`. Operator notes, CPU numbers and rollback are in [`docs/deploy.md`](docs/deploy.md).
 
 ## What the application includes
 
@@ -68,14 +68,14 @@ Explore shows a roadmap selector above the graph, backed by same-origin `GET /ap
 
 ### Production vs local
 
-Production is Vercel serverless and serves only committed files, so the crawler half of the architecture does not exist there. The UI checks what the server can do instead of assuming:
+Production is a Cloudflare Worker. It has no project filesystem, so it serves only the committed snapshot that [`lib/embedded-snapshot.ts`](lib/embedded-snapshot.ts) bundles. The crawler half of the architecture does not exist there. The UI checks what the server can do instead of assuming:
 
-| Feature | Local (`npm run dev` + `npm run catalog:serve`) | Production (Vercel) |
+| Feature | Local (`npm run dev` + `npm run catalog:serve`) | Production (Cloudflare Worker) |
 | --- | --- | --- |
 | Browse the Northeastern catalog | Yes (committed snapshot under `data/`) | Yes |
 | Refresh catalog control | Shown only when the POST would be authorized (development, or a configured token) | Hidden: `GET /api/catalog` reports `refreshAvailable: false` |
 | Other-university roadmap selector | Shown once a supported university has at least one ready program, even while the rest of its crawl is still queued (after `npm run catalog:refresh -- --crawl-roadmaps` writes `data/catalogs/`); only ready programs can be opened | Yes: one committed roadmap (Northeastern MSCS Seattle) makes its university selectable. Other universities stay hidden until a crawl writes more `data/catalogs/` entries |
-| `POST /api/catalog` | Yes (development or token) | 401 unless `CATALOG_REFRESH_TOKEN` is set, and the in-process fallback cannot write the read-only filesystem |
+| `POST /api/catalog` | Yes (development or token) | 401: no `CATALOG_REFRESH_TOKEN` is set, and the in-process fallback is off outside development |
 
 ### Adding another program or university
 
@@ -122,7 +122,7 @@ Never run an unbounded crawl: `--crawl-roadmaps` requires `--limit=<1..100>`. `-
 | `data/raw/` | Cached official HTML and research fixtures |
 | `tests/` | Parser, catalog-service, validation, and persistence tests |
 | `docs/` | Source inspection, IA/redirects, acceptance checklist, and deployment notes |
-| `.github/workflows/` | GitHub Actions CI (and optional Vercel CLI production deploy) |
+| `.github/workflows/` | GitHub Actions CI (typecheck, tests, build; no deploy) |
 
 ## Catalog cache and refresh behavior
 
@@ -255,10 +255,11 @@ npm run catalog:serve
 npm run dev
 ```
 
-Open [http://localhost:3000/explore](http://localhost:3000/explore) for the course map (the default workspace). [http://localhost:3000](http://localhost:3000) is the slim Overview. Old `/map` bookmarks redirect to `/explore`. See [`docs/ia.md`](docs/ia.md). Run only one `next dev` at a time: if you are working in `.worktrees/<slug>/`, start Next there and do not also run it at the repo root. Restart `next dev` if a session has been running for many hours; Turbopack memory eviction does not replace a process recycle. Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. For a production server on a shared network, bind loopback if you expose refresh at all:
+Open [http://localhost:3000/explore](http://localhost:3000/explore) for the course map (the default workspace). [http://localhost:3000](http://localhost:3000) is the slim Overview. Old `/map` bookmarks redirect to `/explore`. See [`docs/ia.md`](docs/ia.md). Run only one `next dev` at a time: if you are working in `.worktrees/<slug>/`, start Next there and do not also run it at the repo root. Restart `next dev` if a session has been running for many hours; Turbopack memory eviction does not replace a process recycle. Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. To run the production Worker build on your PC (workerd, port 3000):
 
 ```bash
-npx next start --hostname 127.0.0.1
+npm run build
+npm run start
 ```
 
 Prefer the CLI for operators. To allow HTTP refresh outside development, set a local secret and send it as a header (never put this token in client-side code):

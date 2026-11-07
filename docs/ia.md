@@ -44,5 +44,5 @@ The app pages load the catalog in the browser, so a crawler sees little text on 
 
 - Placeholder courses (the scraper's "unavailable in the cached department sources" text) get no page. Unknown slugs are 404 (`dynamicParams = false`).
 - Helpers and tests: `lib/course-pages.ts`, `tests/course-pages.test.ts`.
-- `metadataBase` in `app/layout.tsx` sets canonical URLs to `coursesplanner.johnyc.com`, so `courses-planner.vercel.app` does not count as a copy.
+- `metadataBase` in `app/layout.tsx` sets canonical URLs to `coursesplanner.johnyc.com`, so the old `courses-planner.vercel.app` copy does not count as a duplicate.
 - Reason: AdSense rejected `johnyc.com` for "Low value content" (plan: `johnyuencm/johnyc-infra` `docs/adsense-value-plan.md`). This site counts in that review, even with no ads on it.

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { embeddedJson } from "./embedded-snapshot";
 import { KNOWN_ADAPTER_IDS, type UniversityCrawlConfig, type UniversityDirectoryEntry } from "./source-types";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -163,7 +164,14 @@ export async function loadUniversityDirectory(
   filePath = path.join(process.cwd(), "catalog-service", "universities.json"),
 ): Promise<UniversityDirectoryEntry[]> {
   const label = path.basename(filePath);
-  const universities = parseUniversityDirectory(JSON.parse(await readFile(filePath, "utf8")), label);
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await readFile(filePath, "utf8"));
+  } catch (error) {
+    raw = embeddedJson(filePath);
+    if (raw === undefined) throw error;
+  }
+  const universities = parseUniversityDirectory(raw, label);
   validateProductionUniversityDirectory(universities, label);
   return universities;
 }
