@@ -68,6 +68,14 @@ test("prerequisite text keeps and/or, and unmet groups respect 'or'", () => {
   assert.deepEqual(unmetRequirements(expr, new Set(["CS 5800"])), [["MATH 2331"]], "CS 7800 is an alternative, not a gap");
   assert.deepEqual(unmetRequirements(expr, new Set()), [["CS 5800", "CS 7800"], ["MATH 2331"]]);
   assert.deepEqual(unmetRequirements({ type: "none" }, new Set()), []);
+  // "(A and B) or C": A alone is not an option, so only C is offered.
+  const andInOr = { type: "any" as const, items: [{ type: "all" as const, items: [one("A"), one("B")] }, one("C")] };
+  assert.deepEqual(unmetRequirements(andInOr, new Set()), [["C"]]);
+  const twoAnds = { type: "any" as const, items: [{ type: "all" as const, items: [one("A"), one("B")] }, { type: "all" as const, items: [one("C"), one("D")] }] };
+  assert.deepEqual(unmetRequirements(twoAnds, new Set()), [["A"], ["B"]]);
+  // Real data: CS 5500 lists CS 5010 twice (two grade floors) inside nested "or" groups.
+  const cs5500 = readCatalog().courses.find((item) => item.code === "CS 5500")!;
+  assert.equal(requirementText(cs5500.prerequisites), "CS 5010 or CS 5004");
 });
 
 test("paths and requirement labels come from the packaged config and catalog", () => {
@@ -77,4 +85,6 @@ test("paths and requirement labels come from the packaged config and catalog", (
   assert.equal(requirementLabel(catalog.courses.find((item) => item.code === "CS 5010")!, catalog), "Required core course");
   const breadth = catalog.courses.find((item) => item.requirementType === "breadth")!;
   assert.match(requirementLabel(breadth, catalog), /^Breadth course: /);
+  // CS 5003 is only a corequisite (of CS 5001), not a prerequisite for anything.
+  assert.equal(requirementLabel(catalog.courses.find((item) => item.code === "CS 5003")!, catalog), "Outside the degree requirements");
 });

@@ -1,3 +1,4 @@
+import { simplifyRequirement } from "./requirement-logic";
 import type { Catalog, Course, Pathway, RequirementExpression } from "./types";
 
 /** Public site origin for canonical URLs and the sitemap. */
@@ -79,15 +80,17 @@ export function requirementLabel(course: Course, catalog: Catalog): string {
   }
   if (course.requirementType === "elective") return "Counts as an elective";
   if (course.requirementType === "program") return "Listed in the program";
-  return "Outside the degree requirements (a prerequisite for program courses)";
+  return course.unlocks.length ? "Outside the degree requirements (a prerequisite for other courses here)" : "Outside the degree requirements";
 }
 
 /** Short prerequisite text that keeps "and" / "or": "CS 5800 or CS 7800", "(A or B) and C". */
-export function requirementText(expr: RequirementExpression, nested = false): string {
+export function requirementText(expression: RequirementExpression, nested = false): string {
+  const expr = simplifyRequirement(expression); // flattens "(A or B) or C"
   if (expr.type === "none") return "";
   if (expr.type === "course") return expr.code;
   if (expr.type === "unknown") return expr.text;
-  const parts = expr.items.map((item) => requirementText(item, true)).filter(Boolean);
+  // Set: the same code can repeat with different minimum grades ("CS 5010 (D) or CS 5004 or CS 5010 (C)").
+  const parts = [...new Set(expr.items.map((item) => requirementText(item, true)).filter(Boolean))];
   const text = parts.join(expr.type === "all" ? " and " : " or ");
   return nested && parts.length > 1 ? `(${text})` : text;
 }
@@ -102,7 +105,10 @@ export function unmetRequirements(expr: RequirementExpression, have: ReadonlySet
   const children = expr.items.map((item) => unmetRequirements(item, have));
   if (expr.type === "all") return children.flat();
   if (children.some((child) => child.length === 0)) return []; // one alternative is already covered
-  return [[...new Set(children.flat(2))]];
+  // An alternative with 2+ unmet groups is an "and": its codes are not options on their own.
+  const single = children.filter((child) => child.length === 1);
+  if (single.length) return [[...new Set(single.flat(2))]];
+  return children.reduce((best, child) => (child.length < best.length ? child : best));
 }
 
 export function creditsLabel(course: Course): string {
