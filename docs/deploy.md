@@ -13,7 +13,7 @@ This file is operator notes. Students who use the planner do not need it.
 | Build | [vinext](https://github.com/cloudflare/vinext) 1.4.4 (Vite version of the Next.js API), `@vinext/cloudflare` 1.3.3 |
 | Config | [`wrangler.jsonc`](../wrangler.jsonc) (routes, assets), [`vite.config.ts`](../vite.config.ts) (vinext, static-assets cache) |
 | Custom domain | `routes: [{ pattern: "coursesplanner.johnyc.com", custom_domain: true }]`. `workers_dev` and `preview_urls` are off (house rule for every app under `johnyc.com`) |
-| DNS | Cloudflare zone `johnyc.com`. A Worker custom domain makes the record. Shared map: [johnyuencm/johnyc-infra](https://github.com/johnyuencm/johnyc-infra) |
+| DNS | Cloudflare zone `johnyc.com`. The Worker custom domain made the record (AAAA `100::`, proxied) on 2026-11-07. It replaced the DNS-only CNAME to Vercel (`e0273d0e708952dd.vercel-dns-017.com`). Shared map: [johnyuencm/johnyc-infra](https://github.com/johnyuencm/johnyc-infra) |
 | Cloudflare account | `99ea46219cc098a0c9db852d9e1fd0f6` |
 | Production Git branch | `master` (this repo does not use `main`) |
 | Old host | Vercel Hobby project `courses-planner` (team `johnyuen97gmailcoms-projects`). Git deploys are disconnected since 2026-11-06. It still holds the 2026-10-30 build. The owner decides when to delete it |
