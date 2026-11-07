@@ -32,7 +32,7 @@ function unlockSummary(code: string, catalog: Catalog) {
   const all = transitiveUnlocks(code, catalog.courses);
   if (!course.unlocks.length) return "It is not a prerequisite for any other course in this catalog.";
   return `It is a direct prerequisite for ${course.unlocks.length} course${course.unlocks.length > 1 ? "s" : ""}` +
-    (all.length > course.unlocks.length ? `, and ${all.length} courses depend on it through a chain.` : ".");
+    (all.length > course.unlocks.length ? `, and ${all.length - course.unlocks.length} more depend on it through a chain.` : ".");
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -63,6 +63,8 @@ export default async function CoursePage({ params }: Props) {
   const downstream = transitiveUnlocks(course.code, catalog.courses).filter((item) => !course.unlocks.includes(item));
   const usedBy = pathwaysFor(course.code, pathways);
   const hasCoreq = course.corequisites.type !== "none" && course.corequisiteText.trim();
+  // A course that another course names as a corequisite goes in the same term, so it is not free to take late.
+  const pairedWith = catalog.courses.filter((item) => item.corequisiteCodes.includes(course.code)).map((item) => item.code);
 
   return <article className="static-page course-page">
     <PageHeading
@@ -75,7 +77,9 @@ export default async function CoursePage({ params }: Props) {
     <section>
       <h2>What it unlocks</h2>
       {course.unlocks.length ? <ul className="static-list">{course.unlocks.map((item) => <li key={item}>{ref(item)}</li>)}</ul>
-        : <p>No course in this catalog lists {course.code} as a prerequisite. You can take it late in the program without blocking anything.</p>}
+        : <p>No course in this catalog lists {course.code} as a prerequisite.{pairedWith.length
+          ? ` It is a corequisite of ${pairedWith.join(", ")}, so plan them in the same term.`
+          : " You can take it late in the program without blocking anything."}</p>}
       {downstream.length > 0 && <p className="muted">Further down the chain: {downstream.map((item, index) => <span key={item}>{index ? ", " : ""}{ref(item)}</span>)}.</p>}
     </section>
 
