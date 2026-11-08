@@ -39,7 +39,6 @@ flowchart LR
 - When you commit a new `programs.json` or a new ready roadmap, add it to `FILES` in `lib/embedded-snapshot.ts`. `tests/embedded-snapshot.test.ts` fails if a committed ready roadmap is not in `FILES`.
 - `POST /api/catalog` (refresh) stays off in production: it answers 401. Refresh the catalog with `npm run catalog:refresh`, commit `data/`, then deploy.
 - `app/global-not-found.tsx` renders route misses without the root layout, because a full layout render costs more CPU than the Free plan allows.
-- [`proxy.ts`](../proxy.ts) runs only on `/courses/<slug>`. It rewrites an unknown slug to a route miss, so `app/global-not-found.tsx` renders the 404.
 - `/`, `/explore`, `/pathways`, `/planner` and `/courses` put server-rendered catalog text in the prerendered HTML ([`components/program-summary.tsx`](../components/program-summary.tsx)). Crawlers read it without JavaScript. The interactive views load after it.
 
 ## Deploy
@@ -86,13 +85,14 @@ Measured on 2026-11-07 with `wrangler tail --format json` (field `cpuTime`) on a
 | `/api/roadmaps` | 4 ms | 8 ms | 1 of 30 |
 | `/api/roadmaps?university=…&program=…` | 4 ms | 10 ms | 5 of 60 |
 | Route miss 404 (`/nothing`, `/favicon.ico`) | 6 ms | 10-28 ms | 2-3 of 30 |
-| Unknown course 404 (`/courses/zz-9999`), before `proxy.ts` | 10 ms | 28 ms | 13 of 28 |
+| Unknown course 404 (`/courses/zz-9999`) | 10 ms | 28 ms | 13 of 28 |
 
 - The first requests on a new isolate cost more (up to about 30 ms on `/`). The p90 values include them.
 - The two API routes keep the serialized JSON body in memory for each isolate. Before that change, `/api/roadmaps?…&program=…` had p50 8 ms and p90 21 ms.
 - Before `app/global-not-found.tsx`, every 404 rendered the full layout at p50 14 ms and p90 45-70 ms. Browsers ask for `/favicon.ico` on each visit, and the app has no favicon, so that cost hit every visit.
 - Every request in these runs had outcome `ok`. Cloudflare did not stop any request that went over 10 ms. Do not rely on this: an over-limit request can fail with error 1102.
-- Before `proxy.ts`, an unknown `/courses/<slug>` rendered the root layout (a `notFound()` inside the route, not a route miss). Now it renders `app/global-not-found.tsx`.
+- Known ceiling: an unknown `/courses/<slug>` still renders the root layout (it is a `notFound()` inside the route, not a route miss). Only typos and bots ask for these URLs.
+- Do not fix this with a `proxy.ts` on `/courses/:slug`. Version `11fcae7b` tried it on 2026-11-07 (60 warm requests per route). Unknown course 404 went to p50 7 ms, p90 13 ms. But every real course page paid for the proxy: p50 5 ms, p90 9 ms, 4 of 60 over 10 ms. A page without the proxy (`/explore`) had p50 4 ms, p90 6 ms. Course pages are the pages that crawlers read, so the proxy was removed.
 
 Measure again after a large change:
 
