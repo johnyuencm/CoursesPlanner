@@ -101,12 +101,19 @@ export function requirementText(expression: RequirementExpression, nested = fals
   return nested && parts.length > 1 ? `(${text})` : text;
 }
 
+/** Display text for a catalog clause that the parser could not read. Such a clause is never met. */
+export function needsReview(text: string): string {
+  return `Needs review — ${text}`;
+}
+
 /**
  * Prerequisites that the given set of courses does not cover. Each entry is one requirement:
  * a single code, or the codes of an "or" group where none is in the set (take any one of them).
+ * An unknown clause is an open entry (`needsReview` text), so it can never make the result empty.
  */
 export function unmetRequirements(expr: RequirementExpression, have: ReadonlySet<string>): string[][] {
-  if (expr.type === "none" || expr.type === "unknown") return [];
+  if (expr.type === "none") return [];
+  if (expr.type === "unknown") return [[needsReview(expr.text)]];
   if (expr.type === "course") return have.has(expr.code) ? [] : [[expr.code]];
   const children = expr.items.map((item) => unmetRequirements(item, have));
   if (expr.type === "all") return children.flat();

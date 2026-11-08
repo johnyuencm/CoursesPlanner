@@ -12,6 +12,8 @@ export interface PageSource {
 
 export type UniversityRegion = "us" | "world";
 export type UniversitySupport = "unverified" | "supported" | "unsupported";
+export const CATALOG_PLATFORMS = ["courseleaf", "coursedog", "acalog", "kuali", "custom", "unknown"] as const;
+export type CatalogPlatform = (typeof CATALOG_PLATFORMS)[number];
 
 /**
  * Known adapter ids, mirrored from the registry in catalog-service/adapters.ts.
@@ -35,6 +37,8 @@ export interface UniversityDirectoryEntry {
   region: UniversityRegion;
   priority: number;
   catalogUrl: string;
+  platform?: CatalogPlatform;
+  platformEvidence?: string;
   support: UniversitySupport;
   enabled: boolean;
   crawl?: UniversityCrawlConfig;

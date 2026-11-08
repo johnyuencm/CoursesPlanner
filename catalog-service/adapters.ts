@@ -8,6 +8,7 @@ import {
   parseProgramRequirements,
 } from "../scraper/parser";
 import type { PageSource } from "../lib/source-types";
+import { type CourseCodeGrammar, northeasternCodeGrammar } from "../lib/course-code";
 
 export interface AdapterProgramLink {
   id: string;
@@ -25,6 +26,8 @@ export interface AdapterProgramScope {
 
 export interface CatalogAdapter {
   id: string;
+  /** Must be `courseCodeGrammar(id)`; tests/course-code.test.ts checks this. */
+  codeGrammar: CourseCodeGrammar;
   parseProgram(html: string, officialUrl: string, lastUpdated: string): DegreeRequirement;
   parseCourses(html: string, pageUrl: string): Course[];
   buildGraph(courses: Course[], requirements: DegreeRequirement): Course[];
@@ -158,6 +161,7 @@ function northeasternCourseSources(programCourseCodes: string[], origin: string)
 
 const northeasternAcalog: CatalogAdapter = {
   id: "northeastern-acalog",
+  codeGrammar: northeasternCodeGrammar,
   parseProgram: parseProgramRequirements,
   parseCourses,
   buildGraph: buildCourseGraph,
