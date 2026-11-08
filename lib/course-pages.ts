@@ -16,6 +16,12 @@ export function publicCourses(catalog: Catalog): Course[] {
     .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
 }
 
+/** True for `/courses/<slug>` when no course page has that slug (the page is a 404). */
+export function isUnknownCoursePath(pathname: string, slugs: ReadonlySet<string>): boolean {
+  const slug = /^\/courses\/([^/]+)$/.exec(pathname)?.[1];
+  return slug !== undefined && !slugs.has(slug);
+}
+
 export function courseBySlug(catalog: Catalog, slug: string): Course | undefined {
   return publicCourses(catalog).find((course) => courseSlug(course.code) === slug);
 }
