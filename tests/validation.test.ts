@@ -7,8 +7,8 @@ import {
   evaluateRequirement,
   expressionLabel,
   getEligibility,
-  validatePlan,
 } from "../lib/validation";
+import { validatePlan } from "./v2-equivalence";
 
 const none: RequirementExpression = { type: "none" };
 const req = (code: string, options: { minimumGrade?: string; concurrent?: boolean } = {}): RequirementExpression => ({

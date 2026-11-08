@@ -53,6 +53,64 @@ export interface DegreeRequirement {
   lastUpdated: string;
 }
 
+interface RuleGroupBase {
+  id: string;
+  label: string;
+  /** Catalog wording this group models; empty when the catalog gives none. */
+  rawText: string;
+  /** The catalog allows double counting: courses used here stay available to later groups. */
+  shareCourses?: boolean;
+}
+
+/**
+ * Requirement model v2: a tree of rule groups, evaluated depth first in order.
+ * One course counts toward one group unless a group sets `shareCourses`.
+ */
+export type RuleGroup =
+  | (RuleGroupBase & { kind: "all"; children: RuleGroup[] })
+  | (RuleGroupBase & { kind: "choose-courses"; count: number; courses: string[] })
+  | (RuleGroupBase & { kind: "choose-credits"; credits: number; courses: string[] })
+  | (RuleGroupBase & { kind: "choose-areas"; count: number; minAreas: number; credits: number; areas: BreadthCategory[] })
+  | (RuleGroupBase & { kind: "total-credits"; credits: number })
+  | (RuleGroupBase & { kind: "unmodeled" });
+
+export interface DegreeRequirementV2 {
+  version: 2;
+  name: string;
+  catalogYear: string;
+  minimumGpa?: number;
+  officialUrl: string;
+  uncertainties: string[];
+  lastUpdated: string;
+  root: RuleGroup;
+}
+
+export interface RuleGroupResult {
+  id: string;
+  kind: RuleGroup["kind"];
+  label: string;
+  rawText: string;
+  satisfied: boolean;
+  /** Courses allocated to this group (subtree for `all`), in allocation order. */
+  courses: string[];
+  /** Waived courses that satisfy a `choose-courses` slot; they earn no credit. */
+  waived: string[];
+  credits: number;
+  /** `choose-areas` only: areas matched one course each. */
+  areas: string[];
+  children: RuleGroupResult[];
+}
+
+export interface DegreeProgressV2 {
+  earnedCredits: number;
+  plannedCredits: number;
+  totalCredits: number;
+  root: RuleGroupResult;
+  issues: PlanIssue[];
+  satisfied: boolean;
+  notes: string[];
+}
+
 export interface Catalog {
   id?: string;
   university?: string;
