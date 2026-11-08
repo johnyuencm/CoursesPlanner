@@ -114,7 +114,7 @@ Known limit: the saved plan keys courses by course code only (`StudentPlan` hold
 
 `catalog-service/universities.json` orders 20 US universities before 20 world universities. Only entries with `"support": "supported"`, `"enabled": true`, and a `crawl` config are fetched; metadata-only/unverified entries are listed but never requested. The crawler discovers official program links, extracts each program's course codes, parses the shared bulk course pages, and writes validated prerequisite roadmaps under `data/catalogs/<university-id>/` (`programs.json`, `roadmaps/<program-id>.json`, `.roadmap-crawl-status.json`). Runs are bounded and resume from persisted state.
 
-Production serves only the programs in [`data/published.json`](data/published.json). This file is the allowlist of catalog keys (`<university-id>/<program-id>`). To publish a ready roadmap, commit its files and add its key. To unpublish a program, remove its key. You do not change code. `npm run build` fails when a listed roadmap is missing, invalid or not ready. See [Published snapshots](docs/deploy.md#published-snapshots).
+Production serves only the programs in [`data/published.json`](data/published.json). This file is the allowlist of catalog keys (`<university-id>/<program-id>`). To publish a ready roadmap, commit its files and add its key. To unpublish a program, remove its key. Also add or remove the same key in `CATALOGS` (`lib/catalog-key.ts`): the program pages come from `CATALOGS`, and a test fails when the two lists differ. `npm run build` fails when a listed roadmap is missing, invalid or not ready. See [Published snapshots](docs/deploy.md#published-snapshots).
 
 ```bash
 npm run catalog:refresh -- --list-universities            # ordered directory with per-university status

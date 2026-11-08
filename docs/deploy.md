@@ -59,8 +59,9 @@ flowchart LR
 - `npm run build` runs [`lib/snapshot-manifest.ts`](../lib/snapshot-manifest.ts) from a plugin in [`vite.config.ts`](../vite.config.ts). It validates each listed roadmap, its `programs.json`, `data/catalog.json` and `catalog-service/universities.json`.
 - The build fails when a listed roadmap is missing, invalid or not `ready`. The Worker never lists a program that answers 503.
 - The build writes the files to `dist/client/_snapshots/<repo path>`. It also writes `_snapshots/manifest.json`. Each manifest entry has a catalog key, a tier (`audit` or `map`), an edition (the snapshot `lastUpdated`) and a file.
-- The shipped `programs.json` keeps only the published programs. To unpublish a program, remove its key and deploy. You do not change code.
+- The shipped `programs.json` keeps only the published programs. To unpublish a program, remove its key and deploy.
 - To publish a new program, commit its roadmap and `programs.json` (see `.gitignore`), then add its key.
+- The program pages (#71) come from `CATALOGS` in `lib/catalog-key.ts`. Add or remove the same key there. A test in `tests/course-pages.test.ts` fails when `data/published.json` and `CATALOGS` differ.
 - The readers try disk first (dev, tests, CLI, prerender). When a file is missing (`ENOENT`), the Worker reads it through the `ASSETS` binding ([`lib/snapshot-assets.ts`](../lib/snapshot-assets.ts)), from `import { env } from "cloudflare:workers"`. It reads only files that the manifest lists. A corrupt disk file gives an error.
 - The Worker does not validate the files again, because the build did. It parses each file once per isolate. The API routes keep the serialized body in memory, as before.
 - `npm run dev:vinext` also runs in workerd without project files. There, a virtual module from `vite.config.ts` gives the same files.
