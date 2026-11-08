@@ -168,7 +168,7 @@ export async function loadUniversityDirectory(
   try {
     raw = JSON.parse(await readFile(filePath, "utf8"));
   } catch (error) {
-    raw = embeddedJson(filePath);
+    raw = (error as NodeJS.ErrnoException).code === "ENOENT" ? embeddedJson(filePath) : undefined; // missing file only
     if (raw === undefined) throw error;
   }
   const universities = parseUniversityDirectory(raw, label);

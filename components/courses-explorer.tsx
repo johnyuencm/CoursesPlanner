@@ -7,7 +7,7 @@ import { ArrowDownWideNarrow, ChevronRight, Filter, Search, X } from "lucide-rea
 import { useApp } from "@/components/app-provider";
 import { CatalogState } from "@/components/catalog-state";
 import { CourseCard } from "@/components/course-card";
-import { EmptyState, LoadingState, PageHeading } from "@/components/ui";
+import { EmptyState, PageHeading } from "@/components/ui";
 import { catalogTakeStatus, DEFAULT_CATALOG_FILTERS, filterCatalogCourses } from "@/lib/catalog-view";
 import { routes } from "@/lib/routes";
 
@@ -70,7 +70,7 @@ function Explorer() {
     }
     return { takeNow, blocked };
   }, [catalog, plan]);
-  if (!catalog) return <CatalogState />;
+  if (!catalog) return <CatalogState quiet />;
   const takeNowCount = takeCounts.takeNow;
   const blockedCount = takeCounts.blocked;
   const filterCount =
@@ -170,4 +170,4 @@ function Explorer() {
   </>;
 }
 
-export function CoursesExplorer() { return <Suspense fallback={<LoadingState />}><Explorer /></Suspense>; }
+export function CoursesExplorer() { return <Suspense fallback={null}><Explorer /></Suspense>; }

@@ -8,6 +8,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+## Verify on the production runtime
+
+Production is vinext on Cloudflare Workers, not `next start`. `next dev` can hide differences. Verify a change with `npm run dev:vinext`, or with `npm run build` and then `npm start` (wrangler dev on port 3000). See `docs/deploy.md`.
+
 ## Commander (ycm-harness plugin)
 
 Protocol lives in the enabled **ycm-harness** plugin and updates when that plugin updates. Do not use `~/.agents/system/` as protocol.

@@ -93,6 +93,8 @@ Known limit: the saved plan keys courses by course code only (`StudentPlan` hold
 
 `catalog-service/universities.json` orders 20 US universities before 20 world universities. Only entries with `"support": "supported"`, `"enabled": true`, and a `crawl` config are fetched; metadata-only/unverified entries are listed but never requested. The crawler discovers official program links, extracts each program's course codes, parses the shared bulk course pages, and writes validated prerequisite roadmaps under `data/catalogs/<university-id>/` (`programs.json`, `roadmaps/<program-id>.json`, `.roadmap-crawl-status.json`). Runs are bounded and resume from persisted state.
 
+Production reads only the files that [`lib/embedded-snapshot.ts`](lib/embedded-snapshot.ts) bundles. When you commit a new `programs.json` or a new ready roadmap, add its path to `FILES` in that file. `tests/embedded-snapshot.test.ts` fails if a committed ready roadmap is missing from `FILES`.
+
 ```bash
 npm run catalog:refresh -- --list-universities            # ordered directory with per-university status
 npm run catalog:refresh -- --crawl-roadmaps --limit=5     # advance the persisted queue by up to 5 steps
@@ -155,14 +157,14 @@ The refresh pipeline:
 7. Atomically replaces raw network responses and normalized JSON only after parsing and validation succeed.
 8. Falls back to an existing stale raw source when a refresh request fails. Missing optional department sources produce warnings and explicit placeholders; missing required sources still fail.
 
-The UI's **Refresh Catalog** button calls same-origin `POST /api/catalog`. That route is for local demos: it is open only in `NODE_ENV=development` (typical `next dev`, loopback) unless `CATALOG_REFRESH_TOKEN` is set. When the token is set, POST requires the matching `x-catalog-refresh-token` header. If the catalog service is listening, the route forwards the refresh there; otherwise it runs the refresh library itself. Cross-site browser requests and request bodies are rejected, concurrent refreshes are deduplicated, and a 30-second cooldown applies. Production/`next start` refreshes should use `npm run catalog:refresh` rather than an unauthenticated POST. If refresh fails after the app has already loaded a catalog, the browser keeps the last loaded catalog and reports the error.
+The UI's **Refresh Catalog** button calls same-origin `POST /api/catalog`. That route is for local demos: it is open only in `NODE_ENV=development` (typical `next dev`, loopback) unless `CATALOG_REFRESH_TOKEN` is set. When the token is set, POST requires the matching `x-catalog-refresh-token` header. If the catalog service is listening, the route forwards the refresh there; otherwise it runs the refresh library itself. Cross-site browser requests and request bodies are rejected, concurrent refreshes are deduplicated, and a 30-second cooldown applies. Production (the Cloudflare Worker, and `npm start`, which runs `wrangler dev`) answers 401 to the POST. To refresh, run `npm run catalog:refresh`, commit `data/`, then deploy. If refresh fails after the app has already loaded a catalog, the browser keeps the last loaded catalog and reports the error.
 
 `data/raw/cs5800-search.html`, `data/raw/cs6140-search.html`, and similarly named search files are research fixtures. Normal ingestion uses bulk subject pages instead.
 
 ### Generated files
 
 - `data/catalog.json`: complete validated payload used by the application for the default program.
-- `data/catalogs/<id>/`: per-program snapshots written by the catalog service. `data/catalogs/` is git-ignored except the committed Northeastern roadmap (`data/catalogs/northeastern/programs.json` and `roadmaps/computer-science-mscs-sea-8b0d00dbda.json`), which is regenerated offline from the tracked 2026-09-12 cache and keeps that source date. `next.config.ts` traces just the registry and those two files into the `/api/roadmaps` bundle.
+- `data/catalogs/<id>/`: per-program snapshots written by the catalog service. `data/catalogs/` is git-ignored except the committed Northeastern roadmap (`data/catalogs/northeastern/programs.json` and `roadmaps/computer-science-mscs-sea-8b0d00dbda.json`), which is regenerated offline from the tracked 2026-09-12 cache and keeps that source date. `lib/embedded-snapshot.ts` bundles the registry and those two files into the Worker.
 - `data/courses.json`: normalized courses. Export/inspection only: no runtime code reads it, `data/catalog.json` already embeds the same courses.
 - `data/requirements.json`: normalized degree rules. Export/inspection only, same as above.
 - `data/raw/.catalog-cache.json`: source URLs, validators, and fetch timestamps.
