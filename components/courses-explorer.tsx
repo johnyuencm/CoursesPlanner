@@ -10,6 +10,7 @@ import { CourseCard } from "@/components/course-card";
 import { EmptyState, PageHeading } from "@/components/ui";
 import { catalogTakeStatus, DEFAULT_CATALOG_FILTERS, filterCatalogCourses } from "@/lib/catalog-view";
 import { catalogCodeGrammar } from "@/lib/course-code";
+import { requirementView } from "@/lib/requirements-v2";
 import { routes } from "@/lib/routes";
 
 const topics = ["Robotics", "AI / ML", "Systems", "Software Engineering", "Data", "Networks / Security"];
@@ -133,7 +134,7 @@ function Explorer() {
           </div></div>
           <div className="filter-bottom-row">
             <div className="switch-row">
-              <label className="sort-select">Area <select aria-label="Breadth area" value={category} onChange={(event) => { setCategory(event.target.value); if (event.target.value !== "all") setType("breadth"); setLimit(18); }}><option value="all">All areas</option>{catalog.requirements.breadthRequirements.categories.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}</select></label>
+              <label className="sort-select">Area <select aria-label="Breadth area" value={category} onChange={(event) => { setCategory(event.target.value); if (event.target.value !== "all") setType("breadth"); setLimit(18); }}><option value="all">All areas</option>{requirementView(catalog.requirements).areas.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}</select></label>
               <label className="sort-select">Unlocks &gt; N <select aria-label="Minimum unlocks" value={minUnlocks === null ? "any" : String(minUnlocks)} onChange={(event) => { setMinUnlocks(event.target.value === "any" ? null : Number(event.target.value)); setLimit(18); }}><option value="any">Any</option>{unlockThresholds.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
               <label className="sort-select">Credits <select value={credits} onChange={(event) => { setCredits(event.target.value); setLimit(18); }}><option value="all">Any credits</option>{Array.from(new Set(catalog.courses.flatMap((course) => [course.credits, course.maxCredits ?? course.credits]))).sort((a, b) => a - b).map((value) => <option key={value} value={value}>{value} credits</option>)}<option value="variable">Variable credits</option></select></label>
             </div>

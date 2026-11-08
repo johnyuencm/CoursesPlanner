@@ -59,6 +59,7 @@ import {
   type OverlayRole,
 } from "@/lib/pathway-overlay";
 import { resolveGraphCourses, resolveProgramScope, roadmapFocusCourse, roadmapProgramLabel } from "@/lib/roadmaps";
+import { requirementView } from "@/lib/requirements-v2";
 import { routes } from "@/lib/routes";
 import { useApp } from "./app-provider";
 import { CodeLinks, requirementBadge } from "./course-card";
@@ -265,7 +266,7 @@ function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRo
     const persona = pathways.find((item) => item.id === careerTargetId);
     return buildPathwayOverlay({
       persona,
-      coreCourses: catalog.requirements.coreCourses,
+      coreCourses: requirementView(catalog.requirements).core,
       bottleneck: criticalPath?.status === "ok" ? criticalPath.bottleneck : [],
     });
   }, [overrideActive, catalog, overlayOn, careerTargetId, criticalPath]);

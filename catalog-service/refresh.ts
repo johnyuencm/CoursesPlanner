@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { validateCatalog } from "../lib/catalog";
 import { readBoundedFile } from "../lib/read-bounded-file";
+import { programCourseCodes } from "../lib/requirements-v2";
 import type { Catalog, Course } from "../lib/types";
 import { getAdapter } from "./adapters";
 import { assertAllowedUrl, createTurnWaiter, fetchOfficialHtml, loadRobots, type OfficialFetchPolicy } from "./crawler";
@@ -205,12 +206,7 @@ export async function refreshSource(
   const builtAt = now().toISOString();
   const requirements = adapter.parseProgram(programSource.html, definition.programSource.url, builtAt);
 
-  const listedCodes = [
-    ...requirements.coreCourses,
-    ...requirements.eligibleElectives,
-    ...requirements.breadthRequirements.categories.flatMap((category) => category.courses),
-  ];
-  const subjects = [...new Set(listedCodes.map((code) => code.split(" ")[0]))];
+  const subjects = [...new Set(programCourseCodes(requirements).map((code) => code.split(" ")[0]))];
   for (const subject of subjects) {
     const source = definition.subjectSources[subject];
     if (!source) throw new Error(`No approved bulk catalog source configured for subject ${subject} in ${definition.id}`);

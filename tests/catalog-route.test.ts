@@ -38,7 +38,8 @@ test("GET /api/catalog returns the cached catalog without a refresh token", asyn
     const catalog = await response.json();
     assert.ok(Array.isArray(catalog.courses));
     assert.ok(catalog.requirements);
-    assert.equal(typeof catalog.requirements.totalCredits, "number");
+    assert.equal(catalog.requirements.version, 2);
+    assert.equal(catalog.requirements.root.kind, "all");
   });
 });
 

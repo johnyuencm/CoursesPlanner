@@ -14,6 +14,7 @@ import {
   overlayRoleFor,
 } from "../lib/pathway-overlay";
 import type { Catalog, Pathway } from "../lib/types";
+import { requirementView } from "../lib/requirements-v2";
 
 const seattle = JSON.parse(readFileSync(path.join(process.cwd(), "data", "catalog.json"), "utf8")) as Catalog;
 const pathways = JSON.parse(readFileSync(path.join(process.cwd(), "config", "pathways.json"), "utf8")) as Pathway[];
@@ -43,7 +44,7 @@ test("Machine Learning overlay keeps CORE, RECOMMENDED, and CS 5800 as critical 
   const analysis = analyzeResolvedCriticalPath(null, persona.id, pathways, seattle.courses, emptyPlan());
   const overlay = buildPathwayOverlay({
     persona,
-    coreCourses: seattle.requirements.coreCourses,
+    coreCourses: requirementView(seattle.requirements).core,
     bottleneck: analysis.bottleneck,
   });
   assert.ok(overlay);

@@ -1,4 +1,5 @@
-import type { Course, DegreeRequirement } from "./types";
+import { programCourseCodes } from "./requirements-v2";
+import type { Course, DegreeRequirementV2 } from "./types";
 import {
   namedPrerequisiteGroupId,
   namedPrerequisiteJoin,
@@ -35,18 +36,8 @@ export type GraphRelation = {
   groupId?: string;
 };
 
-export function listedProgramCodes(requirements: DegreeRequirement): string[] {
-  return [
-    ...new Set([
-      ...requirements.coreCourses,
-      ...requirements.eligibleElectives,
-      ...requirements.breadthRequirements.categories.flatMap((category) => category.courses),
-    ]),
-  ];
-}
-
-export function programMapCodes(courses: Course[], requirements: DegreeRequirement): Set<string> {
-  const listed = new Set(listedProgramCodes(requirements));
+export function programMapCodes(courses: Course[], requirements: DegreeRequirementV2): Set<string> {
+  const listed = new Set(programCourseCodes(requirements));
   const present = new Set(courses.map((course) => course.code));
   const visible = new Set<string>();
   for (const course of courses) {
@@ -138,7 +129,7 @@ export function visibleGraphDistances(
   scope: GraphScope,
   focusCode: string,
   courses: Course[],
-  requirements: DegreeRequirement,
+  requirements: DegreeRequirementV2,
   relations: GraphRelation[],
   programCodes?: Iterable<string>,
 ): Map<string, number> {
@@ -523,7 +514,7 @@ export type MapScene = {
 
 export type MapSceneInput = {
   courses: Course[];
-  requirements: DegreeRequirement;
+  requirements: DegreeRequirementV2;
   scope: GraphScope;
   focusCode: string;
   selectedCode: string;
