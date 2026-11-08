@@ -100,8 +100,9 @@ test("the CLI and readers still work when a snapshot folder is deleted", async (
 
 test("no source file imports a snapshot JSON file into the Worker bundle", async () => {
   const offenders: string[] = [];
-  for (const dir of ["app", "lib", "components", "catalog-service"]) {
-    for (const entry of await readdir(path.join(ROOT, dir), { recursive: true })) {
+  for (const dir of ["app", "lib", "components", "catalog-service", "."]) {
+    const entries = dir === "." ? ["worker.ts", "vite.config.ts"] : await readdir(path.join(ROOT, dir), { recursive: true });
+    for (const entry of entries) {
       if (!/\.tsx?$/.test(entry)) continue;
       const source = await readFile(path.join(ROOT, dir, entry), "utf8");
       if (/from\s+["'][^"']*(data\/catalog|universities)[^"']*\.json["']/.test(source)) offenders.push(`${dir}/${entry}`);

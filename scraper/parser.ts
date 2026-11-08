@@ -65,6 +65,12 @@ function tokenizeRequirement(input: string): Token[] {
       if (grade) {
         minimumGrade = grade[1].replace(/[\u2212\u2013]/g, "-").toUpperCase();
         index += grade[0].length;
+        // "C- (Graduate)": the level qualifies the grade floor; it is not a separate clause.
+        const level = input.slice(index).match(/^\s*\(\s*(graduate|undergraduate)\s*\)/i);
+        if (level) {
+          minimumGrade += ` (${level[1][0].toUpperCase()}${level[1].slice(1).toLowerCase()})`;
+          index += level[0].length;
+        }
       }
 
       tail = input.slice(index);

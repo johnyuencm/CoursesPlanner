@@ -91,6 +91,26 @@ test("parses letter-grade floors that include a trailing minus", () => {
   });
 });
 
+test("a (Graduate)/(Undergraduate) level after a grade belongs to that grade, not a new clause", () => {
+  // CS 5400 catalog text: the level qualifies the C- grade floor.
+  assert.deepEqual(parseRequirement("CS 5010 with a minimum grade of D- or CS 5004 with a minimum grade of B- or CS 5010 with a minimum grade of C- (Graduate)"), {
+    type: "any",
+    items: [
+      { type: "any", items: [{ type: "course", code: "CS 5010", minimumGrade: "D-" }, { type: "course", code: "CS 5004", minimumGrade: "B-" }] },
+      { type: "course", code: "CS 5010", minimumGrade: "C- (Graduate)" },
+    ],
+  });
+  assert.deepEqual(parseRequirement("MATH 2331 with a minimum grade of C ( Undergraduate ) and CS 5800"), {
+    type: "all",
+    items: [{ type: "course", code: "MATH 2331", minimumGrade: "C (Undergraduate)" }, { type: "course", code: "CS 5800" }],
+  });
+  // Without a grade floor, a parenthesized word is still not guessed at.
+  assert.deepEqual(parseRequirement("CS 5010 (Graduate)"), {
+    type: "all",
+    items: [{ type: "course", code: "CS 5010" }, { type: "unknown", text: "Graduate" }],
+  });
+});
+
 test("keeps unsupported or malformed requirement clauses explicitly unknown", () => {
   assert.deepEqual(parseRequirement("Prerequisite(s): department approval"), {
     type: "unknown",

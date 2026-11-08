@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { snapshotAsset } from "./snapshot-assets";
-import { KNOWN_ADAPTER_IDS, type UniversityCrawlConfig, type UniversityDirectoryEntry } from "./source-types";
+import { CATALOG_PLATFORMS, KNOWN_ADAPTER_IDS, type CatalogPlatform, type UniversityCrawlConfig, type UniversityDirectoryEntry } from "./source-types";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -102,6 +102,13 @@ export function parseUniversityDirectory(value: unknown, label: string): Univers
       throw new Error(`${entryLabel}.priority must be an integer from 1 through 20`);
     }
     const catalogUrl = requiredHttpsUrl(entry.catalogUrl, `${entryLabel}.catalogUrl`);
+    if (entry.platform !== undefined && !CATALOG_PLATFORMS.includes(entry.platform as CatalogPlatform)) {
+      throw new Error(`${entryLabel}.platform must be one of ${CATALOG_PLATFORMS.join(", ")}`);
+    }
+    const platformEvidence =
+      entry.platformEvidence === undefined
+        ? undefined
+        : requiredHttpsUrl(entry.platformEvidence, `${entryLabel}.platformEvidence`);
     if (entry.support !== "unverified" && entry.support !== "supported" && entry.support !== "unsupported") {
       throw new Error(`${entryLabel}.support must be unverified, supported, or unsupported`);
     }
@@ -123,6 +130,8 @@ export function parseUniversityDirectory(value: unknown, label: string): Univers
       region: entry.region,
       priority: Number(entry.priority),
       catalogUrl,
+      ...(entry.platform ? { platform: entry.platform as CatalogPlatform } : {}),
+      ...(platformEvidence ? { platformEvidence } : {}),
       support: entry.support,
       enabled: entry.enabled,
       crawl,

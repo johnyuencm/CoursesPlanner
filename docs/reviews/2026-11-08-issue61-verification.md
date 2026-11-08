@@ -36,6 +36,28 @@ flowchart LR
 | `/api/roadmaps?university=northeastern&program=nope` | 404 | 36 | Yes |
 | `/courses/zz-9999` | 404 | 17,678 | Yes |
 
+## After the merge of `master` `0cfa0ae` (#90, #92, #93)
+
+- `worker.ts` (#93) no longer imports `data/catalog.json`. It builds the slug `Set` from `readCatalog()` (published static asset), once per isolate. Unknown slugs still go to the cheap `global-not-found` 404.
+- New `readCatalog()` callers from #90 and #93 now use `await`.
+- The "no snapshot JSON imports" test now also checks `worker.ts` and `vite.config.ts`.
+- `npm run typecheck`: pass. `npm test`: 284/284 pass. `npm run build`: pass. Dry run: 4,531.65 KiB, 584.77 KiB gzip, binding `ASSETS` only.
+
+Built Worker (`wrangler dev`, port 3061) against https://coursesplanner.johnyc.com. The comparison removes build ids and the per-isolate `updatedAt`.
+
+| Route | Status | Bytes | Same as live |
+| --- | --- | --- | --- |
+| `/api/catalog` | 200 | 149,438 | Yes |
+| `/api/roadmaps` | 200 | 16,781 | Yes |
+| `/api/roadmaps?university=northeastern` | 200 | 603 | Yes |
+| `/api/roadmaps?university=northeastern&program=computer-science-mscs-sea-8b0d00dbda` | 200 | 147,351 | Yes |
+| `/courses/cs-5800` | 200 | 26,155 | Yes |
+| `/courses/cs-6510` | 200 | 25,819 | Yes |
+| `/sitemap.xml` | 200 | 14,773 | Yes |
+| `/api/roadmaps?university=northeastern&program=nope` | 404 | 36 | Yes |
+| `/courses/zz-9999` | 404 | 6,026 (`global-not-found`) | Yes |
+| `/courses/cis-200m` (placeholder course) | 404 | 6,026 | Yes |
+
 ## Not done
 
 - No live CPU measurement. The Worker no longer validates snapshots per isolate, but it now parses each JSON file on the first request of an isolate. Measure with `wrangler tail` after the next deploy.

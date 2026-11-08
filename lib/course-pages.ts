@@ -16,6 +16,12 @@ export function publicCourses(catalog: Catalog): Course[] {
     .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
 }
 
+/** True for `/courses/<slug>` when no course page has that slug (the page is a 404). */
+export function isUnknownCoursePath(pathname: string, slugs: ReadonlySet<string>): boolean {
+  const slug = /^\/courses\/([^/]+)$/.exec(pathname)?.[1];
+  return slug !== undefined && !slugs.has(slug);
+}
+
 export function courseBySlug(catalog: Catalog, slug: string): Course | undefined {
   return publicCourses(catalog).find((course) => courseSlug(course.code) === slug);
 }
@@ -95,12 +101,19 @@ export function requirementText(expression: RequirementExpression, nested = fals
   return nested && parts.length > 1 ? `(${text})` : text;
 }
 
+/** Display text for a catalog clause that the parser could not read. Such a clause is never met. */
+export function needsReview(text: string): string {
+  return `Needs review — ${text}`;
+}
+
 /**
  * Prerequisites that the given set of courses does not cover. Each entry is one requirement:
  * a single code, or the codes of an "or" group where none is in the set (take any one of them).
+ * An unknown clause is an open entry (`needsReview` text), so it can never make the result empty.
  */
 export function unmetRequirements(expr: RequirementExpression, have: ReadonlySet<string>): string[][] {
-  if (expr.type === "none" || expr.type === "unknown") return [];
+  if (expr.type === "none") return [];
+  if (expr.type === "unknown") return [[needsReview(expr.text)]];
   if (expr.type === "course") return have.has(expr.code) ? [] : [[expr.code]];
   const children = expr.items.map((item) => unmetRequirements(item, have));
   if (expr.type === "all") return children.flat();

@@ -197,7 +197,7 @@ export function dependencyClosure(
   return result;
 }
 
-interface CountedCourse {
+export interface CountedCourse {
   code: string;
   credits: number;
   source: "earned" | "planned";
@@ -221,7 +221,7 @@ function categoryMatching(codes: string[], memberships: Map<string, string[]>): 
   return [...categoryToCourse.keys()];
 }
 
-function chooseBreadth(
+export function chooseBreadth(
   candidates: CountedCourse[],
   coursesRequired: number,
   minCategories: number,
@@ -287,13 +287,22 @@ function chooseBreadth(
     : { selected: [], categories: [], satisfied: false };
 }
 
-export function validatePlan(plan: StudentPlan, catalog: Catalog): DegreeProgress {
-  const requirements = catalog.requirements;
+/** Result of the plan pass that every requirement model shares. */
+export interface PlanCourseAudit {
+  issues: PlanIssue[];
+  /** Completed and valid planned degree courses with resolved credits; each code once. */
+  counted: CountedCourse[];
+  completed: Set<string>;
+  waived: Set<string>;
+  validPlanned: Set<string>;
+}
+
+/**
+ * Checks duplicates, credits, unknown codes, prerequisites and corequisites.
+ * Only codes in `degreeCodes` earn degree credit.
+ */
+export function auditPlanCourses(plan: StudentPlan, catalog: Catalog, degreeCodes: Set<string>): PlanCourseAudit {
   const courseByCode = new Map(catalog.courses.map((course) => [course.code, course]));
-  const coreCodes = new Set(requirements.coreCourses);
-  const electiveList = new Set(requirements.eligibleElectives);
-  const breadthCodes = new Set(requirements.breadthRequirements.categories.flatMap((category) => category.courses));
-  const degreeCodes = new Set([...coreCodes, ...breadthCodes, ...electiveList]);
   const issues: PlanIssue[] = [];
   const counted: CountedCourse[] = [];
 
@@ -467,6 +476,50 @@ export function validatePlan(plan: StudentPlan, catalog: Catalog): DegreeProgres
     for (const code of validThisSemester) prior.add(code);
   }
 
+  return { issues, counted, completed: completedSet, waived: waivedSet, validPlanned };
+}
+
+export function sumCredits(courses: CountedCourse[], source?: CountedCourse["source"]): number {
+  return courses
+    .filter((course) => source === undefined || course.source === source)
+    .reduce((sum, course) => sum + course.credits, 0);
+}
+
+export function auditNotes(minimumGpa: number | undefined, uncertainties: string[], warnings: string[]): string[] {
+  return unique([
+    "Course completion is the student's attestation that applicable minimum-grade requirements were met.",
+    minimumGpa === undefined
+      ? "Grade floors and advisor or department approvals require an official university audit and are not verified here."
+      : `The ${minimumGpa} minimum GPA, grade floors, and advisor or department approvals require an official university audit and are not verified here.`,
+    "Course offerings and semester availability are unknown and are not verified by this planner.",
+    "Waivers satisfy only the named course requirement or prerequisite; they award no credits and do not count toward breadth or electives.",
+    ...uncertainties,
+    ...warnings,
+  ]);
+}
+
+/** Errors, unknown courses, and unverifiable prerequisites block a satisfied audit. */
+export function hasBlockingIssue(issues: PlanIssue[]): boolean {
+  return issues.some(
+    (issue) =>
+      issue.severity === "error" ||
+      issue.kind === "unknown" ||
+      ((issue.kind === "prerequisite" || issue.kind === "corequisite") && issue.severity === "warning"),
+  );
+}
+
+export function validatePlan(plan: StudentPlan, catalog: Catalog): DegreeProgress {
+  const requirements = catalog.requirements;
+  const coreCodes = new Set(requirements.coreCourses);
+  const electiveList = new Set(requirements.eligibleElectives);
+  const breadthCodes = new Set(requirements.breadthRequirements.categories.flatMap((category) => category.courses));
+  const degreeCodes = new Set([...coreCodes, ...breadthCodes, ...electiveList]);
+  const { issues, counted, completed: completedSet, waived: waivedSet, validPlanned } = auditPlanCourses(
+    plan,
+    catalog,
+    degreeCodes,
+  );
+
   const membership = new Map<string, string[]>();
   for (const category of requirements.breadthRequirements.categories) {
     for (const code of category.courses) {
@@ -491,31 +544,15 @@ export function validatePlan(plan: StudentPlan, catalog: Catalog): DegreeProgres
     )
     .reduce((sum, course) => sum + course.credits, 0);
 
-  const earnedCredits = counted
-    .filter((course) => course.source === "earned")
-    .reduce((sum, course) => sum + course.credits, 0);
-  const plannedCredits = counted
-    .filter((course) => course.source === "planned")
-    .reduce((sum, course) => sum + course.credits, 0);
+  const earnedCredits = sumCredits(counted, "earned");
+  const plannedCredits = sumCredits(counted, "planned");
   const core = requirements.coreCourses.map((code) => {
     const waived = waivedSet.has(code);
     return { code, waived, satisfied: waived || completedSet.has(code) || validPlanned.has(code) };
   });
 
-  const notes = unique([
-    "Course completion is the student's attestation that applicable minimum-grade requirements were met.",
-    `The ${requirements.minimumGpa} minimum GPA, grade floors, and advisor or department approvals require an official university audit and are not verified here.`,
-    "Course offerings and semester availability are unknown and are not verified by this planner.",
-    "Waivers satisfy only the named course requirement or prerequisite; they award no credits and do not count toward breadth or electives.",
-    ...requirements.uncertainties,
-    ...catalog.warnings,
-  ]);
-  const hasBlocker = issues.some(
-    (issue) =>
-      issue.severity === "error" ||
-      issue.kind === "unknown" ||
-      ((issue.kind === "prerequisite" || issue.kind === "corequisite") && issue.severity === "warning"),
-  );
+  const notes = auditNotes(requirements.minimumGpa, requirements.uncertainties, catalog.warnings);
+  const hasBlocker = hasBlockingIssue(issues);
   const totalCredits = earnedCredits + plannedCredits;
   const satisfied =
     core.every((course) => course.satisfied) &&

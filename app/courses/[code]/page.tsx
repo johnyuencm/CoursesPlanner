@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Fragment, type ReactNode } from "react";
 import pathwayConfig from "@/config/pathways.json";
 import { PageHeading } from "@/components/ui";
 import { readCatalog } from "@/lib/catalog";
@@ -8,14 +9,17 @@ import {
   courseBySlug,
   courseSlug,
   creditsLabel,
+  needsReview,
   shortestPrerequisiteChain,
   pathwaysFor,
   publicCourses,
   requirementLabel,
+  requirementText,
   transitiveUnlocks,
 } from "@/lib/course-pages";
+import { simplifyRequirement } from "@/lib/requirement-logic";
 import { exploreFocusHref, routes } from "@/lib/routes";
-import type { Catalog, Pathway } from "@/lib/types";
+import type { Catalog, Pathway, RequirementExpression } from "@/lib/types";
 
 const pathways = pathwayConfig as Pathway[];
 
@@ -59,6 +63,20 @@ export default async function CoursePage({ params }: Props) {
     const label = <><strong>{target}</strong>{title && !title.startsWith("External course") ? ` ${title}` : ""}</>;
     return pageCodes.has(target) ? <Link href={`/courses/${courseSlug(target)}`}>{label}</Link> : label;
   };
+  // Prerequisite rule with its and/or structure: one row per "and" item; an "or" row reads "One of: ...".
+  const rule = (expr: RequirementExpression): ReactNode => {
+    if (expr.type === "none") return null;
+    if (expr.type === "course") return ref(expr.code);
+    if (expr.type === "unknown") return needsReview(expr.text); // never shown as met
+    return <>({join(expr, expr.type === "all" ? " and " : " or ")})</>;
+  };
+  const join = (expr: RequirementExpression & { items: RequirementExpression[] }, separator: string) => {
+    // Same code with two grade floors reads as one option (CS 5500: "CS 5010 (D) or CS 5004 or CS 5010 (C)").
+    const items = [...new Map(expr.items.map((item) => [requirementText(item), item])).values()];
+    return items.map((item, index) => <Fragment key={index}>{index ? separator : ""}{rule(item)}</Fragment>);
+  };
+  const prerequisites = simplifyRequirement(course.prerequisites);
+  const rows = prerequisites.type === "all" ? prerequisites.items : [prerequisites];
   const chain = shortestPrerequisiteChain(course.code, catalog.courses);
   const downstream = transitiveUnlocks(course.code, catalog.courses).filter((item) => !course.unlocks.includes(item));
   const usedBy = pathwaysFor(course.code, pathways);
@@ -86,7 +104,12 @@ export default async function CoursePage({ params }: Props) {
     <section>
       <h2>Before you take it</h2>
       <p>{course.prerequisites.type === "none" ? "No prerequisites." : course.prerequisiteText}</p>
-      {course.prerequisiteCodes.length > 0 && <ul className="static-list">{course.prerequisiteCodes.map((item) => <li key={item}>{ref(item)}</li>)}</ul>}
+      {course.prerequisiteCodes.length > 0 && <>
+        {rows.length > 1 && <p>Take all of these:</p>}
+        <ul className="static-list">{rows.map((row, index) => <li key={index}>
+          {row.type === "any" ? <>One of: {join(row, ", ")}</> : rule(row)}
+        </li>)}</ul>
+      </>}
       {chain.length > 2 && <p className="muted">Fewest courses in a row to reach it: {chain.map((item, index) => <span key={item}>{index ? " → " : ""}{ref(item)}</span>)} ({chain.length} courses, counting this one).</p>}
       {hasCoreq && <p><strong>Corequisite:</strong> {course.corequisiteText}</p>}
     </section>
