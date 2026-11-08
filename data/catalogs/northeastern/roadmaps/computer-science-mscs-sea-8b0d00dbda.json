@@ -1176,18 +1176,9 @@
             ]
           },
           {
-            "type": "all",
-            "items": [
-              {
-                "type": "course",
-                "code": "CS 5010",
-                "minimumGrade": "C-"
-              },
-              {
-                "type": "unknown",
-                "text": "Graduate"
-              }
-            ]
+            "type": "course",
+            "code": "CS 5010",
+            "minimumGrade": "C- (Graduate)"
           }
         ]
       },
@@ -1212,9 +1203,7 @@
         "Software Engineering"
       ],
       "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
-      "uncertainties": [
-        "Prerequisite clause not fully understood: Graduate"
-      ]
+      "uncertainties": []
     },
     {
       "code": "CS 5500",
@@ -4047,18 +4036,9 @@
                         ]
                       },
                       {
-                        "type": "all",
-                        "items": [
-                          {
-                            "type": "course",
-                            "code": "IE 5374",
-                            "minimumGrade": "C"
-                          },
-                          {
-                            "type": "unknown",
-                            "text": "Graduate"
-                          }
-                        ]
+                        "type": "course",
+                        "code": "IE 5374",
+                        "minimumGrade": "C (Graduate)"
                       }
                     ]
                   },
@@ -4113,9 +4093,7 @@
         "Data"
       ],
       "officialUrl": "https://catalog.northeastern.edu/course-descriptions/dads/",
-      "uncertainties": [
-        "Prerequisite clause not fully understood: Graduate"
-      ]
+      "uncertainties": []
     },
     {
       "code": "DADS 7305",
@@ -5031,7 +5009,7 @@
     "https://catalog.northeastern.edu/course-descriptions/ds/"
   ],
   "warnings": [
-    "33 courses have unavailable details or conservatively parsed prerequisite/corequisite clauses; inspect course uncertainties.",
+    "31 courses have unavailable details or conservatively parsed prerequisite/corequisite clauses; inspect course uncertainties.",
     "Snapshot regenerated offline from the tracked 2026-09-12 catalog cache; the source date is preserved and this data has not been re-crawled."
   ]
 }

@@ -1084,18 +1084,9 @@
             ]
           },
           {
-            "type": "all",
-            "items": [
-              {
-                "type": "course",
-                "code": "CS 5010",
-                "minimumGrade": "C-"
-              },
-              {
-                "type": "unknown",
-                "text": "Graduate"
-              }
-            ]
+            "type": "course",
+            "code": "CS 5010",
+            "minimumGrade": "C- (Graduate)"
           }
         ]
       },
@@ -1122,9 +1113,7 @@
         "Software Engineering"
       ],
       "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
-      "uncertainties": [
-        "Prerequisite clause not fully understood: Graduate"
-      ]
+      "uncertainties": []
     },
     {
       "code": "CS 5500",
@@ -3997,18 +3986,9 @@
                         ]
                       },
                       {
-                        "type": "all",
-                        "items": [
-                          {
-                            "type": "course",
-                            "code": "IE 5374",
-                            "minimumGrade": "C"
-                          },
-                          {
-                            "type": "unknown",
-                            "text": "Graduate"
-                          }
-                        ]
+                        "type": "course",
+                        "code": "IE 5374",
+                        "minimumGrade": "C (Graduate)"
                       }
                     ]
                   },
@@ -4063,9 +4043,7 @@
         "Data"
       ],
       "officialUrl": "https://catalog.northeastern.edu/course-descriptions/dads/",
-      "uncertainties": [
-        "Prerequisite clause not fully understood: Graduate"
-      ]
+      "uncertainties": []
     },
     {
       "code": "DADS 7305",
@@ -5152,7 +5130,7 @@
   "warnings": [
     "The catalog does not specify term offerings or Seattle-specific section availability.",
     "27 external dependency or unavailable department courses have placeholder details.",
-    "33 courses contain unavailable or conservatively parsed catalog clauses.",
+    "31 courses contain unavailable or conservatively parsed catalog clauses.",
     "Topic labels are keyword-based recommendations, not official catalog rules."
   ]
 }
