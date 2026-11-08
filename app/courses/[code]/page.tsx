@@ -28,7 +28,8 @@ type Props = { params: Promise<{ code: string }> };
 export const dynamicParams = false; // only the prerendered course pages exist; anything else is a 404
 
 export async function generateStaticParams() {
-  return publicCourses(await readCatalog()).map((course) => ({ code: courseSlug(course.code) }));
+  const catalog = await readCatalog();
+  return publicCourses(catalog).map((course) => ({ code: courseSlug(course.code, catalog) }));
 }
 
 function unlockSummary(code: string, catalog: Catalog) {
@@ -61,7 +62,7 @@ export default async function CoursePage({ params }: Props) {
   const ref = (target: string) => {
     const title = byCode.get(target)?.title;
     const label = <><strong>{target}</strong>{title && !title.startsWith("External course") ? ` ${title}` : ""}</>;
-    return pageCodes.has(target) ? <Link href={`/courses/${courseSlug(target)}`}>{label}</Link> : label;
+    return pageCodes.has(target) ? <Link href={`/courses/${courseSlug(target, catalog)}`}>{label}</Link> : label;
   };
   // Prerequisite rule with its and/or structure: one row per "and" item; an "or" row reads "One of: ...".
   const rule = (expr: RequirementExpression): ReactNode => {
