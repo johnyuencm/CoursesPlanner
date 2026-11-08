@@ -19,9 +19,8 @@ import { requirementView } from "@/lib/requirements-v2";
 import { catalogCodeGrammar } from "@/lib/course-code";
 import { readCatalogValue, writeCatalogValue } from "@/lib/catalog-key";
 import { PERSONA_PROMPT, buildPathwayOverlay, overlayNodeCopy } from "@/lib/pathway-overlay";
-import { routes } from "@/lib/routes";
 import { getEligibility } from "@/lib/validation";
-import { useApp } from "@/components/app-provider";
+import { useApp, useRoutes } from "@/components/app-provider";
 import { CatalogState } from "@/components/catalog-state";
 import { requirementBadge } from "@/components/course-card";
 import { PageHeading, creditLabel } from "@/components/ui";
@@ -52,6 +51,7 @@ const HEADING_COPY = "Pick a persona. CORE, RECOMMENDED, and dependency-critical
 
 export function PathwaysWorkspace() {
   const { catalogKey, catalog, openCourse, openPicker, plan, announce, careerTargetId, setCareerTargetId, hydrated } = useApp();
+  const routes = useRoutes();
   const [pathways, setPathways] = useState<Pathway[]>(defaults);
   const [selectedId, setSelectedId] = useState(careerTargetId && defaults.some((pathway) => pathway.id === careerTargetId) ? careerTargetId : defaults[0].id);
   const [editing, setEditing] = useState(false);

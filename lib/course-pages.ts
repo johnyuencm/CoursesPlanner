@@ -1,6 +1,8 @@
+import pathwayConfig from "../config/pathways.json";
 import { catalogCodeGrammar } from "./course-code";
 import { simplifyRequirement } from "./requirement-logic";
 import { requirementView } from "./requirements-v2";
+import { legacyRedirects, programRoutes } from "./routes";
 import type { Catalog, Course, Pathway, RequirementExpression } from "./types";
 
 /** Public site origin for canonical URLs and the sitemap. */
@@ -18,10 +20,34 @@ export function publicCourses(catalog: Catalog): Course[] {
     .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
 }
 
-/** True for `/courses/<slug>` when no course page has that slug (the page is a 404). */
-export function isUnknownCoursePath(pathname: string, slugs: ReadonlySet<string>): boolean {
-  const slug = /^\/courses\/([^/]+)$/.exec(pathname)?.[1];
-  return slug !== undefined && !slugs.has(slug);
+/**
+ * Every page path of one program: overview, explore, plan, courses, paths, one page per course and per path.
+ * ponytail: every program lists the pathways in config/pathways.json; T9 (#73) keys pathways by program.
+ */
+export function programPagePaths(catalogKey: string, catalog: Catalog): string[] {
+  const routes = programRoutes(catalogKey);
+  return [
+    routes.overview, routes.explore, routes.plan, routes.courses, routes.paths,
+    ...publicCourses(catalog).map((course) => routes.course(courseSlug(course.code, catalog))),
+    ...(pathwayConfig as Pathway[]).map((pathway) => routes.pathway(pathway.id)),
+  ];
+}
+
+// First path segments that are not a university id: API routes and the old top-level pages (they redirect).
+const STATIC_SEGMENTS = new Set(["api", ...legacyRedirects.map((redirect) => redirect.source.split("/")[1])]);
+
+/**
+ * True for a `/<universityId>/<programId>/...` path: the program routes answer it.
+ * A trailing slash, `/_next/...`, `/api/...` and the old top-level pages stay with vinext.
+ */
+export function isProgramPath(pathname: string): boolean {
+  const first = /^\/([^/]+)\/[^/]/.exec(pathname)?.[1];
+  return first !== undefined && !first.startsWith("_") && !STATIC_SEGMENTS.has(first) && !pathname.endsWith("/");
+}
+
+/** True for a program path with no page (the answer is a 404). */
+export function isUnknownProgramPath(pathname: string, pages: ReadonlySet<string>): boolean {
+  return isProgramPath(pathname) && !pages.has(pathname);
 }
 
 export function courseBySlug(catalog: Catalog, slug: string): Course | undefined {

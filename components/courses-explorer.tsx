@@ -4,20 +4,20 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowDownWideNarrow, ChevronRight, Filter, Search, X } from "lucide-react";
-import { useApp } from "@/components/app-provider";
+import { useApp, useRoutes } from "@/components/app-provider";
 import { CatalogState } from "@/components/catalog-state";
 import { CourseCard } from "@/components/course-card";
 import { EmptyState, PageHeading } from "@/components/ui";
 import { catalogTakeStatus, DEFAULT_CATALOG_FILTERS, filterCatalogCourses } from "@/lib/catalog-view";
 import { catalogCodeGrammar } from "@/lib/course-code";
 import { requirementView } from "@/lib/requirements-v2";
-import { routes } from "@/lib/routes";
 
 const topics = ["Robotics", "AI / ML", "Systems", "Software Engineering", "Data", "Networks / Security"];
 const unlockThresholds = [0, 1, 2, 3, 4, 5];
 
 function Explorer() {
   const { catalog, plan } = useApp();
+  const routes = useRoutes();
   const params = useSearchParams();
   const qParam = params.get("q") ?? "";
   const typeParam = params.get("type");

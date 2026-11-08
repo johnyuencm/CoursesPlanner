@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { Fragment, type ReactNode } from "react";
 import pathwayConfig from "@/config/pathways.json";
 import { PageHeading } from "@/components/ui";
-import { readCatalog } from "@/lib/catalog";
 import {
   courseBySlug,
   courseSlug,
@@ -18,17 +17,17 @@ import {
   transitiveUnlocks,
 } from "@/lib/course-pages";
 import { simplifyRequirement } from "@/lib/requirement-logic";
-import { exploreFocusHref, routes } from "@/lib/routes";
+import { readProgram, type ProgramParams } from "@/lib/program-page";
 import type { Catalog, Pathway, RequirementExpression } from "@/lib/types";
 
 const pathways = pathwayConfig as Pathway[];
 
-type Props = { params: Promise<{ code: string }> };
+type Props = { params: Promise<ProgramParams & { code: string }> };
 
 export const dynamicParams = false; // only the prerendered course pages exist; anything else is a 404
 
-export async function generateStaticParams() {
-  const catalog = await readCatalog();
+export async function generateStaticParams({ params }: { params: ProgramParams }) {
+  const { catalog } = await readProgram(Promise.resolve(params));
   return publicCourses(catalog).map((course) => ({ code: courseSlug(course.code, catalog) }));
 }
 
@@ -42,19 +41,19 @@ function unlockSummary(code: string, catalog: Catalog) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params;
-  const catalog = await readCatalog();
+  const { catalog, routes } = await readProgram(params);
   const course = courseBySlug(catalog, code);
   if (!course) return {};
   return {
     title: `${course.code} ${course.title}`,
     description: `${course.code} ${course.title} (${creditsLabel(course)}) in Northeastern's MSCS Seattle program: ${requirementLabel(course, catalog).toLowerCase()}. ${unlockSummary(course.code, catalog)}`,
-    alternates: { canonical: `/courses/${code}` },
+    alternates: { canonical: routes.course(code) },
   };
 }
 
 export default async function CoursePage({ params }: Props) {
   const { code } = await params;
-  const catalog = await readCatalog();
+  const { catalog, routes } = await readProgram(params);
   const course = courseBySlug(catalog, code);
   if (!course) notFound();
   const byCode = new Map(catalog.courses.map((item) => [item.code, item]));
@@ -62,7 +61,7 @@ export default async function CoursePage({ params }: Props) {
   const ref = (target: string) => {
     const title = byCode.get(target)?.title;
     const label = <><strong>{target}</strong>{title && !title.startsWith("External course") ? ` ${title}` : ""}</>;
-    return pageCodes.has(target) ? <Link href={`/courses/${courseSlug(target, catalog)}`}>{label}</Link> : label;
+    return pageCodes.has(target) ? <Link href={routes.course(courseSlug(target, catalog))}>{label}</Link> : label;
   };
   // Prerequisite rule with its and/or structure: one row per "and" item; an "or" row reads "One of: ...".
   const rule = (expr: RequirementExpression): ReactNode => {
@@ -90,7 +89,7 @@ export default async function CoursePage({ params }: Props) {
       eyebrow={requirementLabel(course, catalog)}
       title={`${course.code} · ${course.title}`}
       description={`${creditsLabel(course)}. ${unlockSummary(course.code, catalog)}`}
-      actions={<Link className="text-link" href={exploreFocusHref(course.code)}>See it on the course map</Link>}
+      actions={<Link className="text-link" href={routes.exploreFocus(course.code)}>See it on the course map</Link>}
     />
 
     <section>
@@ -118,7 +117,7 @@ export default async function CoursePage({ params }: Props) {
     {usedBy.length > 0 && <section>
       <h2>Paths that use it</h2>
       <ul className="static-list">{usedBy.map(({ pathway, group }) => <li key={`${pathway.id}-${group}`}>
-        <Link href={`/pathways/${pathway.id}`}>{pathway.name}</Link> <small>{group}</small>
+        <Link href={routes.pathway(pathway.id)}>{pathway.name}</Link> <small>{group}</small>
       </li>)}</ul>
     </section>}
 

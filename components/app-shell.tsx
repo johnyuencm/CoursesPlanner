@@ -5,19 +5,19 @@ import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, Bookmark, Check, CircleHelp, ListChecks, RefreshCw, Search, Share2, ShieldCheck, TriangleAlert, X, type LucideIcon } from "lucide-react";
 import { FormEvent, useState } from "react";
 import pathwayConfig from "@/config/pathways.json";
-import { primaryNav, routes } from "@/lib/routes";
+import { primaryNav } from "@/lib/routes";
 import { PERSONA_PROMPT } from "@/lib/pathway-overlay";
 import type { Pathway } from "@/lib/types";
-import { useApp } from "./app-provider";
+import { useApp, useRoutes } from "./app-provider";
 import { CourseDetail, CoursePicker } from "./course-dialogs";
 import { CourseTargetControl } from "./target-path";
 import { OfficialLink, dateLabel } from "./ui";
 
-const navIcons: Record<(typeof primaryNav)[number]["href"], LucideIcon> = {
-  [routes.explore]: Share2,
-  [routes.plan]: ListChecks,
-  [routes.courses]: BookOpen,
-  [routes.paths]: Bookmark,
+const navIcons: Record<ReturnType<typeof primaryNav>[number]["label"], LucideIcon> = {
+  Explore: Share2,
+  Plan: ListChecks,
+  Courses: BookOpen,
+  Paths: Bookmark,
 };
 
 const pathways = pathwayConfig as Pathway[];
@@ -26,6 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const app = useApp();
+  const routes = useRoutes();
   const [query, setQuery] = useState("");
   const selectedTarget = pathways.find((pathway) => pathway.id === app.careerTargetId);
   const submitSearch = (event: FormEvent) => {
@@ -44,8 +45,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <a href="#main-content" className="skip-link">Skip to content</a>
     <aside className="sidebar">
       <Link className="brand" href={routes.explore} aria-label="NEU MSCS course map"><span className="brand-mark">NEU MSCS</span><span className="brand-name">Course Map</span></Link>
-      <nav aria-label="Main navigation" className="main-nav">{primaryNav.map(({ href, label }) => {
-        const Icon = navIcons[href];
+      <nav aria-label="Main navigation" className="main-nav">{primaryNav(routes).map(({ href, label }) => {
+        const Icon = navIcons[label];
         return <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} className={pathname === href ? "nav-link active" : "nav-link"}><Icon size={18} strokeWidth={1.8} /><span className="nav-full">{label}</span><span className="nav-short">{label}</span></Link>;
       })}</nav>
       <div className="sidebar-bottom">

@@ -1,17 +1,17 @@
 import type { MetadataRoute } from "next";
-import pathwayConfig from "@/config/pathways.json";
 import { readCatalog } from "@/lib/catalog";
-import { SITE_URL, courseSlug, publicCourses } from "@/lib/course-pages";
-import { routes } from "@/lib/routes";
-import type { Pathway } from "@/lib/types";
+import { CATALOGS } from "@/lib/catalog-key";
+import { SITE_URL, programPagePaths } from "@/lib/course-pages";
+import { programRoutes } from "@/lib/routes";
 
+/** Every page of every published program. Plan is left out: it has no catalog text of its own. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const catalog = await readCatalog();
+  const catalog = await readCatalog(); // ponytail: every catalog key serves the default catalog today
   const lastModified = new Date(catalog.lastUpdated);
-  const paths = [
-    routes.overview, routes.explore, routes.courses, routes.paths,
-    ...publicCourses(catalog).map((course) => `/courses/${courseSlug(course.code, catalog)}`),
-    ...(pathwayConfig as Pathway[]).map((pathway) => `/pathways/${pathway.id}`),
-  ];
-  return paths.map((path) => ({ url: `${SITE_URL}${path === "/" ? "" : path}`, lastModified }));
+  return Object.keys(CATALOGS).flatMap((key) => {
+    const plan = programRoutes(key).plan;
+    return programPagePaths(key, catalog)
+      .filter((path) => path !== plan)
+      .map((path) => ({ url: `${SITE_URL}${path}`, lastModified }));
+  });
 }

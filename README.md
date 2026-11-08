@@ -12,14 +12,35 @@ Production is the Cloudflare Worker `coursesplanner` (Workers Free plan) at [htt
 
 ## What the application includes
 
-- **Explore** (`/explore`) — the default workspace. The official MSCS Seattle prerequisite map, with neighborhood zoom, upstream/downstream emphasis, an accessible relationship table, and a selector for other universities' ready roadmaps.
-- **Slim Overview** (`/`) — credits, target, critical prereq, next unlock, and a CTA into the map. Not a degree-audit dashboard.
+Each program has its own pages under `/<universityId>/<programId>/` (the catalog key). MSCS Seattle is at `/northeastern/computer-science-mscs-sea-8b0d00dbda`. In this list, `<program>` is that path. See [Routes](#routes).
+
+- **Explore** (`<program>/explore`) — the default workspace. The official MSCS Seattle prerequisite map, with neighborhood zoom, upstream/downstream emphasis, an accessible relationship table, and a selector for other universities' ready roadmaps.
+- **Slim Overview** (`<program>`) — credits, target, critical prereq, next unlock, and a CTA into the map. Not a degree-audit dashboard.
 - **Courses** with search, requirement, breadth, credit, prerequisite, eligibility, and topic filters.
 - **Plan** with academic and internship/co-op terms, drag-and-drop, keyboard drag controls, and native move menus.
 - **Live validation** for prerequisites, corequisites, credits, core, breadth diversity, and electives.
 - **Next-course view** on Plan that reports prerequisite eligibility separately from actual course offerings.
 - **Paths** — persona targets (“What are you trying to become?”) with curated course sets. CORE, RECOMMENDED, and dependency-critical ★ courses overlay the Explore map. Pathways never change degree requirements.
 - **Local persistence** in browser LocalStorage. No account, authentication service, or database is required.
+
+## Routes
+
+Every page is under the catalog key of its program. The URL selects the catalog.
+
+| Page | Path |
+| --- | --- |
+| Overview | `/<universityId>/<programId>` |
+| Explore | `/<universityId>/<programId>/explore` |
+| Plan | `/<universityId>/<programId>/planner` |
+| Courses | `/<universityId>/<programId>/courses` |
+| Course page | `/<universityId>/<programId>/courses/<slug>` |
+| Paths | `/<universityId>/<programId>/pathways` and `.../pathways/<id>` |
+
+- The build prerenders these pages for each published program (`CATALOGS` in `lib/catalog-key.ts`). A test checks that `data/published.json` lists the same keys.
+- Old top-level URLs answer `308` to the same page of the default program. The query string stays. `/` answers `307`, because the program picker (#72) will replace it.
+- An unknown program or course gets a small `404` page. `worker.ts` sends it to `app/global-not-found.tsx` before vinext renders the layouts.
+- The page tier comes from the catalog. A Map-tier program gets map, courses and plan checks, but no degree audit.
+- Route helpers: `lib/routes.ts` (`programRoutes`, `legacyRedirects`) and `lib/program-page.ts`.
 
 ## Catalog source inspection
 
@@ -141,7 +162,7 @@ A catalog key identifies one program: `<universityId>/<programId>`. The default 
 | `GET /api/catalog?key=<unknown>` | `404` with `{ "error": "No catalog has the key ..." }`. |
 | `GET /api/catalog` (no key) | `200` with the default catalog. |
 
-The browser remembers the last catalog key (see [Planner persistence](#planner-persistence)) and sends it as `?key=`. So with no key in the URL, the planner shows the remembered or the default catalog. The route keeps one serialized body for each catalog, so a request does not serialize the catalog again.
+The page URL gives the catalog key (`/<universityId>/<programId>/...`). The browser sends that key as `?key=` and stores it as the remembered key (see [Planner persistence](#planner-persistence)). The route keeps one serialized body for each catalog, so a request does not serialize the catalog again.
 
 The default source is Northeastern MSCS Seattle (`neu-mscs-seattle`). Refresh uses that source's HTTPS allowlist:
 
@@ -300,7 +321,7 @@ npm run catalog:serve
 npm run dev
 ```
 
-Open [http://localhost:3000/explore](http://localhost:3000/explore) for the course map (the default workspace). [http://localhost:3000](http://localhost:3000) is the slim Overview. Old `/map` bookmarks redirect to `/explore`. See [`docs/ia.md`](docs/ia.md). Run only one `next dev` at a time: if you are working in `.worktrees/<slug>/`, start Next there and do not also run it at the repo root. Restart `next dev` if a session has been running for many hours; Turbopack memory eviction does not replace a process recycle. Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. To run the production Worker build on your PC (workerd, port 3000):
+Open [http://localhost:3000/northeastern/computer-science-mscs-sea-8b0d00dbda/explore](http://localhost:3000/northeastern/computer-science-mscs-sea-8b0d00dbda/explore) for the course map (the default workspace). [http://localhost:3000](http://localhost:3000) redirects to the slim Overview of the default program. Old top-level URLs (`/explore`, `/courses`, `/map` and the others) redirect to the program paths. See [`docs/ia.md`](docs/ia.md). Run only one `next dev` at a time: if you are working in `.worktrees/<slug>/`, start Next there and do not also run it at the repo root. Restart `next dev` if a session has been running for many hours; Turbopack memory eviction does not replace a process recycle. Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. To run the production Worker build on your PC (workerd, port 3000):
 
 ```bash
 npm run build

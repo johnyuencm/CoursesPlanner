@@ -3,14 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import pathwayConfig from "@/config/pathways.json";
 import { PageHeading } from "@/components/ui";
-import { readCatalog } from "@/lib/catalog";
 import { courseSlug, creditsLabel, publicCourses, requirementLabel, requirementText, unmetRequirements } from "@/lib/course-pages";
-import { routes } from "@/lib/routes";
+import { readProgram, type ProgramParams } from "@/lib/program-page";
 import type { Pathway } from "@/lib/types";
 
 const pathways = pathwayConfig as Pathway[];
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<ProgramParams & { id: string }> };
 
 export const dynamicParams = false;
 
@@ -20,12 +19,13 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
+  const { routes } = await readProgram(params);
   const pathway = pathways.find((item) => item.id === id);
   if (!pathway) return {};
   return {
     title: `${pathway.name} path`,
     description: `${pathway.description} Courses for the ${pathway.name} path in Northeastern's MSCS Seattle program, with prerequisites and how each one counts.`,
-    alternates: { canonical: `/pathways/${id}` },
+    alternates: { canonical: routes.pathway(id) },
   };
 }
 
@@ -33,7 +33,7 @@ export default async function PathwayPage({ params }: Props) {
   const { id } = await params;
   const pathway = pathways.find((item) => item.id === id);
   if (!pathway) notFound();
-  const catalog = await readCatalog();
+  const { catalog, routes } = await readProgram(params);
   const byCode = new Map(catalog.courses.map((course) => [course.code, course]));
   const pageCodes = new Set(publicCourses(catalog).map((course) => course.code));
   const inPath = new Set(pathway.groups.flatMap((group) => group.courses));
@@ -49,7 +49,7 @@ export default async function PathwayPage({ params }: Props) {
     counts[type === "core" || type === "breadth" || type === "elective" ? type : "other"] += 1;
   }
   const link = (code: string) => pageCodes.has(code)
-    ? <Link href={`/courses/${courseSlug(code, catalog)}`}><strong>{code}</strong> {byCode.get(code)?.title}</Link>
+    ? <Link href={routes.course(courseSlug(code, catalog))}><strong>{code}</strong> {byCode.get(code)?.title}</Link>
     : <strong>{code}</strong>;
 
   return <article className="static-page pathway-page">
@@ -81,7 +81,7 @@ export default async function PathwayPage({ params }: Props) {
     <section>
       <h2>Other paths</h2>
       <ul className="static-list">{pathways.filter((item) => item.id !== pathway.id).map((item) =>
-        <li key={item.id}><Link href={`/pathways/${item.id}`}>{item.name}</Link> <small>{item.description}</small></li>)}</ul>
+        <li key={item.id}><Link href={routes.pathway(item.id)}>{item.name}</Link> <small>{item.description}</small></li>)}</ul>
     </section>
     <p className="muted">This planner is an advising aid, not an official degree audit. <Link href={routes.courses}>All courses</Link></p>
   </article>;

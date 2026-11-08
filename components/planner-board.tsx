@@ -44,9 +44,8 @@ import {
   suggestedPrerequisiteFix,
   type PrerequisiteFix,
 } from "@/lib/plan";
-import { routes } from "@/lib/routes";
 import { getEligibility } from "@/lib/validation";
-import { useApp } from "./app-provider";
+import { useApp, useRoutes } from "./app-provider";
 import { PlanBackup } from "./plan-backup";
 import { CatalogState } from "./catalog-state";
 import { requirementBadge } from "./course-card";
@@ -83,6 +82,7 @@ function PlanCourseCard({
 }) {
   const router = useRouter();
   const { openCourse, setCourseStatus, plan, catalog, progress, workspaceSelection, setWorkspaceSelection, setPlan, announce } = useApp();
+  const routes = useRoutes();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `course:${semester.id}:${item.code}`,
     data: { kind: "course", semesterId: semester.id, code: item.code },
@@ -237,6 +237,7 @@ function NextCourses() {
 
 export default function PlannerBoard() {
   const { catalog, plan, setPlan, hydrated, persistence, resetPlan, openPicker, announce, progress, workspaceSelection, setWorkspaceSelection } = useApp();
+  const routes = useRoutes();
   const router = useRouter();
   const [activeCourse, setActiveCourse] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor));

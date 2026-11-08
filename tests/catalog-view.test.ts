@@ -14,7 +14,10 @@ import {
   filterCatalogCourses,
 } from "../lib/catalog-view";
 import { emptyPlan } from "../lib/plan";
-import { exploreFocusHref, parseExploreFocus } from "../lib/routes";
+import { parseExploreFocus, programRoutes } from "../lib/routes";
+import { DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
+
+const exploreFocusHref = programRoutes(DEFAULT_CATALOG_KEY).exploreFocus;
 import type { Catalog, Course, Pathway, RequirementExpression, StudentPlan } from "../lib/types";
 
 const seattle = JSON.parse(readFileSync(path.join(process.cwd(), "data", "catalog.json"), "utf8")) as Catalog;
@@ -76,7 +79,7 @@ test("catalog cards render dependency fields and an Explore focus link", () => {
   assert.doesNotMatch(markup, /Terms/);
   assert.doesNotMatch(markup, /Unknown/);
   assert.match(markup, /View dependency graph/);
-  assert.match(markup, /href="\/explore\?focus=CS%205800"/);
+  assert.ok(markup.includes(`href="/${DEFAULT_CATALOG_KEY}/explore?focus=CS%205800"`), markup);
 
   const withTerms = renderToStaticMarkup(
     createElement(CourseDependencyFields, {
@@ -164,7 +167,7 @@ test("Explore focus deep-link parses course codes and is consumed once", () => {
   assert.equal(parseExploreFocus("CS5500"), "CS 5500");
   assert.equal(parseExploreFocus("cs-5500"), "CS 5500");
   assert.equal(parseExploreFocus("not-a-course"), null);
-  assert.equal(exploreFocusHref("CS 5500"), "/explore?focus=CS%205500");
+  assert.equal(exploreFocusHref("CS 5500"), `/${DEFAULT_CATALOG_KEY}/explore?focus=CS%205500`);
 
   const lastApplied = { current: null as string | null };
   const known = new Set(["CS 5500", "CS 5800"]);
