@@ -119,13 +119,21 @@ type Context = {
   audit: PlanCourseAudit;
   credits: Map<string, number>;
   steps: number;
+  /** Category checks in area matching. One combination can cost many, so they have their own budget. */
+  matching: number;
   /** For each group: the courses that later groups in its pool list. */
   later: Map<Leaf, Set<string>>;
 };
 
 // ponytail: a step cap keeps a pathological tree from freezing the planner. Past the cap the audit
 // keeps the best allocation found so far, so it can miss a valid allocation but never claims a false one.
-const SEARCH_LIMIT = 20_000;
+// One step is one selection tried, one choose-areas combination or one node of the minimal-set search.
+export const SEARCH_LIMIT = 20_000;
+// About 60 ms of matching work. A normal tree uses less than a tenth of it.
+const MATCHING_LIMIT = 100 * SEARCH_LIMIT;
+
+/** Test hook: the steps that the last `validatePlanV2` call used. It is not part of the audit result. */
+export const lastAuditSearch = { steps: 0 };
 
 const isLeaf = (group: RuleGroup): group is Leaf =>
   group.kind === "choose-courses" || group.kind === "choose-credits" || group.kind === "choose-areas";
@@ -133,24 +141,42 @@ const isLeaf = (group: RuleGroup): group is Leaf =>
 const creditsOf = (codes: string[], context: Context) =>
   codes.reduce((sum, code) => sum + (context.credits.get(code) ?? 0), 0);
 
+/** Computes a value once per group: the search asks for it at every node. Trees are never changed. */
+function perGroup<G extends object, T>(compute: (group: G) => T): (group: G) => T {
+  const cache = new WeakMap<G, T>();
+  return (group) => {
+    if (!cache.has(group)) cache.set(group, compute(group));
+    return cache.get(group)!;
+  };
+}
+
+/** The courses that a group lists: list order for choose-courses, code order otherwise. */
+const listedCodes = perGroup((leaf: Leaf): string[] => {
+  if (leaf.kind === "choose-courses") return unique(leaf.courses);
+  const listed = leaf.kind === "choose-credits" ? leaf.courses : leaf.areas.flatMap((area) => area.courses);
+  return unique(listed).sort(byCodeOrder);
+});
+
 /** Courses this group can use from `free`: list order for choose-courses, code order otherwise. */
 function candidates(leaf: Leaf, free: Set<string>, { audit, credits }: Context): string[] {
   if (leaf.kind === "choose-courses") {
-    return unique(leaf.courses).filter(
+    return listedCodes(leaf).filter(
       (code) => free.has(code) && (audit.waived.has(code) || audit.completed.has(code) || audit.validPlanned.has(code)),
     );
   }
-  const listed = leaf.kind === "choose-credits" ? leaf.courses : leaf.areas.flatMap((area) => area.courses);
-  return unique(listed)
-    .filter((code) => free.has(code) && credits.has(code))
-    .sort(byCodeOrder);
+  return listedCodes(leaf).filter((code) => free.has(code) && credits.has(code));
 }
 
-/** Areas matched one course each (bipartite matching), so one course never fills two areas. */
-function categoryMatching(codes: string[], memberships: Map<string, string[]>): string[] {
+/**
+ * Areas matched one course each (bipartite matching), so one course never fills two areas.
+ * It stops when `enough` areas are matched. With a context, the work counts against the
+ * matching budget, and past that budget the search stops as at the step cap.
+ */
+function categoryMatching(codes: string[], memberships: Map<string, string[]>, enough = Infinity, context?: Context): string[] {
   const categoryToCourse = new Map<string, string>();
   const assign = (code: string, seen: Set<string>): boolean => {
     for (const category of memberships.get(code) ?? []) {
+      if (context && ++context.matching > MATCHING_LIMIT) context.steps = Math.max(context.steps, SEARCH_LIMIT + 1);
       if (seen.has(category)) continue;
       seen.add(category);
       const owner = categoryToCourse.get(category);
@@ -161,7 +187,10 @@ function categoryMatching(codes: string[], memberships: Map<string, string[]>): 
     }
     return false;
   };
-  for (const code of codes) assign(code, new Set());
+  for (const code of codes) {
+    if (categoryToCourse.size >= enough) break;
+    assign(code, new Set());
+  }
   return [...categoryToCourse.keys()];
 }
 
@@ -175,22 +204,55 @@ function* combinations<T>(items: T[], size: number, start = 0, prefix: T[] = [])
   }
 }
 
-/** Sets that reach `target` credits and drop below it when any one course leaves. */
+/** C(n, k), or Infinity when it is above `limit`. */
+function binomial(n: number, k: number, limit: number): number {
+  let result = 1;
+  // After step i, result is C(n - k + i, i). It only grows, so it can stop early.
+  for (let i = 1; i <= k; i += 1) {
+    result = (result * (n - k + i)) / i;
+    if (result > limit) return Infinity;
+  }
+  return result;
+}
+
+/**
+ * Sets that reach `target` credits and drop below it when any one course leaves. Each node of the
+ * search is one step, and the search stops at the step cap: without that, n courses can cost 2^n nodes.
+ */
 function* minimalSets(
   codes: string[],
   credit: (code: string) => number,
   target: number,
+  context: Context,
   start = 0,
   picked: string[] = [],
   total = 0,
 ): Generator<string[]> {
+  context.steps += 1;
   if (total >= target) {
     if (picked.every((code) => total - credit(code) < target)) yield picked;
     return;
   }
-  for (let index = start; index < codes.length; index += 1) {
-    yield* minimalSets(codes, credit, target, index + 1, [...picked, codes[index]], total + credit(codes[index]));
+  for (let index = start; index < codes.length && context.steps <= SEARCH_LIMIT; index += 1) {
+    yield* minimalSets(codes, credit, target, context, index + 1, [...picked, codes[index]], total + credit(codes[index]));
   }
+}
+
+/** One minimal set without search: courses in order up to the target, then drop each course it does not need. */
+function firstMinimalSet(codes: string[], credit: (code: string) => number, target: number): string[] {
+  const picked: string[] = [];
+  let total = 0;
+  for (const code of codes) {
+    if (total >= target) break;
+    picked.push(code);
+    total += credit(code);
+  }
+  const needed: string[] = [];
+  for (const code of picked) {
+    if (total - credit(code) >= target) total -= credit(code);
+    else needed.push(code);
+  }
+  return needed;
 }
 
 /**
@@ -205,7 +267,11 @@ function* selections(leaf: Leaf, free: Set<string>, context: Context): Generator
   // their courses, and the search meets every group in few steps. Picks keep candidate order.
   const later = context.later.get(leaf) ?? new Set<string>();
   const order = [...codes.filter((code) => !later.has(code)), ...codes.filter((code) => later.has(code))];
-  const inOrder = (picked: string[]) => codes.filter((code) => picked.includes(code));
+  const position = new Map(codes.map((code, index) => [code, index]));
+  const inOrder = (picked: string[]) => [...picked].sort((a, b) => position.get(a)! - position.get(b)!);
+  const credit = (code: string) => context.credits.get(code) ?? 0;
+  // A stable sort, so equal credits keep `order`.
+  const mostCreditsFirst = (list: string[]) => [...list].sort((a, b) => credit(b) - credit(a));
   switch (leaf.kind) {
     case "choose-courses": {
       if (codes.length < leaf.count) {
@@ -220,10 +286,20 @@ function* selections(leaf: Leaf, free: Set<string>, context: Context): Generator
         yield { codes, satisfied: false, areas: [] };
         return;
       }
-      const credit = (code: string) => context.credits.get(code) ?? 0;
-      for (const picked of minimalSets(order.filter((code) => credit(code) > 0), credit, leaf.credits)) {
+      // Courses with more credits first, so the first sets are small and leave more courses free.
+      // The split into "no later group lists it" and "a later group lists it" stays.
+      const positive = order.filter((code) => credit(code) > 0);
+      const byCredits = [
+        ...mostCreditsFirst(positive.filter((code) => !later.has(code))),
+        ...mostCreditsFirst(positive.filter((code) => later.has(code))),
+      ];
+      let found = false;
+      for (const picked of minimalSets(byCredits, credit, leaf.credits, context)) {
+        found = true;
         yield { codes: inOrder(picked), satisfied: true, areas: [] };
       }
+      // The step cap stopped the search before it found a set. The candidates reach the target, so one exists.
+      if (!found) yield { codes: inOrder(firstMinimalSet(byCredits, credit, leaf.credits)), satisfied: true, areas: [] };
       return;
     }
     case "choose-areas": {
@@ -236,13 +312,17 @@ function* selections(leaf: Leaf, free: Set<string>, context: Context): Generator
         yield { codes, satisfied: false, areas: categoryMatching(codes, membership) };
         return;
       }
-      const all = [...combinations(order, leaf.count)].map(inOrder).map((picked) => ({
-        codes: picked,
-        areas: categoryMatching(picked, membership),
-        credits: creditsOf(picked, context),
-      }));
-      // Each combination is search work, so it counts toward the step cap.
-      context.steps += all.length;
+      // A group with more combinations than the step cap cannot try them all. It tries courses with
+      // more credits first, so the combinations that it reaches can meet the credits.
+      const tryOrder = binomial(order.length, leaf.count, SEARCH_LIMIT) > SEARCH_LIMIT ? mostCreditsFirst(order) : order;
+      const all: { codes: string[]; areas: string[]; credits: number }[] = [];
+      // Combinations come one at a time, and each is one step. At the cap, keep the ones found so far.
+      for (const combination of combinations(tryOrder, leaf.count)) {
+        const picked = inOrder(combination);
+        all.push({ codes: picked, areas: categoryMatching(picked, membership, Infinity, context), credits: creditsOf(picked, context) });
+        context.steps += 1;
+        if (context.steps > SEARCH_LIMIT) break;
+      }
       // Fewest credits first (more stay free for other groups), then most areas. The sort is stable.
       const feasible = all
         .filter((option) => option.areas.length >= leaf.minAreas && option.credits >= leaf.credits)
@@ -262,13 +342,13 @@ function* selections(leaf: Leaf, free: Set<string>, context: Context): Generator
   }
 }
 
-function areaMembership(leaf: Extract<Leaf, { kind: "choose-areas" }>): Map<string, string[]> {
+const areaMembership = perGroup((leaf: Extract<Leaf, { kind: "choose-areas" }>): Map<string, string[]> => {
   const membership = new Map<string, string[]>();
   for (const area of leaf.areas) {
     for (const code of area.courses) membership.set(code, [...(membership.get(code) ?? []), area.id]);
   }
   return membership;
-}
+});
 
 /**
  * Can the group still be met from `free`? The search uses this only to prune, so it may say yes
@@ -282,15 +362,18 @@ function canMeet(leaf: Leaf, free: Set<string>, context: Context): boolean {
   const best = codes.map((code) => context.credits.get(code) ?? 0).sort((a, b) => b - a).slice(0, leaf.count);
   return (
     codes.length >= leaf.count &&
-    Math.min(leaf.count, categoryMatching(codes, areaMembership(leaf)).length) >= leaf.minAreas &&
+    Math.min(leaf.count, categoryMatching(codes, areaMembership(leaf), leaf.minAreas, context).length) >= leaf.minAreas &&
     best.reduce((sum, value) => sum + value, 0) >= leaf.credits
   );
 }
 
-/** True when `a` beats `b`: at the first group where they differ, `a` meets it. */
-function beats(a: boolean[], b: boolean[]): boolean {
-  const index = a.findIndex((value, position) => value !== b[position]);
-  return index >= 0 && a[index];
+/** True when `a` beats `b`: at the first group where they differ, `a` meets it. `a` is read lazily. */
+function beats(a: (position: number) => boolean, b: boolean[]): boolean {
+  for (let position = 0; position < b.length; position += 1) {
+    const value = a(position);
+    if (value !== b[position]) return value;
+  }
+  return false;
 }
 
 /**
@@ -308,17 +391,20 @@ function allocate(leaves: Leaf[], free: Set<string>, context: Context, picks: Ma
   }
   let best: Pick[] = [];
   let bestScore: boolean[] | undefined;
+  // canMeet on every free course is a ceiling: no allocation meets a group that it says no to.
+  // A result that meets every other group cannot be beaten, so the search stops there.
+  const ceiling = leaves.map((leaf) => canMeet(leaf, free, context));
+  const unbeatable = () => bestScore?.every((value, position) => value === ceiling[position]);
   const visit = (index: number, available: Set<string>, chosen: Pick[]) => {
     if (index === leaves.length) {
       const score = chosen.map((pick) => pick.satisfied);
-      if (!bestScore || beats(score, bestScore)) [best, bestScore] = [chosen, score];
+      if (!bestScore || beats((position) => score[position], bestScore)) [best, bestScore] = [chosen, score];
       return;
     }
     if (bestScore) {
-      const bound = [
-        ...chosen.map((pick) => pick.satisfied),
-        ...leaves.slice(index).map((leaf) => canMeet(leaf, available, context)),
-      ];
+      // The best that this branch can still reach. canMeet runs only up to the first difference.
+      const bound = (position: number) =>
+        position < index ? chosen[position].satisfied : canMeet(leaves[position], available, context);
       if (!beats(bound, bestScore)) return;
     }
     for (const pick of selections(leaves[index], available, context)) {
@@ -326,7 +412,7 @@ function allocate(leaves: Leaf[], free: Set<string>, context: Context, picks: Ma
       for (const code of pick.codes) rest.delete(code);
       visit(index + 1, rest, [...chosen, pick]);
       context.steps += 1;
-      if (bestScore?.every(Boolean) || context.steps > SEARCH_LIMIT) return;
+      if (unbeatable() || context.steps > SEARCH_LIMIT) return;
     }
   };
   visit(0, free, []);
@@ -426,11 +512,12 @@ export function validatePlanV2(plan: StudentPlan, catalog: Catalog, requirements
   // A Map-tier tree can miss courses, so every catalog course counts toward the plan credits.
   const degreeCodes = tier === "audit" ? groupCodes(requirements.root) : catalog.courses.map((course) => course.code);
   const audit = auditPlanCourses(plan, catalog, new Set(degreeCodes));
-  const context: Context = { audit, credits: new Map(audit.counted.map((course) => [course.code, course.credits])), steps: 0, later: new Map() };
+  const context: Context = { audit, credits: new Map(audit.counted.map((course) => [course.code, course.credits])), steps: 0, matching: 0, later: new Map() };
   const free = new Set([...audit.completed, ...audit.waived, ...audit.validPlanned]);
   const picks = new Map<RuleGroup, Pick>();
   const main: Leaf[] = [];
   for (const pool of pools(requirements.root, main, [main])) allocate(pool, free, context, picks);
+  lastAuditSearch.steps = context.steps;
   const root = groupResult(requirements.root, picks, context);
   const earnedCredits = sumCredits(audit.counted, "earned");
   const plannedCredits = sumCredits(audit.counted, "planned");
