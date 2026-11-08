@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { readCatalog, validateCatalog } from "@/lib/catalog";
+import { CATALOGS, DEFAULT_CATALOG_KEY, canonicalCatalogKey } from "@/lib/catalog-key";
 import type { Catalog } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -10,7 +11,8 @@ let activeRefresh: Promise<Catalog> | null = null;
 let lastRefreshStartedAt = 0;
 const REFRESH_COOLDOWN_MS = 30_000;
 const SERVICE_URL = process.env.CATALOG_SERVICE_URL ?? "http://127.0.0.1:8787";
-const CATALOG_ID = process.env.CATALOG_ID ?? "neu-mscs-seattle";
+// The catalog service knows the default catalog by its old id (its source id).
+const CATALOG_ID = CATALOGS[DEFAULT_CATALOG_KEY]!.id;
 
 function errorResponse(error: unknown, status = 500) {
   const message =
@@ -90,16 +92,24 @@ async function refreshCatalogSnapshot(): Promise<Catalog> {
 // Serializing the ~150 KB catalog costs several ms of CPU, and Workers Free allows
 // 10 ms per request. readCatalog() returns the same object until the file changes,
 // so build the body once per catalog object.
-let catalogBody: { catalog: Catalog; refreshAvailable: boolean; body: string } | null = null;
+let catalogBody: { catalog: Catalog; key: string; refreshAvailable: boolean; body: string } | null = null;
 
-export async function GET() {
+/**
+ * `?key=<universityId>/<programId>` (or an old catalog id) selects the catalog. An unknown key gives 404.
+ * With no key, the default catalog answers; the client sends its remembered key (lib/catalog-key.ts).
+ */
+export async function GET(request?: NextRequest) {
+  const requested = request?.nextUrl.searchParams.get("key") ?? null;
+  const key = requested === null ? DEFAULT_CATALOG_KEY : canonicalCatalogKey(requested);
+  if (key === null) return errorResponse(new Error(`No catalog has the key "${String(requested).slice(0, 120)}".`), 404);
   try {
+    // ponytail: every known key is the default catalog today (see CATALOGS). Map the key to its snapshot file when a second one ships.
     // refreshAvailable tells the UI whether POST refresh can ever succeed, so the
     // client can hide a control that would otherwise always answer 401 (CR3).
     const catalog = await readCatalog();
     const refreshAvailable = isRefreshAuthorized();
-    if (catalogBody?.catalog !== catalog || catalogBody.refreshAvailable !== refreshAvailable) {
-      catalogBody = { catalog, refreshAvailable, body: JSON.stringify({ ...catalog, refreshAvailable }) };
+    if (catalogBody?.catalog !== catalog || catalogBody.key !== key || catalogBody.refreshAvailable !== refreshAvailable) {
+      catalogBody = { catalog, key, refreshAvailable, body: JSON.stringify({ ...catalog, key, refreshAvailable }) };
     }
     return new NextResponse(catalogBody.body, {
       headers: { "Cache-Control": "no-store", "Content-Type": "application/json" },

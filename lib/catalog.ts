@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { type CourseCodeGrammar, catalogCodeGrammar } from "./course-code";
+import { CATALOGS, DEFAULT_CATALOG_KEY } from "./catalog-key";
 import { snapshotAsset } from "./snapshot-assets";
 import type {
   Catalog,
@@ -561,7 +562,8 @@ export function validateRoadmapCrawlStatus(
 
 export function defaultCatalogFilePath(): string {
   if (process.env.CATALOG_DATA_PATH) return process.env.CATALOG_DATA_PATH;
-  const id = process.env.CATALOG_ID ?? "neu-mscs-seattle";
+  // A catalog-service refresh writes data/catalogs/<old catalog id>/catalog.json in development.
+  const id = CATALOGS[DEFAULT_CATALOG_KEY]!.id;
   const perId = path.join(process.cwd(), "data", "catalogs", id, "catalog.json");
   if (existsSync(perId)) return perId;
   return path.join(process.cwd(), "data", "catalog.json");

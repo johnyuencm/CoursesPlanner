@@ -10,6 +10,8 @@
  * Do not write a course-code pattern in another file.
  * This file has no Node or cheerio imports, so client code can use it.
  */
+import { CATALOGS, DEFAULT_CATALOG_KEY, canonicalCatalogKey } from "./catalog-key";
+
 export interface CourseCodeGrammar {
   /** Matches exactly one canonical code. */
   readonly pattern: RegExp;
@@ -67,10 +69,17 @@ export function courseCodeGrammar(adapterId: string): CourseCodeGrammar {
 /**
  * Grammar of the active catalog (or roadmap). An unknown adapter throws.
  *
- * ponytail: with no catalog (the plan and pathway edits load from LocalStorage before the catalog)
- * or no `adapter` field, this gives the Northeastern grammar. That is correct while every storage key
- * is Northeastern-only. Upgrade path: #69 keys storage by catalog key; then get the adapter from that key.
+ * With no catalog (the plan and pathway edits load from LocalStorage before the catalog)
+ * or no `adapter` field, the adapter comes from the catalog key of that storage (#69).
+ * ponytail: `CATALOGS` in lib/catalog-key.ts is a hand-written list with one entry; an unknown key throws.
+ * Read it from the snapshot manifest when a second full catalog ships.
  */
-export function catalogCodeGrammar(catalog?: { adapter?: string } | null): CourseCodeGrammar {
-  return courseCodeGrammar(catalog?.adapter ?? DEFAULT_ADAPTER_ID);
+export function catalogCodeGrammar(
+  catalog?: { adapter?: string } | null,
+  catalogKey: string = DEFAULT_CATALOG_KEY,
+): CourseCodeGrammar {
+  if (catalog?.adapter !== undefined) return courseCodeGrammar(catalog.adapter);
+  const key = canonicalCatalogKey(catalogKey);
+  if (!key) throw new Error(`Unknown catalog key "${catalogKey}". Add it in lib/catalog-key.ts.`);
+  return courseCodeGrammar(CATALOGS[key]!.adapter);
 }

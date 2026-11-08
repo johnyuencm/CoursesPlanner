@@ -1263,8 +1263,6 @@ export function initialGraphNavigation(code = "CS 5010", focusCode = code): Grap
   return { entries: [{ selectedCode: code, focusCode, depth: "course" }], index: 0 };
 }
 
-export const WORKSPACE_SELECTION_KEY = "neu-mscs-workspace-selection-v1";
-
 export type WorkspaceSelection = {
   selectedCode: string;
   focusCode: string;

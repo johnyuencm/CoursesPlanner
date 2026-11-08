@@ -130,6 +130,19 @@ Never run an unbounded crawl: `--crawl-roadmaps` requires `--limit=<1..100>`. `-
 
 Page loads never scrape remote catalogs. `GET /api/catalog` reads `data/catalogs/<id>/catalog.json` when present, otherwise `data/catalog.json`, and returns `503` if no valid normalized cache exists.
 
+### Catalog key
+
+A catalog key identifies one program: `<universityId>/<programId>`. The default catalog is Northeastern MSCS Seattle. Its key is `northeastern/computer-science-mscs-sea-8b0d00dbda`. Its old id `neu-mscs-seattle` stays a valid alias. The catalog service and `data/catalogs/<id>/` still use the old id. `lib/catalog-key.ts` holds the list of keys.
+
+| Request | Result |
+| --- | --- |
+| `GET /api/catalog?key=<universityId>/<programId>` | `200` with the snapshot of that key. The body has a `key` field with the canonical key. |
+| `GET /api/catalog?key=neu-mscs-seattle` | `200` with the same body. The old id is an alias. |
+| `GET /api/catalog?key=<unknown>` | `404` with `{ "error": "No catalog has the key ..." }`. |
+| `GET /api/catalog` (no key) | `200` with the default catalog. |
+
+The browser remembers the last catalog key (see [Planner persistence](#planner-persistence)) and sends it as `?key=`. So with no key in the URL, the planner shows the remembered or the default catalog. The route keeps one serialized body for each catalog, so a request does not serialize the catalog again.
+
 The default source is Northeastern MSCS Seattle (`neu-mscs-seattle`). Refresh uses that source's HTTPS allowlist:
 
 - Seattle MSCS program page
@@ -224,11 +237,39 @@ The application cannot verify GPA, actual earned grades against minimum-grade cl
 
 ## Planner persistence
 
-The student plan is stored under a versioned LocalStorage key. `lib/plan.ts` validates browser data before use and bounds array sizes, text lengths, course-code format, credit values, term types, and unique term IDs.
+The browser keeps each program's data in LocalStorage under its catalog key (storage v2). `lib/catalog-key.ts` holds the keys. `lib/plan.ts` validates browser data before use and bounds array sizes, text lengths, course-code format, credit values, term types, and unique term IDs. The course-code format comes from the catalog key, because the plan loads before the catalog.
 
-Malformed or inaccessible LocalStorage data does not overwrite the stored value. The application starts with a fresh in-memory plan, reports the problem, and blocks automatic saving until the user explicitly resets the local plan.
+| Value | v2 key | v1 key (default catalog only) |
+| --- | --- | --- |
+| Plan | `coursesplanner:v2:<catalog key>:plan` | `neu-mscs-planner-plan-v1` |
+| Pathway edits | `coursesplanner:v2:<catalog key>:pathways` | `neu-mscs-planner-pathways-v1` |
+| Career target | `coursesplanner:v2:<catalog key>:career-target` | `neu-mscs-career-target-v1` |
+| Course target | `coursesplanner:v2:<catalog key>:course-target` | `neu-mscs-course-target-v1` |
+| Graph and plan selection | `coursesplanner:v2:<catalog key>:workspace-selection` | `neu-mscs-workspace-selection-v1` |
+| Remembered catalog key | `coursesplanner:catalog-key` | - |
 
-Suggested pathway edits use a separate LocalStorage key. They affect recommendations only, never catalog requirements or degree validation.
+The remembered catalog key must be a known key or an old id. Otherwise the browser uses the default catalog.
+
+The v1 keys had no catalog key, so they belong to the default catalog. The migration runs one time and loses no data:
+
+```mermaid
+flowchart LR
+  A[Load] --> B{v2 value?}
+  B -- yes --> C[Use v2]
+  B -- no --> D[Use v1 value, write nothing]
+  D --> E[Next save writes v2]
+  E --> F{v2 reads back unchanged?}
+  F -- yes --> G[Remove v1]
+  F -- no --> H[Keep v1, report the error]
+```
+
+The planner saves the plan right after it loads, so a valid v1 plan moves to v2 on the first visit. Pathway edits and targets move on their next save or reset.
+
+Malformed or inaccessible LocalStorage data does not overwrite the stored value. This includes a v1 plan. The application starts with a fresh in-memory plan, reports the problem, and blocks automatic saving until the user explicitly resets the local plan. The recovery download gives the unreadable text.
+
+Another tab of the same program gets each plan save through the `storage` event. A tab reloads only the plan of its own catalog key.
+
+Suggested pathway edits affect recommendations only, never catalog requirements or degree validation.
 
 ## Local setup
 

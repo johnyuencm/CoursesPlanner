@@ -16,6 +16,7 @@ import pathwayConfig from "@/config/pathways.json";
 import type { Course, Pathway } from "@/lib/types";
 import { analyzeResolvedCriticalPath } from "@/lib/critical-path";
 import { catalogCodeGrammar } from "@/lib/course-code";
+import { readCatalogValue, writeCatalogValue } from "@/lib/catalog-key";
 import { PERSONA_PROMPT, buildPathwayOverlay, overlayNodeCopy } from "@/lib/pathway-overlay";
 import { routes } from "@/lib/routes";
 import { getEligibility } from "@/lib/validation";
@@ -24,10 +25,8 @@ import { CatalogState } from "@/components/catalog-state";
 import { requirementBadge } from "@/components/course-card";
 import { PageHeading, creditLabel } from "@/components/ui";
 
-const STORAGE_KEY = "neu-mscs-planner-pathways-v1";
-
-function validPathways(value: unknown): value is Pathway[] {
-  const codePattern = catalogCodeGrammar().pattern; // Northeastern-only storage key; see catalogCodeGrammar.
+function validPathways(value: unknown, catalogKey: string): value is Pathway[] {
+  const codePattern = catalogCodeGrammar(null, catalogKey).pattern;
   if (!Array.isArray(value) || value.length === 0 || value.length > 20) return false;
   const ids = new Set<string>();
   return value.every((pathway) => {
@@ -51,7 +50,7 @@ const defaults = pathwayConfig as Pathway[];
 const HEADING_COPY = "Pick a persona. CORE, RECOMMENDED, and dependency-critical ★ courses overlay the Explore map; everything else fades. These never change official degree rules.";
 
 export function PathwaysWorkspace() {
-  const { catalog, openCourse, openPicker, plan, announce, careerTargetId, setCareerTargetId } = useApp();
+  const { catalogKey, catalog, openCourse, openPicker, plan, announce, careerTargetId, setCareerTargetId, hydrated } = useApp();
   const [pathways, setPathways] = useState<Pathway[]>(defaults);
   const [selectedId, setSelectedId] = useState(careerTargetId && defaults.some((pathway) => pathway.id === careerTargetId) ? careerTargetId : defaults[0].id);
   const [editing, setEditing] = useState(false);
@@ -59,17 +58,18 @@ export function PathwaysWorkspace() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!hydrated) return; // catalogKey comes from storage during hydration.
     try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
+      const saved = readCatalogValue(window.localStorage, "pathways", catalogKey);
       if (!saved) return;
       const parsed: unknown = JSON.parse(saved);
-      if (!validPathways(parsed)) throw new Error("saved pathway format is invalid");
+      if (!validPathways(parsed, catalogKey)) throw new Error("saved pathway format is invalid");
       setPathways(parsed);
       setSelectedId((current) => parsed.some((pathway) => pathway.id === current) ? current : parsed[0].id);
     } catch (error) {
       setLoadError(`Custom pathway recommendations were not loaded: ${error instanceof Error ? error.message : "unknown browser storage error"}. Defaults remain available.`);
     }
-  }, []);
+  }, [hydrated, catalogKey]);
 
   useEffect(() => {
     if (careerTargetId && pathways.some((pathway) => pathway.id === careerTargetId)) setSelectedId(careerTargetId);
@@ -93,8 +93,8 @@ export function PathwaysWorkspace() {
   const replaceSelected = (change: (pathway: Pathway) => Pathway) => setPathways((current) => current.map((pathway) => pathway.id === selected.id ? change(pathway) : pathway));
   const save = () => {
     try {
-      if (!validPathways(pathways)) throw new Error("recommendations contain an invalid course code or empty group");
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(pathways));
+      if (!validPathways(pathways, catalogKey)) throw new Error("recommendations contain an invalid course code or empty group");
+      writeCatalogValue(window.localStorage, "pathways", catalogKey, JSON.stringify(pathways));
       setMessage("Custom recommendations saved on this device.");
       setLoadError(null);
       setEditing(false);
@@ -110,7 +110,7 @@ export function PathwaysWorkspace() {
     setSelectedId(defaults[0].id);
     setEditing(false);
     try {
-      window.localStorage.removeItem(STORAGE_KEY);
+      writeCatalogValue(window.localStorage, "pathways", catalogKey, null);
       setLoadError(null);
       setMessage("Default recommendations restored. Your degree plan was not changed.");
       announce("Default pathway recommendations restored.");

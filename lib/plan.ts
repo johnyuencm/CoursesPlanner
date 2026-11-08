@@ -4,8 +4,10 @@ import { targetPathSnapshot, termSlug } from "./target-path";
 import { validatePlan } from "./requirements-v2";
 import { getEligibility } from "./validation";
 import { type CourseCodeGrammar, catalogCodeGrammar } from "./course-code";
+import { catalogStorageKey, readCatalogValue, writeCatalogValue } from "./catalog-key";
 
-export const STORAGE_KEY = "neu-mscs-planner-plan-v1";
+/** LocalStorage key of the plan for one catalog key (plan storage v2, #69). */
+export const planStorageKey = (catalogKey: string) => catalogStorageKey("plan", catalogKey);
 export const MAX_PLAN_BACKUP_BYTES = 1_000_000;
 
 const MAX_COURSE_CODES = 256;
@@ -774,24 +776,38 @@ export function parsePlanBackup(text: string): StudentPlan {
   }
 }
 
-export function restorePlan(storage: Pick<Storage, "setItem">, candidate: unknown): StudentPlan {
-  const restored = parsePlan(candidate);
-  storage.setItem(STORAGE_KEY, JSON.stringify(restored));
+type PlanStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+/**
+ * Save the plan under its catalog key. The v1 plan stays until the v2 plan is read back unchanged.
+ * Throws when the plan is invalid or the browser does not keep it.
+ */
+export function savePlan(storage: PlanStorage, plan: StudentPlan, catalogKey: string): void {
+  writeCatalogValue(storage, "plan", catalogKey, JSON.stringify(parsePlan(plan, catalogCodeGrammar(null, catalogKey))));
+}
+
+export function restorePlan(storage: PlanStorage, candidate: unknown, catalogKey: string): StudentPlan {
+  const restored = parsePlan(candidate, catalogCodeGrammar(null, catalogKey));
+  savePlan(storage, restored, catalogKey);
   return restored;
 }
 
-export function loadPlan(storage: Pick<Storage, "getItem">): {
+/**
+ * Load the plan of one catalog key. With no v2 plan, the default catalog loads the v1 plan.
+ * This never writes. Unreadable data stays in storage, and `raw` keeps it for a recovery copy.
+ */
+export function loadPlan(storage: Pick<Storage, "getItem">, catalogKey: string): {
   plan: StudentPlan;
   error: string | null;
   raw: string | null;
 } {
   let stored: string | null = null;
   try {
-    const value = storage.getItem(STORAGE_KEY);
+    const value = readCatalogValue(storage, "plan", catalogKey);
     if (value === null) return { plan: emptyPlan(), error: null, raw: null };
     if (typeof value !== "string") throw new Error("storage returned a non-text value");
     stored = value;
-    return { plan: parsePlan(migratePlan(JSON.parse(stored))), error: null, raw: stored };
+    return { plan: parsePlan(migratePlan(JSON.parse(stored)), catalogCodeGrammar(null, catalogKey)), error: null, raw: stored };
   } catch (error) {
     const detail = error instanceof Error ? error.message : "unknown storage error";
     return { plan: emptyPlan(), error: `Could not load the saved plan: ${detail}`, raw: stored };

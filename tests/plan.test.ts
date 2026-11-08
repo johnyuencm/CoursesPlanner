@@ -3,9 +3,25 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { addableLineCourses, addableProgramCodes, appendCoursesToSemester, applyPrerequisiteFix, canRestorePlanBackup, createPlanBackupDownload, emptyPlan, isCatalogOutage, loadPlan, MAX_COURSES_PER_SEMESTER, migratePlan, moveCourseToSemester, parsePlan, parsePlanBackup, PLAN_BACKUP_FILENAME, PLAN_RECOVERY_FILENAME, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY, suggestedPrerequisiteFix, summarizePlan } from "../lib/plan";
-import type { Catalog } from "../lib/types";
+import { addableLineCourses, addableProgramCodes, appendCoursesToSemester, applyPrerequisiteFix, canRestorePlanBackup, createPlanBackupDownload, emptyPlan, isCatalogOutage, loadPlan, MAX_COURSES_PER_SEMESTER, migratePlan, moveCourseToSemester, parsePlan, parsePlanBackup, PLAN_BACKUP_FILENAME, PLAN_RECOVERY_FILENAME, planStorageKey, recordedCourseCodes, restorePlan, savePlan, serializePlanBackup, suggestedPrerequisiteFix, summarizePlan } from "../lib/plan";
+import { CATALOG_KEY_PREFERENCE, DEFAULT_CATALOG_KEY, readCatalogValue, rememberedCatalogKey, V1_STORAGE_KEYS, writeCatalogValue } from "../lib/catalog-key";
+import type { Catalog, StudentPlan } from "../lib/types";
 import { validatePlan } from "../lib/requirements-v2";
+
+const KEY = DEFAULT_CATALOG_KEY;
+const STORAGE_KEY = planStorageKey(KEY);
+
+function memoryStorage(entries: Record<string, string> = {}) {
+  const map = new Map(Object.entries(entries));
+  const writes: string[] = [];
+  return {
+    map,
+    writes,
+    getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => { writes.push(`set ${key}`); map.set(key, value); },
+    removeItem: (key: string) => { writes.push(`remove ${key}`); map.delete(key); },
+  };
+}
 
 test("emptyPlan starts in Fall 2026 with five fresh terms and one co-op", () => {
   const first = emptyPlan();
@@ -121,7 +137,7 @@ test("loadPlan returns parsed storage without writing or replacing it", () => {
       requestedKey = key;
       return saved;
     },
-  });
+  }, KEY);
   assert.equal(requestedKey, STORAGE_KEY);
   assert.equal(loaded.error, null);
   assert.equal(loaded.raw, saved);
@@ -133,17 +149,17 @@ test("loadPlan and parsePlanBackup route through migratePlan (D4)", () => {
   // the hook exists so the first schema bump has a place to migrate.
   assert.deepEqual(migratePlan({ version: 1 }), { version: 1 });
   const saved = JSON.stringify(emptyPlan());
-  assert.deepEqual(loadPlan({ getItem: () => saved }).plan, emptyPlan());
+  assert.deepEqual(loadPlan({ getItem: () => saved }, KEY).plan, emptyPlan());
   assert.deepEqual(parsePlanBackup(saved), emptyPlan());
 });
 
 test("loadPlan safely recovers from absent, corrupt, and unavailable storage", () => {
-  const absent = loadPlan({ getItem: (_key: string) => null });
+  const absent = loadPlan({ getItem: (_key: string) => null }, KEY);
   assert.equal(absent.error, null);
   assert.equal(absent.raw, null);
   assert.deepEqual(absent.plan, emptyPlan());
 
-  const corrupt = loadPlan({ getItem: (_key: string) => "{not-json" });
+  const corrupt = loadPlan({ getItem: (_key: string) => "{not-json" }, KEY);
   assert.match(corrupt.error ?? "", /Could not load/);
   assert.equal(corrupt.raw, "{not-json");
   assert.deepEqual(corrupt.plan, emptyPlan());
@@ -152,7 +168,7 @@ test("loadPlan safely recovers from absent, corrupt, and unavailable storage", (
     getItem(_key: string): string | null {
       throw new Error("storage denied");
     },
-  });
+  }, KEY);
   assert.match(unavailable.error ?? "", /storage denied/);
   assert.equal(unavailable.raw, null);
   assert.deepEqual(unavailable.plan, emptyPlan());
@@ -310,29 +326,102 @@ test("backup parsing rejects invalid JSON and oversized text before a restore ca
 
 test("restore writes the validated replacement before returning it to the UI", () => {
   const replacement = { ...emptyPlan(), semesters: [] };
-  let stored = "";
-  const restored = restorePlan({ setItem: (_key, value) => { stored = value; } }, replacement);
+  const first = memoryStorage();
+  const restored = restorePlan(first, replacement, KEY);
   assert.deepEqual(restored, replacement);
-  assert.deepEqual(JSON.parse(stored), replacement);
+  assert.deepEqual(JSON.parse(first.map.get(STORAGE_KEY)!), replacement);
 
   assert.throws(
-    () => restorePlan({ setItem: () => { throw new Error("storage denied"); } }, replacement),
+    () => restorePlan({ ...memoryStorage(), setItem: () => { throw new Error("storage denied"); } }, replacement, KEY),
     /storage denied/,
   );
 
-  let writes = 0;
-  assert.throws(
-    () => restorePlan({ setItem: () => { writes += 1; } }, { ...replacement, version: 2 }),
-    /version 1/,
-  );
-  assert.equal(writes, 0);
+  const rejected = memoryStorage();
+  assert.throws(() => restorePlan(rejected, { ...replacement, version: 2 }, KEY), /version 1/);
+  assert.deepEqual(rejected.writes, []);
 
-  const saved: string[] = [];
-  const storage = { setItem: (_key: string, value: string) => { saved.push(value); } };
-  restorePlan(storage, replacement);
-  restorePlan(storage, { ...replacement, completedCourses: ["CS 5010"] });
-  assert.equal(saved.length, 2);
-  assert.deepEqual(JSON.parse(saved[1]).completedCourses, ["CS 5010"]);
+  const storage = memoryStorage();
+  restorePlan(storage, replacement, KEY);
+  restorePlan(storage, { ...replacement, completedCourses: ["CS 5010"] }, KEY);
+  assert.deepEqual(JSON.parse(storage.map.get(STORAGE_KEY)!).completedCourses, ["CS 5010"]);
+});
+
+test("a v1 plan migrates to its catalog key with no loss and the same audit (#69)", () => {
+  const v1: StudentPlan = {
+    ...emptyPlan(),
+    completedCourses: ["CS 5010"],
+    waivedCourses: ["CS 5004"],
+    completedCredits: { "CS 5010": 4 },
+    semesters: [{ id: "fall-2026", name: "Fall 2026", type: "academic", courses: [{ code: "CS 5800" }, { code: "CS 5200", credits: 4 }] }],
+  };
+  const v1Text = JSON.stringify(v1);
+  const storage = memoryStorage({ [V1_STORAGE_KEYS.plan]: v1Text });
+
+  // Load reads the v1 plan and writes nothing.
+  const loaded = loadPlan(storage, KEY);
+  assert.equal(loaded.error, null);
+  assert.deepEqual(loaded.plan, v1);
+  assert.deepEqual(storage.writes, []);
+  assert.equal(storage.map.get(V1_STORAGE_KEYS.plan), v1Text);
+  assert.deepEqual(validatePlan(loaded.plan, seattle), validatePlan(v1, seattle));
+
+  // Save writes v2, reads it back, then removes v1.
+  savePlan(storage, loaded.plan, KEY);
+  assert.deepEqual(storage.writes, [`set ${STORAGE_KEY}`, `remove ${V1_STORAGE_KEYS.plan}`]);
+  assert.deepEqual(JSON.parse(storage.map.get(STORAGE_KEY)!), v1);
+  assert.equal(storage.map.has(V1_STORAGE_KEYS.plan), false);
+  assert.deepEqual(loadPlan(storage, KEY).plan, v1);
+});
+
+test("the v1 plan stays when the v2 save fails or does not read back (#69)", () => {
+  const v1Text = JSON.stringify({ ...emptyPlan(), completedCourses: ["CS 5010"] });
+  const denied = { ...memoryStorage({ [V1_STORAGE_KEYS.plan]: v1Text }), setItem: () => { throw new Error("QuotaExceededError"); } };
+  assert.throws(() => savePlan(denied, emptyPlan(), KEY), /QuotaExceededError/);
+  assert.equal(denied.map.get(V1_STORAGE_KEYS.plan), v1Text);
+
+  const dropped = memoryStorage({ [V1_STORAGE_KEYS.plan]: v1Text });
+  dropped.setItem = () => {}; // The browser ignores the write.
+  assert.throws(() => savePlan(dropped, emptyPlan(), KEY), /did not keep/);
+  assert.equal(dropped.map.get(V1_STORAGE_KEYS.plan), v1Text);
+});
+
+test("a corrupt v1 plan keeps the recovery behaviour: no write, raw text kept (#69)", () => {
+  const storage = memoryStorage({ [V1_STORAGE_KEYS.plan]: "{not-json" });
+  const loaded = loadPlan(storage, KEY);
+  assert.match(loaded.error ?? "", /Could not load/);
+  assert.equal(loaded.raw, "{not-json");
+  assert.deepEqual(storage.writes, []);
+  assert.equal(createPlanBackupDownload({ blocked: true, plan: loaded.plan, rawStored: loaded.raw }).body, "{not-json");
+});
+
+test("the v2 plan wins over v1, and other catalog keys never read the v1 plan (#69)", () => {
+  const v2: StudentPlan = { ...emptyPlan(), completedCourses: ["CS 5800"] };
+  const storage = memoryStorage({
+    [V1_STORAGE_KEYS.plan]: JSON.stringify({ ...emptyPlan(), completedCourses: ["CS 5010"] }),
+    [STORAGE_KEY]: JSON.stringify(v2),
+  });
+  assert.deepEqual(loadPlan(storage, KEY).plan, v2);
+  assert.deepEqual(loadPlan(storage, "neu-other/program").plan, emptyPlan());
+});
+
+test("per-program preferences fall back to v1 and drop it on the next write or reset (#69)", () => {
+  const storage = memoryStorage({ [V1_STORAGE_KEYS["career-target"]]: "ml", [V1_STORAGE_KEYS.pathways]: "[]" });
+  assert.equal(readCatalogValue(storage, "career-target", KEY), "ml");
+  assert.equal(readCatalogValue(storage, "career-target", "other/program"), null);
+  writeCatalogValue(storage, "career-target", KEY, "systems");
+  assert.equal(readCatalogValue(storage, "career-target", KEY), "systems");
+  assert.equal(storage.map.has(V1_STORAGE_KEYS["career-target"]), false);
+  // A reset must not bring the v1 value back.
+  writeCatalogValue(storage, "pathways", KEY, null);
+  assert.equal(readCatalogValue(storage, "pathways", KEY), null);
+});
+
+test("the remembered catalog key accepts known keys and old ids only (#69)", () => {
+  assert.equal(rememberedCatalogKey(memoryStorage()), KEY);
+  assert.equal(rememberedCatalogKey(memoryStorage({ [CATALOG_KEY_PREFERENCE]: KEY })), KEY);
+  assert.equal(rememberedCatalogKey(memoryStorage({ [CATALOG_KEY_PREFERENCE]: "neu-mscs-seattle" })), KEY);
+  assert.equal(rememberedCatalogKey(memoryStorage({ [CATALOG_KEY_PREFERENCE]: "nope/nope" })), KEY);
+  assert.equal(rememberedCatalogKey({ getItem: () => { throw new Error("denied"); } }), KEY);
 });
 
 test("addableLineCourses keeps program courses and skips externals, unknowns, and recorded codes", () => {

@@ -1,4 +1,4 @@
-import { loadPlan, STORAGE_KEY } from "./plan";
+import { loadPlan, planStorageKey } from "./plan";
 import type { StudentPlan } from "./types";
 
 /** The subset of a StorageEvent this module needs, so it is testable without a DOM. */
@@ -17,11 +17,13 @@ export function planAfterStorageEvent(
   event: PlanStorageEvent,
   current: StudentPlan,
   storage: Pick<Storage, "getItem">,
+  catalogKey: string,
 ): StudentPlan {
-  if (event.key !== STORAGE_KEY) return current;
+  // Only the plan of this tab's catalog key. A v1 key change (the migration removes it) is not a plan write.
+  if (event.key !== planStorageKey(catalogKey)) return current;
   if (event.storageArea !== undefined && event.storageArea !== storage) return current;
   if (event.newValue === null) return current;
-  const loaded = loadPlan(storage);
+  const loaded = loadPlan(storage, catalogKey);
   if (loaded.error) return current;
   return JSON.stringify(current) === JSON.stringify(loaded.plan) ? current : loaded.plan;
 }
