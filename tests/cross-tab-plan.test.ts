@@ -57,15 +57,24 @@ test("unrelated, cleared, or unreadable storage events leave the plan untouched 
   );
 });
 
-test("only the plan of this tab's catalog key syncs; the v1 key and other programs do not (#69)", () => {
+test("only the plan of this tab's catalog key syncs; a v1 removal and other programs do not (#69)", () => {
   const current = emptyPlan();
   const other: StudentPlan = { ...emptyPlan(), completedCourses: ["CS 5010"] };
   const text = JSON.stringify(other);
   const everywhere = { getItem: () => text };
-  assert.equal(planAfterStorageEvent({ key: V1_STORAGE_KEYS.plan, newValue: text }, current, everywhere, KEY), current);
   assert.equal(planAfterStorageEvent({ key: V1_STORAGE_KEYS.plan, newValue: null }, current, everywhere, KEY), current);
   assert.equal(
     planAfterStorageEvent({ key: planStorageKey("other/program"), newValue: text }, current, everywhere, KEY),
     current,
   );
+  assert.equal(planAfterStorageEvent({ key: V1_STORAGE_KEYS.plan, newValue: text }, current, everywhere, "other/program"), current);
+});
+
+test("a v1 write from a tab that still runs the v1 code syncs into a migrated tab (#69 review)", () => {
+  const current = emptyPlan();
+  const oldTabEdit: StudentPlan = { ...emptyPlan(), completedCourses: ["CS 5010"] };
+  const text = JSON.stringify(oldTabEdit);
+  // The migrated tab already wrote v2; the old tab then wrote v1.
+  const storage = { getItem: (key: string) => (key === V1_STORAGE_KEYS.plan ? text : key === STORAGE_KEY ? JSON.stringify(current) : null) };
+  assert.deepEqual(planAfterStorageEvent({ key: V1_STORAGE_KEYS.plan, newValue: text }, current, storage, KEY), oldTabEdit);
 });

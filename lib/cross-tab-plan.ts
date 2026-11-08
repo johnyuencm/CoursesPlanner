@@ -1,3 +1,4 @@
+import { DEFAULT_CATALOG_KEY, V1_STORAGE_KEYS } from "./catalog-key";
 import { loadPlan, planStorageKey } from "./plan";
 import type { StudentPlan } from "./types";
 
@@ -19,8 +20,10 @@ export function planAfterStorageEvent(
   storage: Pick<Storage, "getItem">,
   catalogKey: string,
 ): StudentPlan {
-  // Only the plan of this tab's catalog key. A v1 key change (the migration removes it) is not a plan write.
-  if (event.key !== planStorageKey(catalogKey)) return current;
+  // Only the plan of this tab's catalog key. For the default catalog, that includes a v1 write
+  // from a tab that still runs the v1 code. A v1 removal (the migration) has no new value.
+  const v1Write = catalogKey === DEFAULT_CATALOG_KEY && event.key === V1_STORAGE_KEYS.plan;
+  if (event.key !== planStorageKey(catalogKey) && !v1Write) return current;
   if (event.storageArea !== undefined && event.storageArea !== storage) return current;
   if (event.newValue === null) return current;
   const loaded = loadPlan(storage, catalogKey);

@@ -254,9 +254,9 @@ The v1 keys had no catalog key, so they belong to the default catalog. The migra
 
 ```mermaid
 flowchart LR
-  A[Load] --> B{v2 value?}
-  B -- yes --> C[Use v2]
-  B -- no --> D[Use v1 value, write nothing]
+  A[Load] --> B{v1 value?}
+  B -- no --> C[Use v2]
+  B -- yes --> D[Use v1 value, write nothing]
   D --> E[Next save writes v2]
   E --> F{v2 reads back unchanged?}
   F -- yes --> G[Remove v1]
@@ -265,9 +265,11 @@ flowchart LR
 
 The planner saves the plan right after it loads, so a valid v1 plan moves to v2 on the first visit. Pathway edits and targets move on their next save or reset.
 
+A v1 value wins over a v2 value. A save removes the v1 value after the v2 read-back, so a v1 value that is still there is newer. A page that still runs the v1 code wrote it: a tab opened before the deploy, or a rollback. The next save moves it to v2.
+
 Malformed or inaccessible LocalStorage data does not overwrite the stored value. This includes a v1 plan. The application starts with a fresh in-memory plan, reports the problem, and blocks automatic saving until the user explicitly resets the local plan. The recovery download gives the unreadable text.
 
-Another tab of the same program gets each plan save through the `storage` event. A tab reloads only the plan of its own catalog key.
+Another tab of the same program gets each plan save through the `storage` event. A tab reloads only the plan of its own catalog key. A tab of the default catalog also reloads a v1 plan write from a tab that still runs the v1 code.
 
 Suggested pathway edits affect recommendations only, never catalog requirements or degree validation.
 

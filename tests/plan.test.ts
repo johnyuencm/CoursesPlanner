@@ -131,14 +131,14 @@ test("parsePlan bounds arrays and requires unique semester IDs", () => {
 
 test("loadPlan returns parsed storage without writing or replacing it", () => {
   const saved = JSON.stringify(emptyPlan());
-  let requestedKey = "";
+  const requestedKeys: string[] = [];
   const loaded = loadPlan({
     getItem(key: string) {
-      requestedKey = key;
-      return saved;
+      requestedKeys.push(key);
+      return key === STORAGE_KEY ? saved : null;
     },
   }, KEY);
-  assert.equal(requestedKey, STORAGE_KEY);
+  assert.deepEqual(requestedKeys, [V1_STORAGE_KEYS.plan, STORAGE_KEY]);
   assert.equal(loaded.error, null);
   assert.equal(loaded.raw, saved);
   assert.deepEqual(loaded.plan, emptyPlan());
@@ -394,14 +394,68 @@ test("a corrupt v1 plan keeps the recovery behaviour: no write, raw text kept (#
   assert.equal(createPlanBackupDownload({ blocked: true, plan: loaded.plan, rawStored: loaded.raw }).body, "{not-json");
 });
 
-test("the v2 plan wins over v1, and other catalog keys never read the v1 plan (#69)", () => {
+test("a v1 plan beside a v2 plan is newer, so it wins and the next save migrates it (#69 review)", () => {
+  // A save removes v1 after the v2 read-back. So a v1 plan beside a v2 plan was written later,
+  // by a page that still runs the v1 code (a tab opened before the deploy, or a rollback).
   const v2: StudentPlan = { ...emptyPlan(), completedCourses: ["CS 5800"] };
-  const storage = memoryStorage({
-    [V1_STORAGE_KEYS.plan]: JSON.stringify({ ...emptyPlan(), completedCourses: ["CS 5010"] }),
-    [STORAGE_KEY]: JSON.stringify(v2),
-  });
-  assert.deepEqual(loadPlan(storage, KEY).plan, v2);
+  const newer: StudentPlan = { ...emptyPlan(), completedCourses: ["CS 5010"] };
+  const storage = memoryStorage({ [V1_STORAGE_KEYS.plan]: JSON.stringify(newer), [STORAGE_KEY]: JSON.stringify(v2) });
+  assert.deepEqual(loadPlan(storage, KEY).plan, newer);
+  assert.deepEqual(storage.writes, []);
   assert.deepEqual(loadPlan(storage, "neu-other/program").plan, emptyPlan());
+  savePlan(storage, loadPlan(storage, KEY).plan, KEY);
+  assert.deepEqual(JSON.parse(storage.map.get(STORAGE_KEY)!), newer);
+  assert.equal(storage.map.has(V1_STORAGE_KEYS.plan), false);
+});
+
+test("an old page that writes v1 after the migration loses no edit (#69 review)", () => {
+  const storage = memoryStorage({ [V1_STORAGE_KEYS.plan]: JSON.stringify(emptyPlan()) });
+  // New tab: load, then the hydration autosave migrates to v2.
+  savePlan(storage, loadPlan(storage, KEY).plan, KEY);
+  assert.equal(storage.map.has(V1_STORAGE_KEYS.plan), false);
+  // Old tab (v1 code) still open: its next autosave writes only v1.
+  const oldTabEdit: StudentPlan = { ...emptyPlan(), completedCourses: ["CS 5010"], waivedCourses: ["CS 5004"] };
+  storage.setItem(V1_STORAGE_KEYS.plan, JSON.stringify(oldTabEdit));
+  // A reload of the new code shows the old tab's edit, and its save keeps it.
+  const reloaded = loadPlan(storage, KEY);
+  assert.deepEqual(reloaded.plan, oldTabEdit);
+  savePlan(storage, reloaded.plan, KEY);
+  assert.deepEqual(JSON.parse(storage.map.get(STORAGE_KEY)!), oldTabEdit);
+});
+
+test("a corrupt v1 plan beside a v2 plan blocks the load and keeps both texts (#69 review)", () => {
+  const v2Text = JSON.stringify({ ...emptyPlan(), completedCourses: ["CS 5800"] });
+  const storage = memoryStorage({ [V1_STORAGE_KEYS.plan]: "{not-json", [STORAGE_KEY]: v2Text });
+  const loaded = loadPlan(storage, KEY);
+  assert.match(loaded.error ?? "", /Could not load/);
+  assert.equal(loaded.raw, "{not-json");
+  assert.deepEqual(storage.writes, []);
+  assert.equal(storage.map.get(STORAGE_KEY), v2Text);
+});
+
+test("an oversized v1 plan blocks the load and is not written (#69 review)", () => {
+  const huge = JSON.stringify({ ...emptyPlan(), completedCourses: Array.from({ length: 400 }, (_, i) => `CS ${5000 + i}`) });
+  const storage = memoryStorage({ [V1_STORAGE_KEYS.plan]: huge });
+  const loaded = loadPlan(storage, KEY);
+  assert.match(loaded.error ?? "", /Could not load/);
+  assert.equal(loaded.raw, huge);
+  assert.deepEqual(storage.writes, []);
+});
+
+test("every v1 preference migrates without loss: v1 is removed only after the v2 read-back (#69 review)", () => {
+  for (const name of Object.keys(V1_STORAGE_KEYS) as (keyof typeof V1_STORAGE_KEYS)[]) {
+    const v1 = `{"value":"${name}"}`;
+    const storage = memoryStorage({ [V1_STORAGE_KEYS[name]]: v1 });
+    assert.equal(readCatalogValue(storage, name, KEY), v1, name);
+    assert.deepEqual(storage.writes, [], name);
+    writeCatalogValue(storage, name, KEY, v1);
+    assert.deepEqual(storage.writes, [`set coursesplanner:v2:${KEY}:${name}`, `remove ${V1_STORAGE_KEYS[name]}`], name);
+    assert.equal(readCatalogValue(storage, name, KEY), v1, name);
+
+    const full = { ...memoryStorage({ [V1_STORAGE_KEYS[name]]: v1 }), setItem: () => { throw new Error("QuotaExceededError"); } };
+    assert.throws(() => writeCatalogValue(full, name, KEY, "next"), /Quota/);
+    assert.equal(full.map.get(V1_STORAGE_KEYS[name]), v1, name);
+  }
 });
 
 test("per-program preferences fall back to v1 and drop it on the next write or reset (#69)", () => {

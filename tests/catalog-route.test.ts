@@ -110,11 +110,23 @@ test("GET /api/catalog?key= serves the snapshot of that catalog key; an old id i
 });
 
 test("GET /api/catalog with an unknown key is 404 (#69)", async () => {
-  for (const query of ["?key=nope", "?key=northeastern/nope", "?key="]) {
+  const traversal = ["../catalog", "..%2F..%2Fdata%2Fcatalog.json", "%2e%2e/%2e%2e/etc/passwd", "northeastern/../neu-mscs-seattle",
+    `${encodeURIComponent(DEFAULT_CATALOG_KEY)}%00`, "__proto__", "constructor", "hasOwnProperty", " neu-mscs-seattle", "NEU-MSCS-SEATTLE"];
+  for (const query of ["?key=nope", "?key=northeastern/nope", "?key=", ...traversal.map((key) => `?key=${key}`), `?key=${"a".repeat(100_000)}`]) {
     const response = await GET(getRequest(query));
     assert.equal(response.status, 404, query);
-    assert.match((await response.json()).error, /No catalog has the key/);
+    const { error } = await response.json();
+    assert.match(error, /No catalog has the key/);
+    assert.ok(error.length < 200, "the echoed key is cut");
   }
+});
+
+test("GET /api/catalog keeps one memoized body for any number of user keys (#69 review)", async () => {
+  await withEnv({ [TOKEN_ENV]: undefined, NODE_ENV: "production" }, async () => {
+    const first = await (await GET(getRequest("?key=neu-mscs-seattle"))).text();
+    for (let i = 0; i < 200; i += 1) await GET(getRequest(`?key=junk-${i}`));
+    assert.equal(await (await GET(getRequest(`?key=${DEFAULT_CATALOG_KEY}`))).text(), first);
+  });
 });
 
 test("the default catalog key is a published program and matches data/catalog.json (#69)", () => {

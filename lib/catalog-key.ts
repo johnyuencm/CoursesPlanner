@@ -54,7 +54,9 @@ export function catalogStorageKey(name: CatalogValueName, catalogKey: string): s
 }
 
 /**
- * Read a per-program value. For the default catalog with no v2 value, give the v1 value.
+ * Read a per-program value. For the default catalog, a v1 value wins over the v2 value:
+ * a write removes v1 after the v2 read-back, so a v1 value that is still there is newer.
+ * A page that still runs the v1 code (a tab opened before the deploy, or a rollback) wrote it.
  * This never writes, so unreadable v1 data stays as it is.
  */
 export function readCatalogValue(
@@ -62,9 +64,8 @@ export function readCatalogValue(
   name: CatalogValueName,
   catalogKey: string,
 ): string | null {
-  const value = storage.getItem(catalogStorageKey(name, catalogKey));
-  if (value !== null || catalogKey !== DEFAULT_CATALOG_KEY) return value;
-  return storage.getItem(V1_STORAGE_KEYS[name]);
+  const v1 = catalogKey === DEFAULT_CATALOG_KEY ? storage.getItem(V1_STORAGE_KEYS[name]) : null;
+  return v1 ?? storage.getItem(catalogStorageKey(name, catalogKey));
 }
 
 /**
