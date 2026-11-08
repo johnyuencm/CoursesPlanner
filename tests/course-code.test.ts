@@ -31,8 +31,8 @@ test("Northeastern grammar round-trips real fixture codes: display -> canonical 
   }
 });
 
-test("Northeastern grammar gives today's results for every packaged course code", () => {
-  const codes = new Set([...readCatalog().courses, ...roadmap.courses].map((course) => course.code));
+test("Northeastern grammar gives today's results for every packaged course code", async () => {
+  const codes = new Set([...(await readCatalog()).courses, ...roadmap.courses].map((course) => course.code));
   assert.ok(codes.size > 100, "fixtures hold real codes");
   for (const code of codes) {
     assert.equal(grammar.pattern.test(code), OLD_PATTERN.test(code), code);
@@ -54,9 +54,9 @@ test("Northeastern normalizer matches the explore-focus parser on loose and inva
   assert.equal(grammar.subject("6.1210"), null);
 });
 
-test("each adapter declares the grammar that the lookup returns", () => {
+test("each adapter declares the grammar that the lookup returns", async () => {
   for (const id of registeredAdapters()) assert.equal(getAdapter(id).codeGrammar, courseCodeGrammar(id), id);
-  assert.equal(courseCodeGrammar(readCatalog().adapter!), northeasternCodeGrammar);
+  assert.equal(courseCodeGrammar((await readCatalog()).adapter!), northeasternCodeGrammar);
   assert.throws(() => courseCodeGrammar("no-such-adapter"), /no-such-adapter/);
 });
 

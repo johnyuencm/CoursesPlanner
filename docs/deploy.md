@@ -24,23 +24,48 @@ This file is operator notes. Students who use the planner do not need it.
 flowchart LR
   B[npm run build] --> P[vinext prerenders 126 routes]
   P --> A[dist/client: static assets]
+  B --> M[validate data/published.json snapshots]
+  M --> A
   B --> W[dist/server: Worker code]
   A --> D[npm run deploy]
   W --> D
   D --> CF[Worker coursesplanner]
   R[Request] --> CF
   CF -->|prerendered page| A
-  CF -->|/api/*, /sitemap.xml, 404| S[server code + bundled snapshot]
+  CF -->|/api/*, /sitemap.xml, 404| S[server code]
+  S -->|ASSETS binding| A
 ```
 
 - `npm run build` runs `vite build`. vinext prerenders every static page at build time: `/`, `/explore`, `/planner`, `/courses`, all `/courses/<slug>`, all `/pathways/<id>`. The Worker serves them from static assets (`X-Vinext-Cache: HIT`).
 - `/api/catalog`, `/api/roadmaps`, `/sitemap.xml`, `/robots.txt` and 404 pages run in the Worker.
-- Workers has no project filesystem. [`lib/embedded-snapshot.ts`](../lib/embedded-snapshot.ts) bundles the committed JSON (`data/catalog.json`, `catalog-service/universities.json`, the Northeastern programs and roadmap). The readers try disk first (dev, tests, CLI). They use the bundle only when the file is missing (`ENOENT`). A corrupt disk file gives an error.
-- When you commit a new `programs.json` or a new ready roadmap, add it to `FILES` in `lib/embedded-snapshot.ts`. `tests/embedded-snapshot.test.ts` fails if a committed ready roadmap is not in `FILES`.
+- Workers has no project filesystem. The Worker reads the published snapshots from static assets. See [Published snapshots](#published-snapshots).
 - `POST /api/catalog` (refresh) stays off in production: it answers 401. Refresh the catalog with `npm run catalog:refresh`, commit `data/`, then deploy.
 - `app/global-not-found.tsx` renders route misses without the root layout, because a full layout render costs more CPU than the Free plan allows.
 - [`worker.ts`](../worker.ts) is the Worker entry (`main` in `wrangler.jsonc`). It changes an unknown `/courses/<slug>` request to a route miss, then calls vinext. All other requests go to vinext unchanged.
 - `/`, `/explore`, `/pathways`, `/planner` and `/courses` put server-rendered catalog text in the prerendered HTML ([`components/program-summary.tsx`](../components/program-summary.tsx)). Crawlers read it without JavaScript. The interactive views load after it.
+
+## Published snapshots
+
+```mermaid
+flowchart LR
+  L[data/published.json<br/>catalog keys] --> V[build: validate]
+  F[data/catalog.json<br/>universities.json<br/>data/catalogs/...] --> V
+  V -->|missing or invalid| X[build fails]
+  V --> A[dist/client/_snapshots/<br/>manifest.json + files]
+  A -->|ASSETS binding| W[Worker readers]
+```
+
+- [`data/published.json`](../data/published.json) is the allowlist. Each entry is a catalog key, `<university-id>/<program-id>`, for one ready roadmap.
+- `npm run build` runs [`lib/snapshot-manifest.ts`](../lib/snapshot-manifest.ts) from a plugin in [`vite.config.ts`](../vite.config.ts). It validates each listed roadmap, its `programs.json`, `data/catalog.json` and `catalog-service/universities.json`.
+- The build fails when a listed roadmap is missing, invalid or not `ready`. The Worker never lists a program that answers 503.
+- The build writes the files to `dist/client/_snapshots/<repo path>`. It also writes `_snapshots/manifest.json`. Each manifest entry has a catalog key, a tier (`audit` or `map`), an edition (the snapshot `lastUpdated`) and a file.
+- The shipped `programs.json` keeps only the published programs. To unpublish a program, remove its key and deploy. You do not change code.
+- To publish a new program, commit its roadmap and `programs.json` (see `.gitignore`), then add its key.
+- The readers try disk first (dev, tests, CLI, prerender). When a file is missing (`ENOENT`), the Worker reads it through the `ASSETS` binding ([`lib/snapshot-assets.ts`](../lib/snapshot-assets.ts)), from `import { env } from "cloudflare:workers"`. It reads only files that the manifest lists. A corrupt disk file gives an error.
+- The Worker does not validate the files again, because the build did. It parses each file once per isolate. The API routes keep the serialized body in memory, as before.
+- `npm run dev:vinext` also runs in workerd without project files. There, a virtual module from `vite.config.ts` gives the same files.
+- The files are public at `/_snapshots/...`. They hold the same data that `/api/catalog` and `/api/roadmaps` return.
+- Node tools import no snapshot file. The CLI still works when you delete a `data/catalogs/<id>/` folder.
 
 ## Deploy
 
@@ -117,7 +142,7 @@ flowchart LR
   M --> G[global-not-found 404, no layout]
 ```
 
-- The check is one `URL` parse and one `Set` lookup. The slug `Set` comes from the bundled `data/catalog.json`, once for each isolate.
+- The check is one `URL` parse and one `Set` lookup. The slug `Set` comes from the published `data/catalog.json` (static assets, through `readCatalog()`), once for each isolate. The first `/courses/*` request of an isolate reads and parses that file. If the read fails, the request goes to vinext unchanged.
 - vinext middleware does not run, so real course pages do not pay for the check. The old `proxy.ts` used vinext middleware.
 - `tests/course-pages.test.ts` pins the rule: unknown slugs and placeholder courses go to the 404, real course pages do not.
 
@@ -151,6 +176,6 @@ Send requests in a second terminal, then read `cpuTime` for each event.
 | --- | --- |
 | 100,000 requests per day | Each page view is 1 request, plus `/api/catalog` and `/api/roadmaps` on Explore and Planner. Static `/_next/static/*` files do not count, because they skip the Worker |
 | 10 ms CPU per request | See the table above |
-| 3 MB Worker size (gzip) | 614 KiB gzip |
+| 3 MB Worker size (gzip) | 583 KiB gzip (2026-11-08, after the snapshots moved to static assets) |
 
 Over the daily request limit, Cloudflare returns errors until the next day. It does not bill. Do not turn on Workers Paid, Cloudflare Images or other paid add-ons without the owner's explicit yes.

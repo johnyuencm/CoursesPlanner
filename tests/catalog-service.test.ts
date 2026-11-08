@@ -559,7 +559,7 @@ test("two registered sources refresh independently from the same fixtures", { ti
 test("catalog service HTTP handlers list sources and universities without changing refresh behavior", async () => {
   const sources = await loadRegistry();
   const universities = await loadUniversityDirectory();
-  const catalog = readCatalog();
+  const catalog = await readCatalog();
   const context = {
     sources,
     universities,
@@ -632,7 +632,7 @@ test("catalog service HTTP handlers list sources and universities without changi
 test("catalog service refuses cross-site refresh and maps 5xx errors to safe text (CR4, CR5)", async () => {
   const sources = await loadRegistry();
   const universities = await loadUniversityDirectory();
-  const catalog = readCatalog();
+  const catalog = await readCatalog();
   const context = {
     sources,
     universities,

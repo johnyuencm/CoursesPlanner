@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/courses" },
 };
 
-export default function CoursesPage() {
-  const catalog = readCatalog();
+export default async function CoursesPage() {
+  const catalog = await readCatalog();
   const courses = publicCourses(catalog);
   // The interactive explorer loads the catalog in the browser; this index is plain HTML, so every course page is one link away.
   return <>

@@ -1,20 +1,27 @@
 import vinext from "vinext/server/app-router-entry";
-import catalog from "./data/catalog.json";
+import { readCatalog } from "./lib/catalog";
 import { courseSlug, isUnknownCoursePath, publicCourses } from "./lib/course-pages";
-import type { Catalog } from "./lib/types";
 
 // An unknown /courses/<slug> renders notFound() inside the root layout: p50 15 ms CPU, over the
 // Workers Free 10 ms limit. A route miss renders app/global-not-found.tsx without the layout.
 // This check runs before vinext, so real course pages still get the prerendered HTML directly.
 // A proxy.ts did the same job, but vinext middleware made every course page slower (docs/deploy.md).
-let slugs: Set<string> | undefined;
+// The slugs come from the published catalog (static assets), once per isolate.
+let slugs: Promise<Set<string>> | undefined;
+
+function courseSlugs(): Promise<Set<string>> {
+  slugs ??= readCatalog().then((catalog) => new Set(publicCourses(catalog).map((course) => courseSlug(course.code))));
+  slugs.catch(() => { slugs = undefined; }); // try again on the next request
+  return slugs;
+}
 
 export default {
-  fetch(request: Request, env: Parameters<typeof vinext.fetch>[1], ctx: Parameters<typeof vinext.fetch>[2]) {
+  async fetch(request: Request, env: Parameters<typeof vinext.fetch>[1], ctx: Parameters<typeof vinext.fetch>[2]) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/courses/")) {
-      slugs ??= new Set(publicCourses(catalog as Catalog).map((course) => courseSlug(course.code)));
-      if (isUnknownCoursePath(url.pathname, slugs)) request = new Request(new URL("/__unknown-course", url), request);
+      // Without the catalog, vinext renders the page and answers as before.
+      const known = await courseSlugs().catch(() => undefined);
+      if (known && isUnknownCoursePath(url.pathname, known)) request = new Request(new URL("/__unknown-course", url), request);
     }
     return vinext.fetch(request, env, ctx);
   },

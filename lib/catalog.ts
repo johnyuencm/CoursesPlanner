@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
-import { embeddedJson } from "./embedded-snapshot";
+import { snapshotAsset } from "./snapshot-assets";
 import type {
   Catalog,
   Course,
@@ -565,17 +565,17 @@ export function defaultCatalogFilePath(): string {
 
 let catalogDiskCache: { filePath: string; mtimeMs: number; catalog: Catalog } | null = null;
 
-export function readCatalog(filePath = defaultCatalogFilePath()): Catalog {
+export async function readCatalog(filePath = defaultCatalogFilePath()): Promise<Catalog> {
   let details;
   try {
     details = statSync(filePath);
   } catch (error) {
-    const embedded = embeddedJson(filePath);
-    if (embedded === undefined) throw error;
     if (catalogDiskCache?.filePath === filePath && catalogDiskCache.mtimeMs === -1) return catalogDiskCache.catalog;
-    validateCatalog(embedded);
-    catalogDiskCache = { filePath, mtimeMs: -1, catalog: embedded };
-    return embedded;
+    // Worker: the build validated the published copy, so do not spend request CPU on it again.
+    const published = (await snapshotAsset(filePath)) as Catalog | undefined;
+    if (published === undefined) throw error;
+    catalogDiskCache = { filePath, mtimeMs: -1, catalog: published };
+    return published;
   }
   if (catalogDiskCache && catalogDiskCache.filePath === filePath && catalogDiskCache.mtimeMs === details.mtimeMs) {
     return catalogDiskCache.catalog;

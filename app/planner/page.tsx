@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/planner" },
 };
 
-export default function PlannerPage() {
+export default async function PlannerPage() {
   return <>
     <PlannerBoard />
     <div className="static-page course-index">
@@ -18,7 +18,7 @@ export default function PlannerPage() {
         <p>Add courses to semesters. The planner checks each course against its prerequisites and corequisites in the catalog.
           It also counts your credits against the degree rules below. Your plan stays in this browser. Nothing goes to a server.</p>
       </section>
-      <DegreeRules catalog={readCatalog()} />
+      <DegreeRules catalog={await readCatalog()} />
     </div>
   </>;
 }

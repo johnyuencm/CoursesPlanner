@@ -5,8 +5,8 @@ import { SITE_URL, courseSlug, publicCourses } from "@/lib/course-pages";
 import { routes } from "@/lib/routes";
 import type { Pathway } from "@/lib/types";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const catalog = readCatalog();
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const catalog = await readCatalog();
   const lastModified = new Date(catalog.lastUpdated);
   const paths = [
     routes.overview, routes.explore, routes.courses, routes.paths,

@@ -33,7 +33,7 @@ export default async function PathwayPage({ params }: Props) {
   const { id } = await params;
   const pathway = pathways.find((item) => item.id === id);
   if (!pathway) notFound();
-  const catalog = readCatalog();
+  const catalog = await readCatalog();
   const byCode = new Map(catalog.courses.map((course) => [course.code, course]));
   const pageCodes = new Set(publicCourses(catalog).map((course) => course.code));
   const inPath = new Set(pathway.groups.flatMap((group) => group.courses));
