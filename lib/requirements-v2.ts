@@ -150,7 +150,13 @@ export function requirementTier(requirements: DegreeRequirementV2, courses: Cour
 type Leaf = Extract<RuleGroup, { kind: "choose-courses" | "choose-credits" | "choose-areas" }>;
 /** The courses that one group takes in an allocation. */
 type Pick = { codes: string[]; satisfied: boolean; areas: string[] };
-type Context = { audit: PlanCourseAudit; credits: Map<string, number>; steps: number };
+type Context = {
+  audit: PlanCourseAudit;
+  credits: Map<string, number>;
+  steps: number;
+  /** For each group: the courses that later groups in its pool list. */
+  later: Map<Leaf, Set<string>>;
+};
 
 // ponytail: a step cap keeps a pathological tree from freezing the planner. Past the cap the audit
 // keeps the best allocation found so far, so it can miss a valid allocation but never claims a false one.
@@ -211,13 +217,18 @@ function* minimalSets(
  */
 function* selections(leaf: Leaf, free: Set<string>, context: Context): Generator<Pick> {
   const codes = candidates(leaf, free, context);
+  // Try courses that no later group lists first. Then the first selections leave later groups
+  // their courses, and the search meets every group in few steps. Picks keep candidate order.
+  const later = context.later.get(leaf) ?? new Set<string>();
+  const order = [...codes.filter((code) => !later.has(code)), ...codes.filter((code) => later.has(code))];
+  const inOrder = (picked: string[]) => codes.filter((code) => picked.includes(code));
   switch (leaf.kind) {
     case "choose-courses": {
       if (codes.length < leaf.count) {
         yield { codes, satisfied: false, areas: [] };
         return;
       }
-      for (const picked of combinations(codes, leaf.count)) yield { codes: picked, satisfied: true, areas: [] };
+      for (const picked of combinations(order, leaf.count)) yield { codes: inOrder(picked), satisfied: true, areas: [] };
       return;
     }
     case "choose-credits": {
@@ -226,16 +237,13 @@ function* selections(leaf: Leaf, free: Set<string>, context: Context): Generator
         return;
       }
       const credit = (code: string) => context.credits.get(code) ?? 0;
-      for (const picked of minimalSets(codes.filter((code) => credit(code) > 0), credit, leaf.credits)) {
-        yield { codes: picked, satisfied: true, areas: [] };
+      for (const picked of minimalSets(order.filter((code) => credit(code) > 0), credit, leaf.credits)) {
+        yield { codes: inOrder(picked), satisfied: true, areas: [] };
       }
       return;
     }
     case "choose-areas": {
-      const membership = new Map<string, string[]>();
-      for (const area of leaf.areas) {
-        for (const code of area.courses) membership.set(code, [...(membership.get(code) ?? []), area.id]);
-      }
+      const membership = areaMembership(leaf);
       if (leaf.count === 0) {
         yield { codes: [], satisfied: leaf.minAreas === 0 && leaf.credits <= 0, areas: [] };
         return;
@@ -244,11 +252,13 @@ function* selections(leaf: Leaf, free: Set<string>, context: Context): Generator
         yield { codes, satisfied: false, areas: categoryMatching(codes, membership) };
         return;
       }
-      const all = [...combinations(codes, leaf.count)].map((picked) => ({
+      const all = [...combinations(order, leaf.count)].map(inOrder).map((picked) => ({
         codes: picked,
         areas: categoryMatching(picked, membership),
         credits: creditsOf(picked, context),
       }));
+      // Each combination is search work, so it counts toward the step cap.
+      context.steps += all.length;
       // Fewest credits first (more stay free for other groups), then most areas. The sort is stable.
       const feasible = all
         .filter((option) => option.areas.length >= leaf.minAreas && option.credits >= leaf.credits)
@@ -268,10 +278,29 @@ function* selections(leaf: Leaf, free: Set<string>, context: Context): Generator
   }
 }
 
+function areaMembership(leaf: Extract<Leaf, { kind: "choose-areas" }>): Map<string, string[]> {
+  const membership = new Map<string, string[]>();
+  for (const area of leaf.areas) {
+    for (const code of area.courses) membership.set(code, [...(membership.get(code) ?? []), area.id]);
+  }
+  return membership;
+}
+
+/**
+ * Can the group still be met from `free`? The search uses this only to prune, so it may say yes
+ * too often, but never no too often. For choose-areas it is a cheap bound, not a full enumeration.
+ */
 function canMeet(leaf: Leaf, free: Set<string>, context: Context): boolean {
-  if (leaf.kind === "choose-courses") return candidates(leaf, free, context).length >= leaf.count;
-  if (leaf.kind === "choose-credits") return creditsOf(candidates(leaf, free, context), context) >= leaf.credits;
-  return selections(leaf, free, context).next().value?.satisfied ?? false;
+  const codes = candidates(leaf, free, context);
+  if (leaf.kind === "choose-courses") return codes.length >= leaf.count;
+  if (leaf.kind === "choose-credits") return creditsOf(codes, context) >= leaf.credits;
+  if (leaf.count === 0) return leaf.minAreas === 0 && leaf.credits <= 0;
+  const best = codes.map((code) => context.credits.get(code) ?? 0).sort((a, b) => b - a).slice(0, leaf.count);
+  return (
+    codes.length >= leaf.count &&
+    Math.min(leaf.count, categoryMatching(codes, areaMembership(leaf)).length) >= leaf.minAreas &&
+    best.reduce((sum, value) => sum + value, 0) >= leaf.credits
+  );
 }
 
 /** True when `a` beats `b`: at the first group where they differ, `a` meets it. */
@@ -281,12 +310,18 @@ function beats(a: boolean[], b: boolean[]): boolean {
 }
 
 /**
- * Gives each group in one pool its courses. The search keeps the allocation that meets the most
- * groups in tree order: it meets every group when any allocation can, and otherwise earlier groups
- * win. It tries the plain tree-order allocation first and keeps the first of equal results, so the
- * result is deterministic and does not depend on plan order.
+ * Gives each group in one pool its courses. The search meets every group when any allocation can
+ * (below the step cap). When no allocation can, earlier groups win, and a group that cannot be met
+ * keeps its partial progress: it holds those courses, so a later group can stay unmet although it
+ * could be met alone. It tries the plain tree-order allocation first and keeps the first of equal
+ * results, so the result is deterministic and does not depend on plan order.
  */
 function allocate(leaves: Leaf[], free: Set<string>, context: Context, picks: Map<RuleGroup, Pick>): void {
+  const listedLater = new Set<string>();
+  for (const leaf of [...leaves].reverse()) {
+    context.later.set(leaf, new Set(listedLater));
+    for (const code of groupCodes(leaf)) listedLater.add(code);
+  }
   let best: Pick[] = [];
   let bestScore: boolean[] | undefined;
   const visit = (index: number, available: Set<string>, chosen: Pick[]) => {
@@ -407,7 +442,7 @@ export function validatePlanV2(plan: StudentPlan, catalog: Catalog, requirements
   // A Map-tier tree can miss courses, so every catalog course counts toward the plan credits.
   const degreeCodes = tier === "audit" ? groupCodes(requirements.root) : catalog.courses.map((course) => course.code);
   const audit = auditPlanCourses(plan, catalog, new Set(degreeCodes));
-  const context: Context = { audit, credits: new Map(audit.counted.map((course) => [course.code, course.credits])), steps: 0 };
+  const context: Context = { audit, credits: new Map(audit.counted.map((course) => [course.code, course.credits])), steps: 0, later: new Map() };
   const free = new Set([...audit.completed, ...audit.waived, ...audit.validPlanned]);
   const picks = new Map<RuleGroup, Pick>();
   const main: Leaf[] = [];

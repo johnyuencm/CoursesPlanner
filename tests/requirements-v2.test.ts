@@ -403,3 +403,41 @@ test("probe C: a shared group may use a course that another group also uses", ()
   assert.deepEqual(met(program(only, shared), ["CS 1"]), [true, true]);
   assert.deepEqual(met(program(shared, only), ["CS 1"]), [true, true]);
 });
+
+// PR #98 review: the step cap must not hide a full allocation in a plain tree, and must bound the time.
+test("a large credit group leaves a later group its course, and a pigeonhole tree stays fast", () => {
+  const many = Array.from({ length: 24 }, (_, index) => `CS ${100 + index}`);
+  const catalog: Catalog = { ...small, courses: many.map((code) => course(code, 3)) };
+  const tree = (root: RuleGroup): DegreeRequirementV2 => ({
+    version: 2, name: "Large", catalogYear: "", officialUrl: "", uncertainties: [], lastUpdated: "", root,
+  });
+  // 30 credits from 24 three-credit courses, then one named course: needs 10 + 1 courses.
+  const credits = validatePlanV2(plan(many), catalog, tree(program(
+    { ...base, kind: "choose-credits", id: "electives", credits: 30, courses: many },
+    { ...base, kind: "choose-courses", id: "req", count: 1, courses: [many[0]] },
+  ))).root;
+  assert.deepEqual(credits.children.map((child) => child.satisfied), [true, true]);
+
+  // Ten groups compete for nine courses; the first group must take the course that no other lists.
+  const nine = many.slice(0, 9);
+  const pigeon = validatePlanV2(plan([...nine, many[9]]), catalog, tree(program(
+    { ...base, kind: "choose-courses", id: "first", count: 1, courses: [nine[0], many[9]] },
+    ...nine.map((_, index): RuleGroup => ({ ...base, kind: "choose-courses", id: `g${index}`, count: 1, courses: nine })),
+  ))).root;
+  assert.equal(pigeon.satisfied, true);
+
+  // Nine groups on eight courses cannot all be met; a wide choose-areas group after them must not freeze the audit.
+  const areaCodes = Array.from({ length: 40 }, (_, index) => `CS ${200 + index}`);
+  const wide: Catalog = { ...small, courses: [...nine, ...areaCodes].map((code) => course(code)) };
+  const started = performance.now();
+  const slow = validatePlanV2(plan([...nine.slice(0, 8), ...areaCodes]), wide, tree(program(
+    ...nine.map((_, index): RuleGroup => ({ ...base, kind: "choose-courses", id: `g${index}`, count: 1, courses: nine.slice(0, 8) })),
+    {
+      ...base, kind: "choose-areas", id: "breadth", count: 3, minAreas: 2, credits: 12,
+      areas: [{ id: "a", name: "A", courses: areaCodes.slice(0, 20) }, { id: "b", name: "B", courses: areaCodes.slice(20) }],
+    },
+  ))).root;
+  assert.equal(slow.satisfied, false);
+  assert.equal(slow.children[9].satisfied, true);
+  assert.ok(performance.now() - started < 3000, `audit took ${performance.now() - started} ms`);
+});
