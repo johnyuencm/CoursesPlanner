@@ -1,11 +1,14 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
+import { renderToStaticMarkup } from "react-dom/server";
 
+import CoursePage from "../app/courses/[code]/page";
 import pathwayConfig from "../config/pathways.json";
 import { readCatalog } from "../lib/catalog";
 import {
   courseBySlug,
   courseSlug,
+  needsReview,
   requirementText,
   shortestPrerequisiteChain,
   unmetRequirements,
@@ -87,4 +90,27 @@ test("paths and requirement labels come from the packaged config and catalog", (
   assert.match(requirementLabel(breadth, catalog), /^Breadth course: /);
   // CS 5003 is only a corequisite (of CS 5001), not a prerequisite for anything.
   assert.equal(requirementLabel(catalog.courses.find((item) => item.code === "CS 5003")!, catalog), "Outside the degree requirements");
+});
+
+test("an unknown clause is never treated as met (B3, #67)", () => {
+  const unknown = { type: "unknown" as const, text: "Graduate" };
+  const andUnknown = { type: "all" as const, items: [one("A"), unknown] };
+  assert.deepEqual(unmetRequirements(andUnknown, new Set(["A"])), [[needsReview("Graduate")]], "A is met, the unknown is still open");
+  assert.deepEqual(unmetRequirements(andUnknown, new Set()), [["A"], [needsReview("Graduate")]]);
+  // "A or <unknown>": A covers it. Without A, the unknown is only one option, not a pass.
+  const orUnknown = { type: "any" as const, items: [one("A"), unknown] };
+  assert.deepEqual(unmetRequirements(orUnknown, new Set(["A"])), []);
+  assert.deepEqual(unmetRequirements(orUnknown, new Set()), [["A", needsReview("Graduate")]]);
+  // Real data: CS 5400 is "CS 5010 or CS 5004 or (CS 5010 and Graduate)".
+  const cs5400 = readCatalog().courses.find((item) => item.code === "CS 5400")!;
+  assert.deepEqual(unmetRequirements(cs5400.prerequisites, new Set()), [["CS 5010", "CS 5004"]]);
+});
+
+test("course page shows the and/or structure of prerequisites (B2, #66)", async () => {
+  const pageText = async (code: string) => renderToStaticMarkup(await CoursePage({ params: Promise.resolve({ code }) }))
+    .replace(/<[^>]+>/g, "");
+  // CS 6510 needs (CS 5004 or CS 5010) and CS 5500.
+  assert.match(await pageText("cs-6510"), /Take all of these:One of: CS 5004 [^,]+, CS 5010 [^,]+CS 5500 /);
+  // CS 5400: an "or" with an unclear clause. The clause shows as needing review.
+  assert.match(await pageText("cs-5400"), /One of: CS 5010 [^,]+, CS 5004 [^,]+, \(CS 5010 [^)]+ and Needs review — Graduate\)/);
 });
