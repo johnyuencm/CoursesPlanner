@@ -93,7 +93,7 @@ export function Overview() {
       <section className="overview-entry-card">
         <h2>Understand what every course unlocks</h2>
         <p>
-          The course map is the product. Select any MSCS Seattle course to see what it requires and what it opens next.
+          The course map is the product. Select any course to see what it requires and what it opens next.
           Plan, Courses, and Paths orbit that graph — this page is only a status doorway.
         </p>
         <div className="overview-entry-actions">

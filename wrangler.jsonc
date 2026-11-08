@@ -19,7 +19,10 @@
     "run_worker_first": [
       "/*",
       "!/_next/static/*",
-      "!/*/_next/static/*"
+      "!/*/_next/static/*",
+      // public/ icons: static assets answer them, the Worker never runs.
+      "!/favicon.ico",
+      "!/icon.svg"
     ]
   }
 }

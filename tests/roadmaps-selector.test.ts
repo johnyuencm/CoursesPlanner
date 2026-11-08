@@ -152,8 +152,9 @@ test("roadmap overrides course data and program scope, and restores catalog defa
   assert.equal(resolveProgramScope(defaultCatalog, null).has("CS 5010"), true);
 
   assert.equal(roadmapFocusCourse(selected), "CS 5010");
-  assert.equal(roadmapProgramLabel(selected), "Example Program, MS");
-  assert.equal(roadmapProgramLabel(null), "MSCS Seattle");
+  assert.equal(roadmapProgramLabel(selected, { program: "Computer Science, MSCS—Seattle" }), "Example Program, MS");
+  assert.equal(roadmapProgramLabel(null, { program: "Computer Science, MSCS—Seattle" }), "Computer Science, MSCS—Seattle");
+  assert.equal(roadmapProgramLabel(null, null), "current");
 });
 
 test("resolveProgramScope falls back to programMapCodes for the default catalog", () => {

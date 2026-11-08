@@ -103,7 +103,7 @@ export function pathwaysFor(code: string, pathways: readonly Pathway[]): { pathw
   );
 }
 
-/** Short role of the course in the MSCS Seattle degree. */
+/** Short role of the course in the program's degree rules. */
 export function requirementLabel(course: Course, catalog: Catalog): string {
   if (course.requirementType === "core") return "Required core course";
   if (course.requirementType === "breadth") {

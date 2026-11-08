@@ -38,15 +38,25 @@ export function primaryNav(routes: ProgramRoutes) {
 
 const defaultProgram = `/${DEFAULT_CATALOG_KEY}`;
 
-/**
- * Old top-level URLs. `next.config.ts` serves them as redirects; the query string stays.
- * `/` is a temporary redirect, because T8 (#72) makes `/` the program picker.
- */
+/** Old top-level URLs. `next.config.ts` serves them as redirects; the query string stays. `/` is the program picker (#72). */
 export const legacyRedirects = [
-  { source: "/", destination: defaultProgram, permanent: false },
   { source: "/map", destination: `${defaultProgram}/explore`, permanent: true },
   // Exact rules: vinext gives `/courses/:path*` with no path a trailing slash, so a second redirect.
   ...["/explore", "/planner", "/courses", "/pathways", "/courses/:slug", "/pathways/:id"].map((source) => (
     { source, destination: `${defaultProgram}${source}`, permanent: true }
   )),
 ];
+
+/**
+ * The new path of an old top-level path, or null. The rules are `legacyRedirects` (`:name` matches one segment).
+ * `worker.ts` uses it for a trailing slash (`/courses/`). Else vinext removes the slash first: a second hop.
+ */
+export function legacyDestination(pathname: string): string | null {
+  const parts = pathname.split("/");
+  for (const { source, destination } of legacyRedirects) {
+    const pattern = source.split("/");
+    const match = pattern.length === parts.length && pattern.every((part, index) => part.startsWith(":") ? parts[index] !== "" : part === parts[index]);
+    if (match) return destination.replace(/:\w+/g, (name) => parts[pattern.indexOf(name)]!);
+  }
+  return null;
+}

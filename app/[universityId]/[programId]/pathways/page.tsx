@@ -6,10 +6,10 @@ import { readProgram, type ProgramParams } from "@/lib/program-page";
 type Props = { params: Promise<ProgramParams> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { routes } = await readProgram(params);
+  const { name, routes } = await readProgram(params);
   return {
     title: "Paths",
-    description: "Suggested course paths for Northeastern's MSCS Seattle program: machine learning, systems, data engineering, robotics and general software engineering.",
+    description: `Suggested course paths for the ${name} program: machine learning, systems, data engineering, robotics and general software engineering.`,
     alternates: { canonical: routes.paths },
   };
 }

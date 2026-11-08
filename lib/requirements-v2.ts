@@ -53,6 +53,10 @@ export function requirementView(requirements: DegreeRequirementV2) {
     breadth: areaGroups[0] as GroupOf<"choose-areas"> | undefined,
     /** The first `choose-credits` group, if any. */
     electives: creditGroups[0] as GroupOf<"choose-credits"> | undefined,
+    /** Every `choose-areas` group, in tree order. */
+    breadthGroups: areaGroups,
+    /** Every `choose-credits` group, in tree order. */
+    electiveGroups: creditGroups,
     /** Courses that any `choose-credits` group lists. */
     electiveCourses: unique(creditGroups.flatMap((group) => group.courses)),
   };

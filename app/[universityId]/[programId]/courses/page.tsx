@@ -7,10 +7,10 @@ import { courseSlug, creditsLabel, publicCourses, requirementLabel } from "@/lib
 type Props = { params: Promise<ProgramParams> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { routes } = await readProgram(params);
+  const { name, routes } = await readProgram(params);
   return {
     title: "Courses",
-    description: "Every course in Northeastern's MSCS Seattle catalog, with prerequisites, what each course unlocks, and how it counts toward the degree.",
+    description: `Every course in the ${name} catalog, with prerequisites, what each course unlocks, and how it counts toward the degree.`,
     alternates: { canonical: routes.courses },
   };
 }

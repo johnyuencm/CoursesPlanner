@@ -19,12 +19,12 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const { routes } = await readProgram(params);
+  const { name, routes } = await readProgram(params);
   const pathway = pathways.find((item) => item.id === id);
   if (!pathway) return {};
   return {
     title: `${pathway.name} path`,
-    description: `${pathway.description} Courses for the ${pathway.name} path in Northeastern's MSCS Seattle program, with prerequisites and how each one counts.`,
+    description: `${pathway.description} Courses for the ${pathway.name} path in the ${name} program, with prerequisites and how each one counts.`,
     alternates: { canonical: routes.pathway(id) },
   };
 }

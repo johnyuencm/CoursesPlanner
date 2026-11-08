@@ -41,12 +41,12 @@ function unlockSummary(code: string, catalog: Catalog) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params;
-  const { catalog, routes } = await readProgram(params);
+  const { catalog, name, routes } = await readProgram(params);
   const course = courseBySlug(catalog, code);
   if (!course) return {};
   return {
     title: `${course.code} ${course.title}`,
-    description: `${course.code} ${course.title} (${creditsLabel(course)}) in Northeastern's MSCS Seattle program: ${requirementLabel(course, catalog).toLowerCase()}. ${unlockSummary(course.code, catalog)}`,
+    description: `${course.code} ${course.title} (${creditsLabel(course)}) in the ${name} program: ${requirementLabel(course, catalog).toLowerCase()}. ${unlockSummary(course.code, catalog)}`,
     alternates: { canonical: routes.course(code) },
   };
 }
@@ -124,7 +124,7 @@ export default async function CoursePage({ params }: Props) {
     <section>
       <h2>Catalog description</h2>
       <p>{course.description}</p>
-      <p className="muted">From the {catalog.requirements.catalogYear} Northeastern catalog. <a href={course.officialUrl} rel="noopener">Official course page</a>.
+      <p className="muted">From the {catalog.requirements.catalogYear} {catalog.university ?? "official"} catalog. <a href={course.officialUrl} rel="noopener">Official course page</a>.
         Semester offerings are not in the catalog, so check section times with the university.</p>
     </section>
 

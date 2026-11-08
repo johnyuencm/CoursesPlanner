@@ -13,7 +13,7 @@ export default async function ExplorePage({ params }: { params: Promise<ProgramP
     <div className="static-page course-index">
       <section aria-labelledby="explore-intro-title">
         <h2 id="explore-intro-title">About the course map</h2>
-        <p>The map shows {catalog.courses.length} courses from the {catalog.requirements.catalogYear} Northeastern catalog and {links} prerequisite links between them.
+        <p>The map shows {catalog.courses.length} courses from the {catalog.requirements.catalogYear} {catalog.university ?? "official"} catalog and {links} prerequisite links between them.
           Each link joins a prerequisite to the course that needs it.
           Select a course to see what it requires and what it opens next.</p>
         <p>Every course with catalog text also has its own page. See the <Link href={routes.courses}>course index</Link> or the <Link href={routes.paths}>paths</Link>.</p>

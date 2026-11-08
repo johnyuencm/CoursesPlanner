@@ -88,6 +88,7 @@ export function roadmapFocusCourse(roadmap: ProgramRoadmap): string {
   return roadmap.programCourseCodes[0] ?? "";
 }
 
-export function roadmapProgramLabel(roadmap: ProgramRoadmap | null): string {
-  return roadmap ? roadmap.program : "MSCS Seattle";
+/** The roadmap's program, else the program of the loaded catalog. */
+export function roadmapProgramLabel(roadmap: ProgramRoadmap | null, catalog: Pick<Catalog, "program"> | null): string {
+  return roadmap?.program ?? catalog?.program ?? "current";
 }

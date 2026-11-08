@@ -214,7 +214,7 @@ function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRo
   const overrideActive = roadmap !== null;
   const courses = useMemo(() => resolveGraphCourses(catalog, roadmap), [catalog, roadmap]);
   const programCodes = useMemo(() => resolveProgramScope(catalog, roadmap), [catalog, roadmap]);
-  const programLabel = roadmapProgramLabel(roadmap);
+  const programLabel = roadmapProgramLabel(roadmap, catalog);
   const urlFocus = overrideActive ? null : requestedFocus;
   const initialFocusCode = roadmap ? (roadmapFocusCourse(roadmap) || "CS 5010") : (urlFocus ?? workspaceSelection.focusCode);
   const initialSelectedCode = roadmap ? initialFocusCode : (urlFocus ?? workspaceSelection.selectedCode);
