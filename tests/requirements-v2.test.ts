@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { validateCatalog } from "../lib/catalog";
-import { requirementTier, requirementView, validatePlanV2 } from "../lib/requirements-v2";
+import { programCourseCodes, requirementTier, requirementView, validatePlanV2 } from "../lib/requirements-v2";
 import type { Catalog, Course, DegreeRequirementV2, RuleGroup, StudentPlan } from "../lib/types";
 
 const seattle = JSON.parse(readFileSync(path.join(process.cwd(), "data", "catalog.json"), "utf8")) as Catalog;
@@ -481,6 +481,149 @@ test("a large credit group leaves a later group its course, and a pigeonhole tre
   assert.equal(slow.satisfied, false);
   assert.equal(slow.children[9].satisfied, true);
   assert.ok(performance.now() - started < 3000, `audit took ${performance.now() - started} ms`);
+});
+
+// Issue #105: the planner runs the audit on every plan change, so a large group must not freeze it.
+const within200ms = <T>(label: string, run: () => T): T => {
+  const started = performance.now();
+  const result = run();
+  const ms = performance.now() - started;
+  assert.ok(ms < 200, `${label} took ${ms.toFixed(1)} ms`);
+  return result;
+};
+const largeTree = (root: RuleGroup): DegreeRequirementV2 => ({
+  version: 2, name: "Large", catalogYear: "", officialUrl: "", uncertainties: [], lastUpdated: "", root,
+});
+
+/** Independent check: a satisfied group result is met by its own courses only. */
+function assertHonest(group: RuleGroup, result: { satisfied: boolean; courses: string[]; waived: string[]; areas: string[] }, credits: Map<string, number>, label: string) {
+  if (!result.satisfied) return;
+  const sum = (list: string[]) => list.reduce((total, code) => total + (credits.get(code) ?? 0), 0);
+  const taken = [...result.courses, ...result.waived];
+  assert.equal(new Set(taken).size, taken.length, label);
+  if (group.kind === "choose-courses") {
+    assert.ok(taken.every((code) => group.courses.includes(code)) && taken.length >= group.count, label);
+  } else if (group.kind === "choose-credits") {
+    assert.ok(taken.every((code) => group.courses.includes(code)) && sum(taken) >= group.credits, label);
+  } else if (group.kind === "choose-areas") {
+    assert.equal(taken.length, group.count, label);
+    assert.ok(sum(taken) >= group.credits, label);
+    assert.ok(new Set(result.areas).size === result.areas.length && result.areas.length >= group.minAreas, label);
+    // Each reported area needs its own course from that area.
+    const inArea = (code: string, id: string) => group.areas.some((area) => area.id === id && area.courses.includes(code));
+    const match = (areas: string[], left: string[]): boolean =>
+      !areas.length || left.some((code) => inArea(code, areas[0]) && match(areas.slice(1), left.filter((other) => other !== code)));
+    assert.ok(match(result.areas, taken), label);
+  }
+}
+
+test("choose-areas 5 of 96 courses is fast, deterministic and never falsely satisfied", () => {
+  const codes = programCourseCodes(seattle.requirements);
+  assert.equal(codes.length, 96);
+  const everything = seattle.courses.map((item) => item.code);
+  const credits = new Map(seattle.courses.map((item) => [item.code, item.credits]));
+  const mscs = seattle.requirements.root;
+  assert.ok(mscs.kind === "all");
+  const breadthOf = (change: Partial<GroupOfAreas>): GroupOfAreas => ({
+    ...(mscs.children[1] as GroupOfAreas),
+    count: 5,
+    areas: [{ id: "a", name: "A", courses: codes.slice(0, 48) }, { id: "b", name: "B", courses: codes.slice(48) }],
+    ...change,
+  });
+  const run = (breadth: GroupOfAreas, completed: string[]) =>
+    validatePlanV2(plan(completed), seattle, { ...seattle.requirements, root: { ...mscs, children: mscs.children.map((group) => (group.id === "breadth" ? breadth : group)) } });
+
+  const breadth = breadthOf({});
+  const result = within200ms("5 of 96", () => run(breadth, everything)).root.children[1];
+  assert.equal(result.satisfied, true);
+  assertHonest(breadth, result, credits, "5 of 96");
+  assert.deepEqual(within200ms("5 of 96, reversed plan", () => run(breadth, [...everything].reverse())).root.children[1], result);
+
+  // Five courses carry at most 20 credits, so 21 credits can never be met.
+  const impossible = breadthOf({ credits: 21 });
+  const none = within200ms("5 of 96, 21 credits", () => run(impossible, everything)).root.children[1];
+  assert.equal(none.satisfied, false);
+  assert.equal(none.courses.length, 5);
+});
+type GroupOfAreas = Extract<RuleGroup, { kind: "choose-areas" }>;
+
+test("choose-credits over 30+ candidates finds a minimal set fast and leaves later groups their courses", () => {
+  for (const size of [24, 32, 40]) {
+    const ones = Array.from({ length: size }, (_, index) => `CS ${100 + index}`);
+    const catalog: Catalog = { ...small, courses: [...ones.map((code) => course(code, 1)), course("CS 999", 40)] };
+    const listed = [...ones, "CS 999"];
+    const electives: RuleGroup = { ...base, kind: "choose-credits", id: "electives", credits: 40, courses: listed };
+    const first: RuleGroup = { ...base, kind: "choose-courses", id: "first", count: 1, courses: [ones[0]] };
+    const audit40 = (root: RuleGroup) => within200ms(`${size} one-credit courses`, () => validatePlanV2(plan(listed), catalog, largeTree(root))).root;
+    assert.equal(audit40(program(electives)).satisfied, true);
+    assert.deepEqual(audit40(program(electives, first)).children.map((child) => child.satisfied), [true, true]);
+    // The 40-credit course alone meets the group. Without it, the group needs 40 one-credit courses.
+    const withoutBig = within200ms("no 40-credit course", () => validatePlanV2(plan(ones), catalog, largeTree(program(electives)))).root;
+    assert.equal(withoutBig.satisfied, size >= 40);
+  }
+});
+
+// PR #98 review probes D, F and G at their larger sizes.
+test("the PR #98 review probes keep their results", () => {
+  // D: an unmet group keeps its partial progress and holds its courses.
+  assert.deepEqual(
+    met(program(
+      { ...base, kind: "choose-courses", id: "two", count: 2, courses: ["CS 1", "CS 2"] },
+      { ...base, kind: "choose-courses", id: "one", count: 1, courses: ["CS 1"] },
+    ), ["CS 1"]),
+    [false, false],
+  );
+  // F: 30 credits of N three-credit courses, then one named course.
+  for (const size of [18, 20, 24, 32]) {
+    const many = Array.from({ length: size }, (_, index) => `CS ${100 + index}`);
+    const catalog: Catalog = { ...small, courses: many.map((code) => course(code, 3)) };
+    const result = within200ms(`probe F, ${size} courses`, () => validatePlanV2(plan(many), catalog, largeTree(program(
+      { ...base, kind: "choose-credits", id: "electives", credits: 30, courses: many },
+      { ...base, kind: "choose-courses", id: "req", count: 1, courses: [many[0]] },
+    )))).root;
+    assert.deepEqual(result.children.map((child) => child.satisfied), [true, true], `probe F, ${size} courses`);
+  }
+  // G: one group "1 of {A, B}", then n groups "1 of {A, C1..Cn-1}".
+  for (let size = 2; size <= 13; size += 1) {
+    const others = Array.from({ length: size - 1 }, (_, index) => `CS ${100 + index}`);
+    const catalog: Catalog = { ...small, courses: ["CS A", "CS B", ...others].map((code) => course(code)) };
+    const result = within200ms(`probe G, ${size} groups`, () => validatePlanV2(plan(["CS A", "CS B", ...others]), catalog, largeTree(program(
+      { ...base, kind: "choose-courses", id: "first", count: 1, courses: ["CS A", "CS B"] },
+      ...Array.from({ length: size }, (_, index): RuleGroup => ({ ...base, kind: "choose-courses", id: `g${index}`, count: 1, courses: ["CS A", ...others] })),
+    )))).root;
+    assert.equal(result.satisfied, true, `probe G, ${size} groups`);
+  }
+});
+
+test("worst-case random trees finish fast, never claim a false satisfied group and ignore plan order", () => {
+  let seed = 105;
+  const random = () => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed / 2147483648;
+  };
+  const between = (low: number, high: number) => low + Math.floor(random() * (high - low + 1));
+  for (let run = 0; run < 60; run += 1) {
+    const pool = Array.from({ length: between(15, 40) }, (_, index) => `CS ${100 + index}`);
+    const credits = new Map(pool.map((code) => [code, between(1, 4)]));
+    const catalog: Catalog = { ...small, courses: pool.map((code) => course(code, credits.get(code))) };
+    // Wide lists that overlap a lot are the worst case for the search.
+    const some = () => pool.filter(() => random() < 0.7);
+    const groups = Array.from({ length: between(2, 10) }, (_, index): RuleGroup => {
+      const id = `g${index}`;
+      const kind = between(0, 2);
+      if (kind === 0) return { ...base, kind: "choose-courses", id, count: between(1, 8), courses: some() };
+      if (kind === 1) return { ...base, kind: "choose-credits", id, credits: between(4, 40), courses: some() };
+      const areas = Array.from({ length: between(2, 3) }, (_, area) => ({ id: `a${area}`, name: `A${area}`, courses: some() }));
+      return { ...base, kind: "choose-areas", id, count: between(2, 6), minAreas: between(1, areas.length), credits: between(4, 20), areas };
+    });
+    const tree = largeTree(program(...groups));
+    const label = `random tree ${run}`;
+    const result = within200ms(label, () => validatePlanV2(plan(pool), catalog, tree)).root;
+    const used = result.children.flatMap((child) => [...child.courses, ...child.waived]);
+    assert.equal(new Set(used).size, used.length, label);
+    groups.forEach((group, index) => assertHonest(group, result.children[index], credits, label));
+    assert.deepEqual(within200ms(`${label}, reversed`, () => validatePlanV2(plan([...pool].reverse()), catalog, tree)).root, result, label);
+  }
 });
 
 test("the catalog trust boundary accepts the v2 snapshot and rejects v1 or broken rule groups", () => {
