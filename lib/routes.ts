@@ -1,3 +1,5 @@
+import { catalogCodeGrammar } from "./course-code";
+
 export const routes = {
   overview: "/",
   explore: "/explore",
@@ -10,13 +12,9 @@ export const routes = {
 export const targetPathHref = `${routes.plan}#target-path`;
 export const criticalPathHref = `${routes.plan}#critical-path`;
 
-const EXPLORE_FOCUS_CODE = /^([A-Z]{2,6})[\s-]*([0-9]{2,4}[A-Z]{0,2})$/i;
-
-/** Normalize `?focus=` from Courses → Explore (accepts `CS 5500` or `CS5500`). */
-export function parseExploreFocus(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const match = value.trim().replace(/\+/g, " ").match(EXPLORE_FOCUS_CODE);
-  return match ? `${match[1]!.toUpperCase()} ${match[2]!.toUpperCase()}` : null;
+/** Normalize `?focus=` from Courses → Explore with the active catalog's grammar (Northeastern: `CS 5500` or `CS5500`). */
+export function parseExploreFocus(value: string | null | undefined, grammar = catalogCodeGrammar()): string | null {
+  return value ? grammar.normalize(value) : null;
 }
 
 export function exploreFocusHref(code: string): string {

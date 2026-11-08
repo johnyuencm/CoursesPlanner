@@ -9,6 +9,7 @@ import { CatalogState } from "@/components/catalog-state";
 import { CourseCard } from "@/components/course-card";
 import { EmptyState, PageHeading } from "@/components/ui";
 import { catalogTakeStatus, DEFAULT_CATALOG_FILTERS, filterCatalogCourses } from "@/lib/catalog-view";
+import { catalogCodeGrammar } from "@/lib/course-code";
 import { routes } from "@/lib/routes";
 
 const topics = ["Robotics", "AI / ML", "Systems", "Software Engineering", "Data", "Networks / Security"];
@@ -111,9 +112,10 @@ function Explorer() {
     });
     setLimit(18);
   };
-  const codeNeedle = search.trim().toUpperCase().replace(/\s+/g, "");
-  const looksLikeCode = /^[A-Z]{2,}\d{3,4}[A-Z]?$/.test(codeNeedle);
-  const knownCode = catalog.courses.some((course) => course.code.replace(/\s/g, "") === codeNeedle);
+  // "cs-5800" and "CS5800" both normalize to "CS 5800", so a known code never shows "not in this catalog".
+  const searchCode = catalogCodeGrammar(catalog).normalize(search);
+  const looksLikeCode = searchCode !== null;
+  const knownCode = catalog.courses.some((course) => course.code === searchCode);
   return <>
     <PageHeading title="Courses" description="Official MSCS Seattle courses, ranked by what they require and what they unlock. Search a code, then open the dependency graph for that course." />
     <div className="page-with-rail">

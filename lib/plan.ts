@@ -2,6 +2,7 @@ import type { Catalog, Course, Eligibility, PlannedCourse, PlanIssue, Semester, 
 import type { TargetPathNode, TermPlacement } from "./target-path";
 import { targetPathSnapshot, termSlug } from "./target-path";
 import { getEligibility, validatePlan } from "./validation";
+import { type CourseCodeGrammar, catalogCodeGrammar } from "./course-code";
 
 export const STORAGE_KEY = "neu-mscs-planner-plan-v1";
 export const MAX_PLAN_BACKUP_BYTES = 1_000_000;
@@ -14,7 +15,6 @@ export const MAX_COURSES_PER_SEMESTER = 32;
 export const TYPICAL_TERM_LOAD_CREDITS = 8;
 const MAX_CREDITS_PER_COURSE = 32;
 const MAX_TEXT_LENGTH = 100;
-const COURSE_CODE = /^[A-Z]{2,6} [0-9]{2,4}[A-Z]{0,2}$/;
 const SEMESTER_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/;
 
 export function recordedCourseCodes(plan: StudentPlan): Set<string> {
@@ -552,17 +552,17 @@ function fail(path: string, message: string): never {
   throw new Error(`Invalid saved plan at ${path}: ${message}`);
 }
 
-function parseCode(value: unknown, path: string): string {
-  if (typeof value !== "string" || !COURSE_CODE.test(value)) {
+function parseCode(value: unknown, path: string, grammar: CourseCodeGrammar): string {
+  if (typeof value !== "string" || !grammar.pattern.test(value)) {
     fail(path, 'expected a course code such as "CS 5010"');
   }
   return value;
 }
 
-function parseCodeArray(value: unknown, path: string): string[] {
+function parseCodeArray(value: unknown, path: string, grammar: CourseCodeGrammar): string[] {
   if (!Array.isArray(value)) fail(path, "expected an array");
   if (value.length > MAX_COURSE_CODES) fail(path, `cannot contain more than ${MAX_COURSE_CODES} entries`);
-  return value.map((entry, index) => parseCode(entry, `${path}[${index}]`));
+  return value.map((entry, index) => parseCode(entry, `${path}[${index}]`, grammar));
 }
 
 function parseCredits(value: unknown, path: string): number {
@@ -577,14 +577,14 @@ function parseCredits(value: unknown, path: string): number {
   return value;
 }
 
-function parsePlannedCourse(value: unknown, path: string): PlannedCourse {
+function parsePlannedCourse(value: unknown, path: string, grammar: CourseCodeGrammar): PlannedCourse {
   if (!isRecord(value)) fail(path, "expected an object");
-  const code = parseCode(value.code, `${path}.code`);
+  const code = parseCode(value.code, `${path}.code`, grammar);
   if (value.credits === undefined) return { code };
   return { code, credits: parseCredits(value.credits, `${path}.credits`) };
 }
 
-function parseSemester(value: unknown, path: string): Semester {
+function parseSemester(value: unknown, path: string, grammar: CourseCodeGrammar): Semester {
   if (!isRecord(value)) fail(path, "expected an object");
   if (typeof value.id !== "string" || !SEMESTER_ID.test(value.id)) {
     fail(`${path}.id`, "expected a non-empty ID using letters, numbers, dot, colon, underscore, or hyphen");
@@ -608,7 +608,7 @@ function parseSemester(value: unknown, path: string): Semester {
     id: value.id,
     name: value.name,
     type: value.type,
-    courses: value.courses.map((course, index) => parsePlannedCourse(course, `${path}.courses[${index}]`)),
+    courses: value.courses.map((course, index) => parsePlannedCourse(course, `${path}.courses[${index}]`, grammar)),
   };
 }
 
@@ -621,12 +621,13 @@ export function migratePlan(input: unknown): unknown {
   return input;
 }
 
-export function parsePlan(input: unknown): StudentPlan {
+/** `grammar`: the code grammar of the plan's catalog. The default is Northeastern (see `catalogCodeGrammar`). */
+export function parsePlan(input: unknown, grammar: CourseCodeGrammar = catalogCodeGrammar()): StudentPlan {
   if (!isRecord(input)) fail("plan", "expected an object");
   if (input.version !== 1) fail("plan.version", "expected version 1");
 
-  const completedCourses = parseCodeArray(input.completedCourses, "plan.completedCourses");
-  const waivedCourses = parseCodeArray(input.waivedCourses, "plan.waivedCourses");
+  const completedCourses = parseCodeArray(input.completedCourses, "plan.completedCourses", grammar);
+  const waivedCourses = parseCodeArray(input.waivedCourses, "plan.waivedCourses", grammar);
 
   if (!isRecord(input.completedCredits)) fail("plan.completedCredits", "expected an object");
   const creditEntries = Object.entries(input.completedCredits);
@@ -635,7 +636,7 @@ export function parsePlan(input: unknown): StudentPlan {
   }
   const completedCredits: Record<string, number> = {};
   for (const [rawCode, rawCredits] of creditEntries) {
-    const code = parseCode(rawCode, `plan.completedCredits.${rawCode}`);
+    const code = parseCode(rawCode, `plan.completedCredits.${rawCode}`, grammar);
     completedCredits[code] = parseCredits(rawCredits, `plan.completedCredits.${code}`);
   }
 
@@ -643,7 +644,7 @@ export function parsePlan(input: unknown): StudentPlan {
   if (input.semesters.length > MAX_SEMESTERS) {
     fail("plan.semesters", `cannot contain more than ${MAX_SEMESTERS} entries`);
   }
-  const semesters = input.semesters.map((semester, index) => parseSemester(semester, `plan.semesters[${index}]`));
+  const semesters = input.semesters.map((semester, index) => parseSemester(semester, `plan.semesters[${index}]`, grammar));
   const ids = new Set<string>();
   for (const semester of semesters) {
     if (ids.has(semester.id)) fail("plan.semesters", `semester ID "${semester.id}" is duplicated`);

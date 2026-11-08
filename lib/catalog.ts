@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { type CourseCodeGrammar, catalogCodeGrammar } from "./course-code";
 import { snapshotAsset } from "./snapshot-assets";
 import type {
   Catalog,
@@ -19,7 +20,6 @@ const TOPICS = new Set([
   "Data",
   "Networks / Security",
 ]);
-const COURSE_CODE = /^[A-Z]{2,6} \d{2,4}[A-Z]{0,2}$/;
 const SAFE_ID = /^[a-z0-9][a-z0-9-]{0,80}$/;
 const ROADMAP_STATUSES = new Set<RoadmapStatus>([
   "unverified",
@@ -70,8 +70,7 @@ const isStringArray = (value: unknown): value is string[] =>
 
 function validExpression(
   value: unknown,
-  validCode: (code: unknown) => code is string = (code): code is string =>
-    typeof code === "string" && COURSE_CODE.test(code),
+  validCode: (code: unknown) => code is string,
 ): value is RequirementExpression {
   if (!isRecord(value) || typeof value.type !== "string") return false;
   if (value.type === "none") return true;
@@ -187,7 +186,11 @@ function validateCourses(
   return value as Course[];
 }
 
-export function validateCatalog(value: unknown): asserts value is Catalog {
+/**
+ * Trust boundary for a catalog snapshot. Course codes must match the code grammar of `value.adapter`
+ * (an unknown adapter fails). Tests pass `grammar` to check a catalog against a test-only grammar.
+ */
+export function validateCatalog(value: unknown, grammar?: CourseCodeGrammar): asserts value is Catalog {
   if (!isRecord(value)) throw new Error("Catalog must be an object");
   if (!Array.isArray(value.courses) || !isRecord(value.requirements)) {
     throw new Error("Catalog courses or requirements are missing");
@@ -206,9 +209,10 @@ export function validateCatalog(value: unknown): asserts value is Catalog {
   if (typeof value.id === "string" && !/^[a-z0-9][a-z0-9-]{0,80}$/.test(value.id)) {
     throw new Error("Catalog id is invalid");
   }
+  const codePattern = (grammar ?? catalogCodeGrammar(value as { adapter?: string })).pattern;
   const officialHosts = officialHostsFromSources(value.sources);
   const courses = validateCourses(value.courses, {
-    validCode: (code): code is string => typeof code === "string" && COURSE_CODE.test(code),
+    validCode: (code): code is string => typeof code === "string" && codePattern.test(code),
     isOfficial: (url): url is string => isOfficialUrl(url, officialHosts),
     requirementTypes: new Set(["core", "breadth", "elective", "external"]),
     recordLabel: "Catalog",

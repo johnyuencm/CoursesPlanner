@@ -49,7 +49,7 @@ export default async function PathwayPage({ params }: Props) {
     counts[type === "core" || type === "breadth" || type === "elective" ? type : "other"] += 1;
   }
   const link = (code: string) => pageCodes.has(code)
-    ? <Link href={`/courses/${courseSlug(code)}`}><strong>{code}</strong> {byCode.get(code)?.title}</Link>
+    ? <Link href={`/courses/${courseSlug(code, catalog)}`}><strong>{code}</strong> {byCode.get(code)?.title}</Link>
     : <strong>{code}</strong>;
 
   return <article className="static-page pathway-page">

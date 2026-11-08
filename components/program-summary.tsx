@@ -12,7 +12,7 @@ function courseLinker(catalog: Catalog) {
   const pageCodes = new Set(publicCourses(catalog).map((course) => course.code));
   return (code: string) => {
     const label = <><strong>{code}</strong> {byCode.get(code)?.title}</>;
-    return pageCodes.has(code) ? <Link href={`/courses/${courseSlug(code)}`}>{label}</Link> : label;
+    return pageCodes.has(code) ? <Link href={`/courses/${courseSlug(code, catalog)}`}>{label}</Link> : label;
   };
 }
 

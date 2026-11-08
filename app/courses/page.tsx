@@ -21,7 +21,7 @@ export default async function CoursesPage() {
       <p className="muted">All {courses.length} courses with catalog details, from the {catalog.requirements.catalogYear} catalog. Each page shows the prerequisites, what the course unlocks, and the paths that use it.</p>
       <ul className="static-list">
         {courses.map((course) => <li key={course.code}>
-          <Link href={`/courses/${courseSlug(course.code)}`}><strong>{course.code}</strong> {course.title}</Link>
+          <Link href={`/courses/${courseSlug(course.code, catalog)}`}><strong>{course.code}</strong> {course.title}</Link>
           <small>{creditsLabel(course)} · {requirementLabel(course, catalog)}</small>
         </li>)}
       </ul>
