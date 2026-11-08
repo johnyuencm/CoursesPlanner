@@ -8,6 +8,7 @@ import { readCatalog } from "../lib/catalog";
 import {
   courseBySlug,
   courseSlug,
+  isUnknownCoursePath,
   needsReview,
   requirementText,
   shortestPrerequisiteChain,
@@ -33,6 +34,17 @@ test("course slugs are URL-safe and round-trip through the packaged catalog", ()
   assert.equal(new Set(pages.map((item) => courseSlug(item.code))).size, pages.length, "two courses share a slug");
   assert.equal(courseBySlug(catalog, "cs-5010")?.code, "CS 5010");
   assert.equal(courseBySlug(catalog, "../etc"), undefined);
+});
+
+test("unknown course slugs go to the 404 route miss; real course pages do not", () => {
+  const slugs = new Set(publicCourses(readCatalog()).map((item) => courseSlug(item.code)));
+  assert.equal(isUnknownCoursePath("/courses/cs-5800", slugs), false);
+  assert.equal(isUnknownCoursePath("/courses/cs-5010", slugs), false);
+  assert.equal(isUnknownCoursePath("/courses/zz-9999", slugs), true);
+  assert.equal(isUnknownCoursePath("/courses/cis-200m", slugs), true, "placeholder course has no page");
+  assert.equal(isUnknownCoursePath("/courses", slugs), false, "course list page");
+  assert.equal(isUnknownCoursePath("/courses/", slugs), false, "trailing slash redirect stays with vinext");
+  assert.equal(isUnknownCoursePath("/pathways/zz-9999", slugs), false);
 });
 
 test("placeholder courses (no catalog text) get no page", () => {

@@ -11,7 +11,7 @@ This file is operator notes. Students who use the planner do not need it.
 | Production URL | https://coursesplanner.johnyc.com |
 | Runtime | Cloudflare Worker `coursesplanner`, Workers Free plan, no paid add-ons |
 | Build | [vinext](https://github.com/cloudflare/vinext) 1.4.4 (Vite version of the Next.js API), `@vinext/cloudflare` 1.3.3 |
-| Config | [`wrangler.jsonc`](../wrangler.jsonc) (routes, assets), [`vite.config.ts`](../vite.config.ts) (vinext, static-assets cache) |
+| Config | [`wrangler.jsonc`](../wrangler.jsonc) (routes, assets, Worker entry [`worker.ts`](../worker.ts)), [`vite.config.ts`](../vite.config.ts) (vinext, static-assets cache) |
 | Custom domain | `routes: [{ pattern: "coursesplanner.johnyc.com", custom_domain: true }]`. `workers_dev` and `preview_urls` are off (house rule for every app under `johnyc.com`) |
 | DNS | Cloudflare zone `johnyc.com`. The Worker custom domain made the record (AAAA `100::`, proxied) on 2026-11-07. It replaced the DNS-only CNAME to Vercel (`e0273d0e708952dd.vercel-dns-017.com`). Shared map: [johnyuencm/johnyc-infra](https://github.com/johnyuencm/johnyc-infra) |
 | Cloudflare account | `99ea46219cc098a0c9db852d9e1fd0f6` |
@@ -39,6 +39,7 @@ flowchart LR
 - When you commit a new `programs.json` or a new ready roadmap, add it to `FILES` in `lib/embedded-snapshot.ts`. `tests/embedded-snapshot.test.ts` fails if a committed ready roadmap is not in `FILES`.
 - `POST /api/catalog` (refresh) stays off in production: it answers 401. Refresh the catalog with `npm run catalog:refresh`, commit `data/`, then deploy.
 - `app/global-not-found.tsx` renders route misses without the root layout, because a full layout render costs more CPU than the Free plan allows.
+- [`worker.ts`](../worker.ts) is the Worker entry (`main` in `wrangler.jsonc`). It changes an unknown `/courses/<slug>` request to a route miss, then calls vinext. All other requests go to vinext unchanged.
 - `/`, `/explore`, `/pathways`, `/planner` and `/courses` put server-rendered catalog text in the prerendered HTML ([`components/program-summary.tsx`](../components/program-summary.tsx)). Crawlers read it without JavaScript. The interactive views load after it.
 
 ## Deploy
@@ -91,8 +92,43 @@ Measured on 2026-11-07 with `wrangler tail --format json` (field `cpuTime`) on a
 - The two API routes keep the serialized JSON body in memory for each isolate. Before that change, `/api/roadmaps?…&program=…` had p50 8 ms and p90 21 ms.
 - Before `app/global-not-found.tsx`, every 404 rendered the full layout at p50 14 ms and p90 45-70 ms. Browsers ask for `/favicon.ico` on each visit, and the app has no favicon, so that cost hit every visit.
 - Every request in these runs had outcome `ok`. Cloudflare did not stop any request that went over 10 ms. Do not rely on this: an over-limit request can fail with error 1102.
-- Known ceiling: an unknown `/courses/<slug>` still renders the root layout (it is a `notFound()` inside the route, not a route miss). Only typos and bots ask for these URLs.
+- An unknown `/courses/<slug>` renders the root layout when vinext handles it. `dynamicParams = false` makes it a 404, but vinext renders that 404 inside the layout. See the 2026-11-08 numbers below.
 - Do not fix this with a `proxy.ts` on `/courses/:slug`. Version `11fcae7b` tried it on 2026-11-07 (60 warm requests per route). Unknown course 404 went to p50 7 ms, p90 13 ms. But every real course page paid for the proxy: p50 5 ms, p90 9 ms, 4 of 60 over 10 ms. A page without the proxy (`/explore`) had p50 4 ms, p90 6 ms. Course pages are the pages that crawlers read, so the proxy was removed.
+
+### Unknown course 404, 2026-11-08 (issue #65)
+
+Live Worker version `dfbdf20b` (no proxy, no `worker.ts`). Method: `wrangler tail --format json`, field `cpuTime`. GET requests from Seattle, one after the other, with a marked user agent. Course requests alternate with unknown-course requests.
+
+| Route | Requests | p50 | p90 | Max | Over 10 ms |
+| --- | --- | --- | --- | --- | --- |
+| Unknown course 404 (`/courses/zz-9001` … `zz-9130`) | 57 | 15 ms | 68 ms | 119 ms | 47 of 57 |
+| Real course page (`/courses/cs-5800`) | 58 | 4 ms | 7 ms | 32 ms | 4 of 58 |
+| Route miss 404 (`/nothing-1` … `/nothing-30`) | 27 | 6 ms | 31 ms | 40 ms | 3 of 27 |
+
+The unknown-course 404 is over the limit. The tail lost a few events, so some counts are under 30 per run.
+
+Fix: [`worker.ts`](../worker.ts) wraps the vinext Worker.
+
+```mermaid
+flowchart LR
+  R[GET /courses/slug] --> K{slug has a course page?}
+  K -->|yes| V[vinext: prerendered HTML]
+  K -->|no| M[vinext: /__unknown-course]
+  M --> G[global-not-found 404, no layout]
+```
+
+- The check is one `URL` parse and one `Set` lookup. The slug `Set` comes from the bundled `data/catalog.json`, once for each isolate.
+- vinext middleware does not run, so real course pages do not pay for the check. The old `proxy.ts` used vinext middleware.
+- `tests/course-pages.test.ts` pins the rule: unknown slugs and placeholder courses go to the 404, real course pages do not.
+
+Local check (`npm run build`, then `wrangler dev` on `127.0.0.1`). This is not a CPU measurement. Local wall time had too much noise from other processes, so the response body is the evidence:
+
+| Build | `/courses/zz-9999` | `/courses/cs-5800` |
+| --- | --- | --- |
+| Before (`main`: `vinext/server/fetch-handler`) | 404, 17,678 bytes (root layout) | 200, `X-Vinext-Cache: HIT` |
+| After (`main`: `./worker.ts`) | 404, 6,026 bytes (`global-not-found`, as `/nothing` with 5,981 bytes) | 200, `X-Vinext-Cache: HIT` |
+
+After the next deploy, measure again with the method above. Expect the unknown-course 404 near the route miss 404 (p50 about 6 ms). Expect no change on real course pages. Add the live numbers to this section.
 
 Measure again after a large change:
 

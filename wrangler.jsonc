@@ -5,7 +5,8 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  "main": "vinext/server/fetch-handler",
+  // worker.ts sends unknown /courses/<slug> to the cheap 404, then calls vinext.
+  "main": "./worker.ts",
   // House rule: one custom domain per app under johnyc.com, no workers.dev URL.
   "routes": [{ "pattern": "coursesplanner.johnyc.com", "custom_domain": true }],
   "workers_dev": false,
