@@ -16,12 +16,12 @@ export const CATALOG_PLATFORMS = ["courseleaf", "coursedog", "acalog", "kuali", 
 export type CatalogPlatform = (typeof CATALOG_PLATFORMS)[number];
 
 /**
- * Known adapter ids, mirrored from the registry in catalog-service/adapters.ts.
+ * Known adapter ids. The list lives in lib/course-code.ts (one grammar per adapter).
  * The read-only directory parser cannot import the adapter registry (that would
  * pull cheerio into the /api/roadmaps bundle), so a test compares this list to
  * registeredAdapters() and fails if the two drift.
  */
-export const KNOWN_ADAPTER_IDS: readonly string[] = ["northeastern-acalog"];
+export { KNOWN_ADAPTER_IDS } from "./course-code";
 
 export interface UniversityCrawlConfig {
   adapter: string;

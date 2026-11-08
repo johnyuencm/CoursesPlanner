@@ -6,6 +6,7 @@ import { CalendarPlus, CircleAlert, Lock, Route, Target, TriangleAlert } from "l
 import pathwayConfig from "@/config/pathways.json";
 import { analyzeCriticalPath, analyzeResolvedCriticalPath, type CriticalPathAnalysis } from "@/lib/critical-path";
 import { previewChainInsert, type ChainInsertPreview } from "@/lib/plan";
+import { catalogCodeGrammar } from "@/lib/course-code";
 import { criticalPathHref, routes, targetPathHref } from "@/lib/routes";
 import { matchCourseTarget, targetPathSnapshot } from "@/lib/target-path";
 import type { Pathway } from "@/lib/types";
@@ -23,8 +24,9 @@ export function CourseTargetControl() {
     setDraft(courseTargetCode ?? "");
   }, [courseTargetCode]);
   const options = catalog?.courses.filter((course) => course.requirementType !== "external") ?? [];
+  const grammar = catalogCodeGrammar(catalog);
   const commit = (value: string) => {
-    const match = matchCourseTarget(value, catalog?.courses ?? []);
+    const match = matchCourseTarget(value, catalog?.courses ?? [], grammar);
     setCourseTargetCode(match);
     setDraft(match ?? "");
   };
@@ -42,7 +44,7 @@ export function CourseTargetControl() {
           onChange={(event) => {
             const value = event.target.value;
             setDraft(value);
-            const match = matchCourseTarget(value, catalog?.courses ?? []);
+            const match = matchCourseTarget(value, catalog?.courses ?? [], grammar);
             if (match && match.replace(/\s/g, "") === value.toUpperCase().replace(/\s/g, "")) {
               setCourseTargetCode(match);
             }

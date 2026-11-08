@@ -132,7 +132,7 @@ function northeasternProgramScope(html: string, _officialUrl: string): AdapterPr
         .find("a.code")
         .map((_index, element) => normalize($(element).text()).toUpperCase())
         .get()
-        .filter((code) => /^[A-Z]{2,6} \d{2,4}[A-Z]{0,2}$/.test(code)),
+        .filter((code) => northeasternCodeGrammar.pattern.test(code)),
     ),
   ].sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
   if (!programCourseCodes.length) return null;
@@ -147,7 +147,7 @@ function northeasternCourseSources(programCourseCodes: string[], origin: string)
   const subjects = [
     ...new Set(
       programCourseCodes
-        .map((code) => code.match(/^([A-Z]{2,6}) /)?.[1])
+        .map((code) => northeasternCodeGrammar.subject(code))
         .filter((subject): subject is string => Boolean(subject)),
     ),
   ].sort();

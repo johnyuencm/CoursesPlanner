@@ -25,7 +25,7 @@ export function parseSourceDefinition(value: unknown, fileName: string): Catalog
       throw new Error(`${fileName} is missing ${field}`);
     }
   }
-  getAdapter(String(value.adapter));
+  const { codeGrammar } = getAdapter(String(value.adapter));
   if (typeof value.enabled !== "boolean") throw new Error(`${fileName}.enabled must be boolean`);
   const allowedOrigins = parseAllowedOrigins(value.allowedOrigins, `${fileName}.allowedOrigins`);
   if (!Array.isArray(value.disallowedPathPatterns) || !value.disallowedPathPatterns.every((item) => typeof item === "string")) {
@@ -37,7 +37,7 @@ export function parseSourceDefinition(value: unknown, fileName: string): Catalog
   if (!isRecord(value.subjectSources)) throw new Error(`${fileName}.subjectSources must be an object`);
   const subjectSources: Record<string, PageSource> = {};
   for (const [subject, source] of Object.entries(value.subjectSources)) {
-    if (!/^[A-Z]{2,6}$/.test(subject)) throw new Error(`${fileName}.subjectSources has an invalid key: ${subject}`);
+    if (!codeGrammar.subjectPattern.test(subject)) throw new Error(`${fileName}.subjectSources has an invalid key: ${subject}`);
     subjectSources[subject] = parsePageSource(source, `${fileName}.subjectSources.${subject}`);
   }
 

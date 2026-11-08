@@ -16,9 +16,11 @@ flowchart TD
 
 - The search tries the plain tree-order allocation first. Ties keep the first found. Thus the result is deterministic.
 - Candidates are in code order (or group list order), not plan order. Thus plan order does not change the result.
+- The search tries first the courses that no later group in the pool lists. Thus a large credit group leaves a later group its course in a few steps (PR #98 review).
+- When no allocation meets every group, an unmet group keeps its partial progress. Thus a later group can stay unmet, although it alone could be met.
 - Each group gets `satisfied` from its own final courses. Thus the audit cannot claim a false "satisfied".
 - `shareCourses` is two-sided. The shared subtree can use every course, and it takes no course from other groups.
-- A step cap (20,000) stops a pathological tree. Past the cap, the audit keeps the best allocation found so far.
+- A step cap (20,000) stops a pathological tree. Past the cap, the audit keeps the best allocation found so far. Each choose-areas combination counts as one step, and the prune check for choose-areas is a cheap bound. Thus the cap also bounds the time (PR #98 review: 80 s to 50 ms on a 10-group tree).
 
 ## Tier
 
