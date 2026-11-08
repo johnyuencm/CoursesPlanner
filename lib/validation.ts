@@ -1,7 +1,6 @@
 import type {
   Catalog,
   Course,
-  DegreeProgress,
   Eligibility,
   PlanIssue,
   RequirementExpression,
@@ -201,90 +200,6 @@ export interface CountedCourse {
   code: string;
   credits: number;
   source: "earned" | "planned";
-}
-
-export function categoryMatching(codes: string[], memberships: Map<string, string[]>): string[] {
-  const categoryToCourse = new Map<string, string>();
-  const assign = (code: string, seen: Set<string>): boolean => {
-    for (const category of memberships.get(code) ?? []) {
-      if (seen.has(category)) continue;
-      seen.add(category);
-      const owner = categoryToCourse.get(category);
-      if (owner === undefined || assign(owner, seen)) {
-        categoryToCourse.set(category, code);
-        return true;
-      }
-    }
-    return false;
-  };
-  for (const code of codes) assign(code, new Set());
-  return [...categoryToCourse.keys()];
-}
-
-export function chooseBreadth(
-  candidates: CountedCourse[],
-  coursesRequired: number,
-  minCategories: number,
-  requiredCredits: number,
-  memberships: Map<string, string[]>,
-): { selected: CountedCourse[]; categories: string[]; satisfied: boolean } {
-  if (coursesRequired === 0) {
-    return { selected: [], categories: [], satisfied: minCategories === 0 && requiredCredits <= 0 };
-  }
-  if (candidates.length < coursesRequired) {
-    const selected = [...candidates].sort((a, b) => a.code.localeCompare(b.code));
-    return {
-      selected,
-      categories: categoryMatching(selected.map((course) => course.code), memberships),
-      satisfied: false,
-    };
-  }
-
-  const sorted = [...candidates].sort((a, b) => a.code.localeCompare(b.code));
-  type Allocation = { selected: CountedCourse[]; categories: string[]; credits: number };
-  const allocations: { feasible?: Allocation; progress?: Allocation } = {};
-  const chosen: CountedCourse[] = [];
-
-  const inspect = () => {
-    const selected = [...chosen];
-    const categories = categoryMatching(selected.map((course) => course.code), memberships);
-    const credits = selected.reduce((sum, course) => sum + course.credits, 0);
-    const isFeasible = categories.length >= minCategories && credits >= requiredCredits;
-    if (
-      isFeasible &&
-      (allocations.feasible === undefined ||
-        credits < allocations.feasible.credits ||
-        (credits === allocations.feasible.credits && categories.length > allocations.feasible.categories.length))
-    ) {
-      allocations.feasible = { selected, categories, credits };
-    }
-    if (
-      allocations.progress === undefined ||
-      categories.length > allocations.progress.categories.length ||
-      (categories.length === allocations.progress.categories.length && credits > allocations.progress.credits)
-    ) {
-      allocations.progress = { selected, categories, credits };
-    }
-  };
-
-  const visit = (start: number) => {
-    if (chosen.length === coursesRequired) {
-      inspect();
-      return;
-    }
-    const remaining = coursesRequired - chosen.length;
-    for (let index = start; index <= sorted.length - remaining; index += 1) {
-      chosen.push(sorted[index]);
-      visit(index + 1);
-      chosen.pop();
-    }
-  };
-  visit(0);
-
-  const allocation = allocations.feasible ?? allocations.progress;
-  return allocation
-    ? { selected: allocation.selected, categories: allocation.categories, satisfied: allocations.feasible !== undefined }
-    : { selected: [], categories: [], satisfied: false };
 }
 
 /** Result of the plan pass that every requirement model shares. */
@@ -506,78 +421,4 @@ export function hasBlockingIssue(issues: PlanIssue[]): boolean {
       issue.kind === "unknown" ||
       ((issue.kind === "prerequisite" || issue.kind === "corequisite") && issue.severity === "warning"),
   );
-}
-
-export function validatePlan(plan: StudentPlan, catalog: Catalog): DegreeProgress {
-  const requirements = catalog.requirements;
-  const coreCodes = new Set(requirements.coreCourses);
-  const electiveList = new Set(requirements.eligibleElectives);
-  const breadthCodes = new Set(requirements.breadthRequirements.categories.flatMap((category) => category.courses));
-  const degreeCodes = new Set([...coreCodes, ...breadthCodes, ...electiveList]);
-  const { issues, counted, completed: completedSet, waived: waivedSet, validPlanned } = auditPlanCourses(
-    plan,
-    catalog,
-    degreeCodes,
-  );
-
-  const membership = new Map<string, string[]>();
-  for (const category of requirements.breadthRequirements.categories) {
-    for (const code of category.courses) {
-      membership.set(code, [...(membership.get(code) ?? []), category.id]);
-    }
-  }
-  const breadthCandidates = counted.filter((course) => !coreCodes.has(course.code) && breadthCodes.has(course.code));
-  const breadthAllocation = chooseBreadth(
-    breadthCandidates,
-    requirements.breadthRequirements.coursesRequired,
-    requirements.breadthRequirements.minCategories,
-    requirements.breadthRequirements.credits,
-    membership,
-  );
-  const assignedBreadth = new Set(breadthAllocation.selected.map((course) => course.code));
-  const electiveCredits = counted
-    .filter(
-      (course) =>
-        !coreCodes.has(course.code) &&
-        !assignedBreadth.has(course.code) &&
-        (electiveList.has(course.code) || breadthCodes.has(course.code)),
-    )
-    .reduce((sum, course) => sum + course.credits, 0);
-
-  const earnedCredits = sumCredits(counted, "earned");
-  const plannedCredits = sumCredits(counted, "planned");
-  const core = requirements.coreCourses.map((code) => {
-    const waived = waivedSet.has(code);
-    return { code, waived, satisfied: waived || completedSet.has(code) || validPlanned.has(code) };
-  });
-
-  const notes = auditNotes(requirements.minimumGpa, requirements.uncertainties, catalog.warnings);
-  const hasBlocker = hasBlockingIssue(issues);
-  const totalCredits = earnedCredits + plannedCredits;
-  const satisfied =
-    core.every((course) => course.satisfied) &&
-    breadthAllocation.satisfied &&
-    electiveCredits >= requirements.electiveCredits &&
-    totalCredits >= requirements.totalCredits &&
-    !hasBlocker;
-
-  return {
-    earnedCredits,
-    plannedCredits,
-    totalCredits,
-    requiredCredits: requirements.totalCredits,
-    core,
-    breadth: {
-      assignedCourses: breadthAllocation.selected.map((course) => course.code),
-      categoriesSatisfied: breadthAllocation.categories,
-      coursesRequired: requirements.breadthRequirements.coursesRequired,
-      minCategories: requirements.breadthRequirements.minCategories,
-      satisfied: breadthAllocation.satisfied,
-    },
-    electiveCredits,
-    requiredElectiveCredits: requirements.electiveCredits,
-    issues,
-    satisfied,
-    notes,
-  };
 }

@@ -9,14 +9,7 @@ import type {
   StudentPlan,
   SupportTier,
 } from "./types";
-import {
-  auditNotes,
-  auditPlanCourses,
-  categoryMatching,
-  hasBlockingIssue,
-  sumCredits,
-  type PlanCourseAudit,
-} from "./validation";
+import { auditNotes, auditPlanCourses, hasBlockingIssue, sumCredits, type PlanCourseAudit } from "./validation";
 
 const unique = (values: Iterable<string>): string[] => [...new Set(values)];
 const byCodeOrder = (a: string, b: string) => a.localeCompare(b);
@@ -179,6 +172,25 @@ function candidates(leaf: Leaf, free: Set<string>, { audit, credits }: Context):
   return unique(listed)
     .filter((code) => free.has(code) && credits.has(code))
     .sort(byCodeOrder);
+}
+
+/** Areas matched one course each (bipartite matching), so one course never fills two areas. */
+function categoryMatching(codes: string[], memberships: Map<string, string[]>): string[] {
+  const categoryToCourse = new Map<string, string>();
+  const assign = (code: string, seen: Set<string>): boolean => {
+    for (const category of memberships.get(code) ?? []) {
+      if (seen.has(category)) continue;
+      seen.add(category);
+      const owner = categoryToCourse.get(category);
+      if (owner === undefined || assign(owner, seen)) {
+        categoryToCourse.set(category, code);
+        return true;
+      }
+    }
+    return false;
+  };
+  for (const code of codes) assign(code, new Set());
+  return [...categoryToCourse.keys()];
 }
 
 function* combinations<T>(items: T[], size: number, start = 0, prefix: T[] = []): Generator<T[]> {

@@ -5,7 +5,6 @@ import test from "node:test";
 
 import { requirementsV2FromV1, requirementTier, validatePlanV2 } from "../lib/requirements-v2";
 import type { Catalog, Course, DegreeRequirementV2, RuleGroup, StudentPlan } from "../lib/types";
-import { validatePlan } from "./v2-equivalence";
 
 const seattle = JSON.parse(readFileSync(path.join(process.cwd(), "data", "catalog.json"), "utf8")) as Catalog;
 
@@ -81,32 +80,71 @@ test("MSCS Seattle v2 form comes from the same parsed v1 data and keeps catalog 
   assert.match(total.rawText, /32 total semester hours/);
 });
 
-test("v1 and v2 agree on 300 seeded random plans over the real MSCS Seattle catalog", () => {
+// Equivalence evidence kept after v1 was deleted (#70): tests/fixtures/mscs-v1-audits.json holds the v1
+// audit of each seeded plan below, recorded while v1 and v2 both ran and agreed.
+test("v2 gives the recorded v1 audit for 500 seeded plans over the real MSCS Seattle catalog", () => {
+  const recorded = JSON.parse(readFileSync(path.join(process.cwd(), "tests", "fixtures", "mscs-v1-audits.json"), "utf8")) as unknown[];
   let seed = 63;
   const random = () => {
     seed = (seed * 1103515245 + 12345) % 2147483648;
     return seed / 2147483648;
   };
   const pick = <T>(items: T[]) => items[Math.floor(random() * items.length)];
+  const requirements = seattle.requirements;
+  const tree = requirementsV2FromV1(requirements);
+  const actual: unknown[] = [];
+  const record = (studentPlan: StudentPlan) => {
+    const progress = validatePlanV2(studentPlan, seattle, tree);
+    const [core, breadth, electives] = progress.root.children;
+    const coreDone = [...core.courses, ...core.waived];
+    actual.push([
+      progress.earnedCredits,
+      progress.plannedCredits,
+      requirements.coreCourses.filter((code) => coreDone.includes(code)),
+      breadth.courses,
+      breadth.areas,
+      breadth.satisfied,
+      electives.credits,
+      progress.issues.length,
+      progress.satisfied,
+    ]);
+  };
   const pool = [...seattle.courses.map((item) => item.code), "CS 9999"];
   for (let run = 0; run < 300; run += 1) {
     const take = (count: number) => Array.from({ length: count }, () => pick(pool));
-    validatePlan(
-      {
-        version: 1,
-        completedCourses: take(Math.floor(random() * 10)),
-        waivedCourses: take(Math.floor(random() * 2)),
-        completedCredits: {},
-        semesters: ["fall", "spring", "summer"].map((id) => ({
-          id,
-          name: id,
-          type: "academic" as const,
-          courses: take(Math.floor(random() * 4)).map((code) => ({ code })),
-        })),
-      },
-      seattle,
-    );
+    record({
+      version: 1,
+      completedCourses: take(Math.floor(random() * 10)),
+      waivedCourses: take(Math.floor(random() * 2)),
+      completedCredits: {},
+      semesters: ["fall", "spring", "summer"].map((id) => ({
+        id,
+        name: id,
+        type: "academic" as const,
+        courses: take(Math.floor(random() * 4)).map((code) => ({ code })),
+      })),
+    });
   }
+  // Near-complete plans: the core (one course sometimes waived), then breadth and elective courses.
+  const breadthCodes = requirements.breadthRequirements.categories.flatMap((area) => area.courses);
+  for (let run = 0; run < 200; run += 1) {
+    const take = (codes: string[], count: number) => Array.from({ length: count }, () => pick(codes));
+    const waived = random() < 0.3 ? [pick(requirements.coreCourses)] : [];
+    record({
+      version: 1,
+      completedCourses: [
+        ...requirements.coreCourses.filter((code) => !waived.includes(code)),
+        ...take(breadthCodes, 2 + Math.floor(random() * 4)),
+        ...take(requirements.eligibleElectives, Math.floor(random() * 4)),
+      ],
+      waivedCourses: waived,
+      completedCredits: {},
+      semesters: [],
+    });
+  }
+  assert.deepEqual(actual, recorded);
+  // The fixture is not vacuous: it holds satisfied audits and satisfied breadth.
+  assert.ok(recorded.filter((row) => (row as unknown[])[8]).length >= 20);
 });
 
 test("choose-courses counts completed and waived slots, and waived courses earn no credit", () => {

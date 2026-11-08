@@ -43,3 +43,12 @@ flowchart TD
 | Manifest | `neu-mscs-seattle` tier `audit`; the published roadmap tier `map` |
 | Sample plan on the built Worker, v1 against v2 | Same: 24 / 32 credits, core met, breadth CS 5200, CS 5500, CS 6140 in 2 areas, electives 4 credits, 0 issues |
 | `/planner` in a browser with that plan | "Requirements status · Audit tier 2 / 3", each group shows its raw catalog rule |
+
+## PR 2: v1 audit deleted
+
+- Deleted: v1 `validatePlan`, `chooseBreadth`, the `DegreeProgress` type and `tests/v2-equivalence.ts`. `categoryMatching` moved into `lib/requirements-v2.ts`, its only user.
+- Equivalence evidence stays. `tests/fixtures/mscs-v1-audits.json` holds the v1 audit of 500 seeded MSCS plans (300 random, 200 near-complete; 28 fully satisfied, 181 with breadth satisfied). The recording ran while v1 and v2 both ran and agreed. The test now checks that v2 gives the recorded results.
+- The scenario tests (`tests/validation.test.ts`, `tests/plan.test.ts`) now assert v2 group results (`core`, `breadth`, `electives`).
+- `npm run typecheck`: pass. `npm test`: 294 pass, 0 fail. `npm run build`: Build complete.
+
+Still open: the snapshot keeps the v1 `DegreeRequirement` shape, and `requirementsV2FromV1` converts it. To store v2 in the snapshot, change `lib/catalog.ts`, `scraper/parser.ts` and `catalog-service/`. PR #97 (#68) changes the same files, so do this after #97 merges.
