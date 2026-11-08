@@ -42,18 +42,14 @@ export function CreditSelect({ course, value, onChange, id }: { course: Course; 
   return <label className="credit-select" htmlFor={id}>{"Credits "}<select id={id} aria-label={`Credits for ${course.code}`} value={value} onChange={(event) => onChange(Number(event.target.value))}>{Array.from({ length: course.maxCredits - course.credits + 1 }, (_, index) => course.credits + index).map((credits) => <option key={credits} value={credits}>{credits}</option>)}</select></label>;
 }
 
+/** A link to an official page. The host must be a host of the catalog's own sources, else the text says it is unavailable. */
 export function OfficialLink({ href, sources, children = "Official catalog" }: { href: string; sources?: string[]; children?: ReactNode }) {
   let safe = false;
   try {
     const url = new URL(href);
-    if (url.protocol !== "https:") safe = false;
-    else if (sources && sources.length > 0) {
-      safe = sources.some((source) => {
-        try { return new URL(source).protocol === "https:" && new URL(source).hostname === url.hostname; } catch { return false; }
-      });
-    } else {
-      safe = url.hostname === "catalog.northeastern.edu";
-    }
+    safe = url.protocol === "https:" && (sources ?? []).some((source) => {
+      try { return new URL(source).protocol === "https:" && new URL(source).hostname === url.hostname; } catch { return false; }
+    });
   } catch { /* A missing source is displayed as text, never an unsafe link. */ }
   return safe ? <a className="text-link" href={href} target="_blank" rel="noopener noreferrer">{children}<ArrowUpRight size={14} /></a> : <span className="muted">Official source unavailable</span>;
 }

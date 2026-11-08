@@ -1,16 +1,18 @@
-# NEU MSCS Course Planner
+# Course Map
 
-A local-first course map for Northeastern University's Seattle MS in Computer Science program.
+A local-first course map for college programs. Pick your college and program, then see what every course unlocks. The first published program is Northeastern University's Seattle MS in Computer Science.
 
 The application is graph-first: **understand what every course unlocks**. Explore the official MSCS Seattle prerequisite map, then plan locally. It is an advising aid, not an official degree audit. Course availability in a specific semester or campus section is not included because the academic catalog does not provide that data.
 
-Primary navigation is **Explore · Plan · Courses · Paths**. Route redirects and the slim Overview at `/` are documented in [`docs/ia.md`](docs/ia.md).
+Primary navigation is **Explore · Plan · Courses · Paths**. `/` is the college and program picker. The picker, the route redirects and the slim Overview are documented in [`docs/ia.md`](docs/ia.md).
 
 ## Deployment
 
 Production is the Cloudflare Worker `coursesplanner` (Workers Free plan) at [https://coursesplanner.johnyc.com](https://coursesplanner.johnyc.com). It is built with [vinext](https://github.com/cloudflare/vinext), the Vite version of the Next.js API. The production Git branch is `master` (not `main`). GitHub Actions runs typecheck, tests, and a production build on pull requests and on `master`. Deploy is manual: `npm run deploy`. Operator notes, CPU numbers and rollback are in [`docs/deploy.md`](docs/deploy.md).
 
 ## What the application includes
+
+- **Program picker** (`/`): search colleges and programs. Each published program shows its tier (Audit or Map) and catalog year. Other colleges in the directory show "Not supported yet". The last program that you opened is the first item.
 
 Each program has its own pages under `/<universityId>/<programId>/` (the catalog key). MSCS Seattle is at `/northeastern/computer-science-mscs-sea-8b0d00dbda`. In this list, `<program>` is that path. See [Routes](#routes).
 
@@ -29,6 +31,7 @@ Every page is under the catalog key of its program. The URL selects the catalog.
 
 | Page | Path |
 | --- | --- |
+| College and program picker | `/` |
 | Overview | `/<universityId>/<programId>` |
 | Explore | `/<universityId>/<programId>/explore` |
 | Plan | `/<universityId>/<programId>/planner` |
@@ -37,10 +40,13 @@ Every page is under the catalog key of its program. The URL selects the catalog.
 | Paths | `/<universityId>/<programId>/pathways` and `.../pathways/<id>` |
 
 - The build prerenders these pages for each published program (`CATALOGS` in `lib/catalog-key.ts`). A test checks that `data/published.json` lists the same keys.
-- Old top-level URLs answer `308` to the same page of the default program. The query string stays. `/` answers `307`, because the program picker (#72) will replace it.
+- `/` is the picker (#72). It is prerendered at build time from `CATALOGS` and `catalog-service/universities.json`. Search runs in the browser.
+- Old top-level URLs answer `308` to the same page of the default program. The query string stays. An old URL with a trailing slash (`/courses/`) also takes one hop: `worker.ts` sends it with `legacyDestination`.
+- Titles, descriptions and the sidebar name the college and program from the snapshot (`Catalog.university`, `Catalog.program`). The product name is "Course Map". A test in `tests/ia.test.ts` fails when `app/` or `components/` has a hardcoded "NEU MSCS" or "Northeastern" string.
+- The icons are `public/icon.svg` and `public/favicon.ico`. Static assets answer them; the Worker does not run (`wrangler.jsonc` `run_worker_first`).
 - An unknown program or course gets a small `404` page. `worker.ts` sends it to `app/global-not-found.tsx` before vinext renders the layouts.
 - The page tier comes from the catalog. A Map-tier program gets map, courses and plan checks, but no degree audit.
-- Route helpers: `lib/routes.ts` (`programRoutes`, `legacyRedirects`) and `lib/program-page.ts`.
+- Route helpers: `lib/routes.ts` (`programRoutes`, `legacyRedirects`, `legacyDestination`) and `lib/program-page.ts` (`readProgram`, `programName`).
 
 ## Catalog source inspection
 
@@ -85,7 +91,7 @@ AppProvider --------> pages and dialogs
 
 The crawler is an independent Node service. It does not import Next.js. The web app never scrapes on page load. `GET /api/catalog` reads the validated snapshot from disk. `POST /api/catalog` asks the catalog service to refresh, and falls back to the same refresh library in-process if the service is not running.
 
-Explore shows a roadmap selector above the graph, backed by same-origin `GET /api/roadmaps`. That route only reads validated local snapshots and never crawls or fetches remotely inside Next.js: no query returns the ordered university directory with per-university status, `?university=<id>` returns discovered programs, and `?university=<id>&program=<id>` returns one ready roadmap. Selecting a ready program switches the graph to that program's course set and metadata while Northeastern MSCS stays the default; a reset button restores it. `/map` still redirects to Explore.
+Explore shows a roadmap selector above the graph, backed by same-origin `GET /api/roadmaps`. That route only reads validated local snapshots and never crawls or fetches remotely inside Next.js: no query returns the ordered university directory with per-university status, `?university=<id>` returns discovered programs, and `?university=<id>&program=<id>` returns one ready roadmap. Selecting a ready program switches the graph to that program's course set and metadata while the current program stays the default; a reset button restores it. `/map` still redirects to Explore.
 
 ### Production vs local
 
@@ -321,7 +327,7 @@ npm run catalog:serve
 npm run dev
 ```
 
-Open [http://localhost:3000/northeastern/computer-science-mscs-sea-8b0d00dbda/explore](http://localhost:3000/northeastern/computer-science-mscs-sea-8b0d00dbda/explore) for the course map (the default workspace). [http://localhost:3000](http://localhost:3000) redirects to the slim Overview of the default program. Old top-level URLs (`/explore`, `/courses`, `/map` and the others) redirect to the program paths. See [`docs/ia.md`](docs/ia.md). Run only one `next dev` at a time: if you are working in `.worktrees/<slug>/`, start Next there and do not also run it at the repo root. Restart `next dev` if a session has been running for many hours; Turbopack memory eviction does not replace a process recycle. Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. To run the production Worker build on your PC (workerd, port 3000):
+Open [http://localhost:3000/northeastern/computer-science-mscs-sea-8b0d00dbda/explore](http://localhost:3000/northeastern/computer-science-mscs-sea-8b0d00dbda/explore) for the course map (the default workspace). [http://localhost:3000](http://localhost:3000) is the college and program picker. Old top-level URLs (`/explore`, `/courses`, `/map` and the others) redirect to the program paths. See [`docs/ia.md`](docs/ia.md). Run only one `next dev` at a time: if you are working in `.worktrees/<slug>/`, start Next there and do not also run it at the repo root. Restart `next dev` if a session has been running for many hours; Turbopack memory eviction does not replace a process recycle. Keep the demo on loopback (`localhost` / `127.0.0.1`) if you use the in-app refresh button; `next dev` already does this by default. To run the production Worker build on your PC (workerd, port 3000):
 
 ```bash
 npm run build

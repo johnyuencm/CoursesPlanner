@@ -2,6 +2,7 @@ import vinext from "vinext/server/app-router-entry";
 import { readCatalog } from "./lib/catalog";
 import { CATALOGS } from "./lib/catalog-key";
 import { isProgramPath, isUnknownProgramPath, programPagePaths } from "./lib/course-pages";
+import { legacyDestination } from "./lib/routes";
 
 // An unknown program or course page renders notFound() inside the layouts: p50 15 ms CPU, over the
 // Workers Free 10 ms limit. A route miss renders app/global-not-found.tsx without the layouts.
@@ -20,6 +21,9 @@ function programPages(): Promise<Set<string>> {
 export default {
   async fetch(request: Request, env: Parameters<typeof vinext.fetch>[1], ctx: Parameters<typeof vinext.fetch>[2]) {
     const url = new URL(request.url);
+    // An old URL with a trailing slash (`/courses/`): one hop to the new path, not two.
+    const legacy = url.pathname.length > 1 && url.pathname.endsWith("/") ? legacyDestination(url.pathname.slice(0, -1)) : null;
+    if (legacy) return new Response(null, { status: 308, headers: { Location: legacy + url.search } });
     if (isProgramPath(url.pathname)) {
       // Without the catalog, vinext renders the page and answers as before.
       const known = await programPages().catch(() => undefined);

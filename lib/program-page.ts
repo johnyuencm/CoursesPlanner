@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { readCatalog } from "./catalog";
 import { CATALOGS } from "./catalog-key";
 import { programRoutes } from "./routes";
+import type { Catalog } from "./types";
 
 export type ProgramParams = { universityId: string; programId: string };
 
@@ -14,11 +15,17 @@ export function programParams(): ProgramParams[] {
   });
 }
 
-/** Catalog key, catalog and page paths of the program in the URL. An unknown program calls notFound(). */
+/** College and program name from the snapshot, for titles and descriptions: "<university> <program>". */
+export function programName(catalog: Pick<Catalog, "university" | "program" | "requirements">): string {
+  return [catalog.university, catalog.program ?? catalog.requirements.name].filter(Boolean).join(" ");
+}
+
+/** Catalog key, catalog, display name and page paths of the program in the URL. An unknown program calls notFound(). */
 export async function readProgram(params: Promise<ProgramParams>) {
   const { universityId, programId } = await params;
   const key = `${universityId}/${programId}`;
   if (!Object.hasOwn(CATALOGS, key)) notFound();
   // ponytail: every catalog key serves the default catalog today (CATALOGS has one entry).
-  return { key, catalog: await readCatalog(), routes: programRoutes(key) };
+  const catalog = await readCatalog();
+  return { key, catalog, name: programName(catalog), routes: programRoutes(key) };
 }

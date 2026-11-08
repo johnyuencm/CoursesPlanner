@@ -1,10 +1,15 @@
 import { strict as assert } from "node:assert";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { renderToStaticMarkup } from "react-dom/server";
 
+import { matchesQuery } from "../components/program-picker";
+import { DegreeRules } from "../components/program-summary";
 import { overviewSnapshot } from "../lib/overview";
 import { emptyPlan } from "../lib/plan";
 import { DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
-import { legacyRedirects, parseExploreFocus, primaryNav, programRoutes } from "../lib/routes";
+import { legacyDestination, legacyRedirects, parseExploreFocus, primaryNav, programRoutes } from "../lib/routes";
 import type { Catalog, Course, RequirementExpression, StudentPlan } from "../lib/types";
 import { validatePlan } from "../lib/requirements-v2";
 import { mscsRequirements } from "./mscs-requirements";
@@ -89,9 +94,8 @@ test("primary nav is Explore, Plan, Courses, Paths under the program path", () =
   assert.equal(programRoutes("mit/eecs").pathway("systems"), "/mit/eecs/pathways/systems");
 });
 
-test("old top-level URLs redirect to the default program (#71)", () => {
+test("old top-level URLs redirect to the default program (#71); / is the picker (#72)", () => {
   assert.deepEqual(legacyRedirects, [
-    { source: "/", destination: base, permanent: false }, // T8 (#72) makes / the program picker
     { source: "/map", destination: `${base}/explore`, permanent: true },
     { source: "/explore", destination: `${base}/explore`, permanent: true },
     { source: "/planner", destination: `${base}/planner`, permanent: true },
@@ -100,6 +104,62 @@ test("old top-level URLs redirect to the default program (#71)", () => {
     { source: "/courses/:slug", destination: `${base}/courses/:slug`, permanent: true },
     { source: "/pathways/:id", destination: `${base}/pathways/:id`, permanent: true },
   ]);
+});
+
+test("an old path with a trailing slash maps to the new path in one hop (#72)", () => {
+  assert.equal(legacyDestination("/courses"), `${base}/courses`);
+  assert.equal(legacyDestination("/explore"), `${base}/explore`);
+  assert.equal(legacyDestination("/map"), `${base}/explore`);
+  assert.equal(legacyDestination("/courses/cs-5800"), `${base}/courses/cs-5800`);
+  assert.equal(legacyDestination("/pathways/systems"), `${base}/pathways/systems`);
+  for (const other of ["", "/courses/cs-5800/x", "/nothing", `${base}/courses`, "/api"]) assert.equal(legacyDestination(other), null, other);
+});
+
+test("/ is the program picker: published programs with tier and catalog year, other colleges not supported yet (#72)", async () => {
+  const { default: HomePage, metadata } = await import("../app/page");
+  const html = renderToStaticMarkup(await HomePage());
+  assert.match(html, /<h1>Pick your college and program<\/h1>/);
+  assert.match(html, new RegExp(`href="${base}"`), "the published program links to its overview");
+  assert.match(html, /Northeastern University<\/h3>/);
+  assert.match(html, /Computer Science, MSCS—Seattle/);
+  assert.match(html, />Audit<\/span><span>2026-2027 catalog/);
+  assert.match(html, /Colleges not supported yet/);
+  assert.match(html, /MIT<\/span> <span class="badge">Not supported yet/);
+  assert.doesNotMatch(html, /Northeastern<\/span> <span class="badge">Not supported yet/, "a supported college is not in the other list");
+  assert.equal(metadata.alternates?.canonical, "/");
+});
+
+test("picker search matches every word of the query", () => {
+  assert.equal(matchesQuery("", "MIT"), true);
+  assert.equal(matchesQuery("northeastern computer", "Northeastern University Computer Science, MSCS"), true);
+  assert.equal(matchesQuery("computer bs", "Northeastern University Computer Science, MSCS"), false);
+});
+
+test("program pages name the college and program; no hardcoded NEU MSCS branding (#72)", async () => {
+  const { generateMetadata } = await import("../app/[universityId]/[programId]/layout");
+  const params = Promise.resolve({ universityId: "northeastern", programId: "computer-science-mscs-sea-8b0d00dbda" });
+  const title = (await generateMetadata({ params })).title as { default: string; template: string };
+  assert.equal(title.template, "%s · Northeastern University Computer Science, MSCS—Seattle · Course Map");
+  // The UI and metadata get college and program names from the snapshot only.
+  for (const dir of ["app", "components"]) {
+    for (const file of readdirSync(dir, { recursive: true, encoding: "utf8" }).filter((name) => /\.tsx?$/.test(name))) {
+      assert.doesNotMatch(readFileSync(path.join(dir, file), "utf8"), /NEU MSCS|Northeastern|MSCS Seattle/i, `${dir}/${file}`);
+    }
+  }
+});
+
+test("degree rules list every breadth and elective group, with the snapshot's college name (#72)", async () => {
+  const data = catalog();
+  const root = data.requirements.root;
+  assert.equal(root.kind, "all");
+  if (root.kind !== "all") return;
+  const breadth = root.children.find((group) => group.kind === "choose-areas")!;
+  const electives = root.children.find((group) => group.kind === "choose-credits")!;
+  root.children.push({ ...breadth, id: "breadth-2", label: "Second breadth" }, { ...electives, id: "electives-2", label: "Second electives" });
+  const html = renderToStaticMarkup(DegreeRules({ catalog: { ...data, university: "Example University" }, routes }));
+  for (const label of ["Breadth areas", "Second breadth", "Electives", "Second electives"]) assert.match(html, new RegExp(`<h3>${label}</h3>`), label);
+  assert.match(html, /Example University catalog/);
+  assert.doesNotMatch(html, /Northeastern/);
 });
 
 test("target path panel is anchored on Plan", () => {

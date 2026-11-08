@@ -88,6 +88,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 0.08rem; padding: 0.2rem 0.7rem 1.35rem; line-height: 1.15; }
 .brand-mark { color: var(--red); font-size: 1.02rem; font-weight: 800; letter-spacing: -0.03em; }
 .brand-name { color: var(--ink); font-size: 1.02rem; font-weight: 750; letter-spacing: -0.03em; }
+.brand-program { color: var(--ink-soft); font-size: 0.74rem; font-weight: 620; }
 .sidebar-label { margin: 0.15rem 0.7rem 0.5rem; color: var(--muted); font-size: 0.58rem; letter-spacing: 0.12em; font-weight: 720; }
 .main-nav { display: grid; gap: 0.18rem; }
 .nav-link { position: relative; min-height: 42px; display: flex; align-items: center; gap: 0.7rem; padding: 0.62rem 0.75rem; border-radius: 10px; color: var(--ink-soft); font-size: 0.84rem; font-weight: 600; transition: background 150ms, color 150ms; }
@@ -743,7 +744,7 @@ textarea { resize: vertical; }
 @media (max-width: 1180px) {
   :root { --sidebar: 82px; }
   .brand { align-items: center; justify-content: center; padding-left: 0; padding-right: 0; }
-  .brand-name, .sidebar-label, .sidebar-tagline, .sidebar-status-link, .sidebar-underline, .sidebar-mountains, .local-note { display: none; }
+  .brand-name, .brand-program, .sidebar-label, .sidebar-tagline, .sidebar-status-link, .sidebar-underline, .sidebar-mountains, .local-note { display: none; }
   .brand-mark { font-size: 0.68rem; text-align: center; width: 100%; }
   .main-nav { margin-top: 1rem; }
   .nav-link { justify-content: center; padding: 0.7rem 0.2rem; flex-direction: column; gap: 0.15rem; font-size: 0.58rem; }
@@ -874,3 +875,20 @@ textarea { resize: vertical; }
 .static-list a { color: inherit; } .static-list a:hover { color: var(--red); }
 .course-index { margin-top: 2rem; border-top: 1px solid var(--line); padding-top: 1.2rem; }
 .course-index .static-list { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); list-style: none; padding-left: 0; }
+
+/* Program picker on / (#72) */
+.picker { max-width: 820px; margin: 0 auto; padding: 2.5rem 1.1rem 4rem; display: grid; gap: 1.6rem; }
+.picker h1 { font-size: 1.7rem; letter-spacing: -0.03em; margin: 0.2rem 0 0.4rem; }
+.picker h2 { font-size: 1.1rem; font-weight: 750; margin: 0 0 0.4rem; }
+.picker .picker-brand { color: var(--red); font-size: 1.02rem; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
+.picker h3 { font-size: 0.92rem; margin: 0.8rem 0 0.4rem; }
+.picker p { color: var(--ink-soft); line-height: 1.55; margin: 0 0 0.5rem; }
+.picker-search { display: grid; gap: 0.4rem; }
+.picker-search label { font-weight: 700; }
+.picker-search input { min-height: 44px; border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 0.55rem 0.8rem; font-size: 1rem; background: var(--surface); }
+.picker-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
+.picker-program { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; padding: 0.8rem 0.95rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.picker-program:hover { border-color: var(--red); }
+.picker-meta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; color: var(--ink-soft); font-size: 0.8rem; }
+.picker-other li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid var(--line); }
+.picker-other a { color: var(--ink-soft); font-size: 0.8rem; text-decoration: underline; }

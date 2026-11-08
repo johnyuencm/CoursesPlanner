@@ -22,7 +22,7 @@ This file is operator notes. Students who use the planner do not need it.
 
 ```mermaid
 flowchart LR
-  B[npm run build] --> P[vinext prerenders 126 routes]
+  B[npm run build] --> P[vinext prerenders 127 routes]
   P --> A[dist/client: static assets]
   B --> M[validate data/published.json snapshots]
   M --> A
@@ -36,7 +36,7 @@ flowchart LR
   S -->|ASSETS binding| A
 ```
 
-- `npm run build` runs `vite build`. vinext prerenders every page of each published program at build time: `/<universityId>/<programId>` and its `explore`, `planner`, `courses`, `pathways`, all `courses/<slug>` and all `pathways/<id>`. The Worker serves them from static assets (`X-Vinext-Cache: HIT`). See [`docs/ia.md`](ia.md).
+- `npm run build` runs `vite build`. vinext prerenders the program picker (`/`) and every page of each published program at build time: `/<universityId>/<programId>` and its `explore`, `planner`, `courses`, `pathways`, all `courses/<slug>` and all `pathways/<id>`. The Worker serves them from static assets (`X-Vinext-Cache: HIT`). See [`docs/ia.md`](ia.md).
 - `/api/catalog`, `/api/roadmaps`, `/sitemap.xml`, `/robots.txt` and 404 pages run in the Worker.
 - Workers has no project filesystem. The Worker reads the published snapshots from static assets. See [Published snapshots](#published-snapshots).
 - `POST /api/catalog` (refresh) stays off in production: it answers 401. Refresh the catalog with `npm run catalog:refresh`, commit `data/`, then deploy.

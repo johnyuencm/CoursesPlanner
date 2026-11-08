@@ -485,7 +485,7 @@ export function AppProvider({ catalogKey, children }: { catalogKey: string; chil
 
 export function useApp() {
   const context = useContext(AppContext);
-  if (!context) throw new Error("NEU MSCS Course Planner must be used inside AppProvider.");
+  if (!context) throw new Error("useApp must be used inside AppProvider.");
   return context;
 }
 

@@ -85,9 +85,9 @@ export function RoadmapSelectorView({
       <div className="roadmap-selector-heading">
         <div>
           <h2><BookOpen size={18} /> Prerequisite roadmaps</h2>
-          <p className="muted small-text">Explore a ready university program without leaving the current plan. Northeastern MSCS stays the default.</p>
+          <p className="muted small-text">Explore a ready university program without leaving the current plan. The current program stays the default.</p>
         </div>
-        {universityId && <button type="button" className="button button-secondary button-small" onClick={onReset}><RotateCcw size={14} /> Back to Northeastern MSCS</button>}
+        {universityId && <button type="button" className="button button-secondary button-small" onClick={onReset}><RotateCcw size={14} /> Back to the current program</button>}
       </div>
       <p id="roadmap-selector-guide" className="roadmap-selector-guide">Ready programs appear first. Other discovered programs stay visible with their status but cannot open until ready.</p>
       <div className="roadmap-status-guide" role="note" aria-label="Roadmap status guide">
@@ -101,7 +101,7 @@ export function RoadmapSelectorView({
       <div className="roadmap-selector-fields">
         <label className="field-label" htmlFor="roadmap-university">University
           <select id="roadmap-university" aria-describedby="roadmap-selector-guide" value={universityId} disabled={loading} onChange={(event) => onUniversityChange(event.target.value)}>
-            <option value="">Northeastern MSCS (default)</option>
+            <option value="">Current program (default)</option>
             <optgroup label="United States">
               {us.map((entry) => (
                 <option key={entry.id} value={entry.id} disabled={!isUniversitySelectable(entry)}>

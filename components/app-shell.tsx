@@ -22,7 +22,8 @@ const navIcons: Record<ReturnType<typeof primaryNav>[number]["label"], LucideIco
 
 const pathways = pathwayConfig as Pathway[];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+/** `university` and `program` come from the snapshot (server layout), so the first HTML names them. */
+export function AppShell({ university, program, children }: { university: string; program: string; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const app = useApp();
@@ -44,7 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return <div className="app-shell">
     <a href="#main-content" className="skip-link">Skip to content</a>
     <aside className="sidebar">
-      <Link className="brand" href={routes.explore} aria-label="NEU MSCS course map"><span className="brand-mark">NEU MSCS</span><span className="brand-name">Course Map</span></Link>
+      <Link className="brand" href={routes.explore} aria-label={`Course Map: ${university} ${program}`}><span className="brand-mark">Course Map</span><span className="brand-name">{university}</span><span className="brand-program">{program}</span></Link>
       <nav aria-label="Main navigation" className="main-nav">{primaryNav(routes).map(({ href, label }) => {
         const Icon = navIcons[label];
         return <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} className={pathname === href ? "nav-link active" : "nav-link"}><Icon size={18} strokeWidth={1.8} /><span className="nav-full">{label}</span><span className="nav-short">{label}</span></Link>;
@@ -52,6 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="sidebar-bottom">
         <p className="sidebar-tagline">Understand what every course unlocks.</p>
         <Link className="sidebar-status-link" href={routes.overview}>Status overview</Link>
+        <Link className="sidebar-status-link" href="/">Change college or program</Link>
         <span className="sidebar-underline" aria-hidden="true" />
         <svg className="sidebar-mountains" viewBox="0 0 220 54" aria-hidden="true"><path d="M0 54 38 26 72 44 112 14 148 36 220 8v46Z" fill="currentColor" /></svg>
         <div className="local-note"><ShieldCheck size={13} /> Private by design. Saved on this device.</div>
@@ -78,6 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <summary aria-label="Local plan menu"><span className="avatar">LP</span><span>Local plan<small>This device</small></span></summary>
             <div className="profile-dropdown">
               {app.refreshAvailable && <button type="button" disabled={app.catalogBusy} onClick={() => void app.refreshCatalog()}><RefreshCw size={14} className={app.catalogBusy ? "spin" : ""} />{app.catalogBusy ? "Loading…" : "Refresh catalog"}</button>}
+              <Link href="/">Change college or program</Link>
               <button type="button" onClick={app.resetPlan}>Reset local plan</button>
               {app.catalog && <OfficialLink href={app.catalog.requirements.officialUrl} sources={app.catalog.sources}>Official catalog</OfficialLink>}
               {app.catalog && <span className="muted">{app.catalog.requirements.catalogYear} · refreshed {dateLabel(app.catalog.lastUpdated)}</span>}

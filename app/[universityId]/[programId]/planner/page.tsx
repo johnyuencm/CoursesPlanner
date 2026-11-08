@@ -6,10 +6,10 @@ import { readProgram, type ProgramParams } from "@/lib/program-page";
 type Props = { params: Promise<ProgramParams> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { routes } = await readProgram(params);
+  const { name, routes } = await readProgram(params);
   return {
     title: "Build my plan",
-    description: "Plan your Northeastern MSCS Seattle semesters. The planner checks prerequisites and degree rules, and saves the plan only in your browser.",
+    description: `Plan your ${name} terms. The planner checks prerequisites and degree rules, and saves the plan only in your browser.`,
     alternates: { canonical: routes.plan },
   };
 }
