@@ -69,7 +69,7 @@ test("the manifest tier comes from validation: credits that do not add up give t
   try {
     const file = path.join(root, "data/catalog.json");
     const catalog = JSON.parse(await readFile(file, "utf8"));
-    catalog.requirements.electiveCredits = 8; // 8 core + 12 breadth + 8 electives is not 32
+    catalog.requirements.root.children.find((group: { id: string }) => group.id === "electives").credits = 8; // 8 core + 12 breadth + 8 electives is not 32
     await writeFile(file, JSON.stringify(catalog));
     assert.equal(manifestOf(await buildSnapshotAssets(root)).catalogs[0].tier, "map");
   } finally {

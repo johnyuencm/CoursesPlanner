@@ -1,10 +1,10 @@
 import * as cheerio from "cheerio";
 import { northeasternCodeGrammar } from "../lib/course-code";
-import { listedProgramCodes } from "../lib/graph";
+import { programCourseCodes, requirementView } from "../lib/requirements-v2";
 import type {
   BreadthCategory,
   Course,
-  DegreeRequirement,
+  DegreeRequirementV2,
   RequirementExpression,
 } from "../lib/types";
 
@@ -329,7 +329,7 @@ export function parseProgramRequirements(
   html: string,
   officialUrl = PROGRAM_URL,
   lastUpdated = new Date().toISOString(),
-): DegreeRequirement {
+): DegreeRequirementV2 {
   const $ = cheerio.load(html);
   const root = $("#programrequirementstextcontainer");
   if (!root.length) throw new Error("Program requirements container not found");
@@ -447,24 +447,45 @@ export function parseProgramRequirements(
     .get()
     .filter(Boolean);
 
+  const rawRules = [...introductoryRules, breadthRule, electiveRule, creditRule];
+  const rule = (pattern: RegExp) => rawRules.find((text) => pattern.test(text)) ?? "";
   return {
+    version: 2,
     name: title,
     catalogYear: edition,
-    totalCredits,
     minimumGpa,
-    coreCourses,
-    breadthRequirements: {
-      coursesRequired,
-      minCategories,
-      credits: breadthCredits,
-      categories,
-    },
-    electiveCredits,
-    eligibleElectives,
     officialUrl,
-    rawRules: [...introductoryRules, breadthRule, electiveRule, creditRule],
     uncertainties,
     lastUpdated,
+    root: {
+      kind: "all",
+      id: "program",
+      label: title,
+      rawText: rule(/complete all courses/i),
+      children: [
+        { kind: "choose-courses", id: "core", label: "Core requirements", rawText: "", count: coreCourses.length, courses: coreCourses },
+        {
+          kind: "choose-areas",
+          id: "breadth",
+          label: "Breadth areas",
+          rawText: rule(/from at least/i),
+          count: coursesRequired,
+          minAreas: minCategories,
+          credits: breadthCredits,
+          areas: categories,
+        },
+        {
+          // The catalog lets breadth-area courses that breadth did not use count here.
+          kind: "choose-credits",
+          id: "electives",
+          label: "Electives",
+          rawText: rule(/semester hours from/i),
+          credits: electiveCredits,
+          courses: eligibleElectives,
+        },
+        { kind: "total-credits", id: "total", label: "Total credits", rawText: rule(/total semester hours/i), credits: totalCredits },
+      ],
+    },
   };
 }
 
@@ -548,18 +569,19 @@ function buildScopedCourseGraph(
     .sort((left, right) => left.code.localeCompare(right.code, undefined, { numeric: true }));
 }
 
-export function buildCourseGraph(courses: Course[], requirements: DegreeRequirement): Course[] {
-  const coreCodes = new Set(requirements.coreCourses);
-  const electiveCodes = new Set(requirements.eligibleElectives);
+export function buildCourseGraph(courses: Course[], requirements: DegreeRequirementV2): Course[] {
+  const view = requirementView(requirements);
+  const coreCodes = new Set(view.core);
+  const electiveCodes = new Set(view.electiveCourses);
   const categoryIdsByCourse = new Map<string, string[]>();
-  for (const category of requirements.breadthRequirements.categories) {
+  for (const category of view.areas) {
     for (const code of category.courses) {
       categoryIdsByCourse.set(code, [...(categoryIdsByCourse.get(code) ?? []), category.id]);
     }
   }
   return buildScopedCourseGraph(
     courses,
-    listedProgramCodes(requirements),
+    programCourseCodes(requirements),
     catalogOrigin(requirements.officialUrl),
     (code) => {
       const breadthCategories = categoryIdsByCourse.get(code) ?? [];

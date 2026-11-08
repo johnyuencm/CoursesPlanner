@@ -1,5 +1,6 @@
 import { catalogCodeGrammar } from "./course-code";
 import { simplifyRequirement } from "./requirement-logic";
+import { requirementView } from "./requirements-v2";
 import type { Catalog, Course, Pathway, RequirementExpression } from "./types";
 
 /** Public site origin for canonical URLs and the sitemap. */
@@ -80,7 +81,7 @@ export function pathwaysFor(code: string, pathways: readonly Pathway[]): { pathw
 export function requirementLabel(course: Course, catalog: Catalog): string {
   if (course.requirementType === "core") return "Required core course";
   if (course.requirementType === "breadth") {
-    const names = catalog.requirements.breadthRequirements.categories
+    const names = requirementView(catalog.requirements).areas
       .filter((category) => category.courses.includes(course.code))
       .map((category) => category.name);
     return names.length ? `Breadth course: ${names.join(", ")}` : "Breadth course";

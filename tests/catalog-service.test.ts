@@ -22,6 +22,7 @@ import { handleCatalogRequest } from "../catalog-service/server";
 import { KNOWN_ADAPTER_IDS, type CatalogSourceDefinition } from "../lib/source-types";
 import { registeredAdapters } from "../catalog-service/adapters";
 import { readCatalog } from "../lib/catalog";
+import { requirementView } from "../lib/requirements-v2";
 
 const fixture = (name: string) => readFileSync(path.join(process.cwd(), "data", "raw", name), "utf8");
 
@@ -544,8 +545,8 @@ test("two registered sources refresh independently from the same fixtures", { ti
     });
     assert.equal(first.catalog.id, "neu-alpha");
     assert.equal(second.catalog.id, "neu-beta");
-    assert.equal(first.catalog.requirements.totalCredits, 32);
-    assert.equal(second.catalog.requirements.totalCredits, 32);
+    assert.equal(requirementView(first.catalog.requirements).totalCredits, 32);
+    assert.equal(requirementView(second.catalog.requirements).totalCredits, 32);
     assert.ok(first.catalog.courses.some((course) => course.code === "CS 5010"));
     const alphaFile = JSON.parse(await readFile(path.join(rootDir, "data", "catalogs", "neu-alpha", "catalog.json"), "utf8")) as { id: string };
     const betaFile = JSON.parse(await readFile(path.join(rootDir, "data", "catalogs", "neu-beta", "catalog.json"), "utf8")) as { id: string };

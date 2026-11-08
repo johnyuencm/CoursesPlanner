@@ -8,7 +8,8 @@ import {
   expressionLabel,
   getEligibility,
 } from "../lib/validation";
-import { validatePlan } from "../lib/requirements-v2";
+import { requirementView, validatePlan } from "../lib/requirements-v2";
+import { mscsRequirements } from "./mscs-requirements";
 
 /** A top-level rule group of the MSCS v2 audit: core, breadth, electives or total. */
 const group = (progress: DegreeProgressV2, id: string) => {
@@ -68,24 +69,14 @@ function catalog(extraCourses: Course[] = []): Catalog {
   ];
   return {
     courses,
-    requirements: {
-      name: "MSCS",
-      catalogYear: "2026-2027",
-      totalCredits: 32,
-      minimumGpa: 3,
-      coreCourses: ["CS 5010", "CS 5011", "CS 5800"],
-      breadthRequirements: {
-        coursesRequired: 3,
-        minCategories: 2,
-        credits: 12,
-        categories: [
-          { id: "systems", name: "Systems", courses: ["CS 5100", "CS 5101"] },
-          { id: "theory", name: "Theory", courses: ["CS 5200"] },
-          { id: "software", name: "Software", courses: ["CS 5300"] },
-        ],
-      },
-      electiveCredits: 12,
-      eligibleElectives: [
+    requirements: mscsRequirements({
+      core: ["CS 5010", "CS 5011", "CS 5800"],
+      areas: [
+        { id: "systems", name: "Systems", courses: ["CS 5100", "CS 5101"] },
+        { id: "theory", name: "Theory", courses: ["CS 5200"] },
+        { id: "software", name: "Software", courses: ["CS 5300"] },
+      ],
+      electives: [
         "CS 6100",
         "CS 6110",
         "CS 6120",
@@ -93,11 +84,7 @@ function catalog(extraCourses: Course[] = []): Catalog {
           .filter((candidate) => candidate.requirementType !== "external" && candidate.electiveEligible)
           .map((candidate) => candidate.code),
       ],
-      officialUrl: "https://example.test/program",
-      rawRules: [],
-      uncertainties: [],
-      lastUpdated: "2026-09-10",
-    },
+    }),
     lastUpdated: "2026-09-10",
     sources: [],
     warnings: [],
@@ -268,7 +255,7 @@ test("breadth allocation uses three unique courses across category ids and leave
 
 test("breadth diversity cannot count one course twice", () => {
   const narrowCatalog = catalog();
-  narrowCatalog.requirements.breadthRequirements.categories = [
+  requirementView(narrowCatalog.requirements).breadth!.areas = [
     { id: "systems", name: "Systems", courses: ["CS 5100", "CS 5101", "CS 5200"] },
     { id: "theory", name: "Theory", courses: [] },
   ];

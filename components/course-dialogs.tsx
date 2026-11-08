@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, CheckCircle2, GitBranch, Info, Plus, Search, ShieldCheck, TriangleAlert, Undo2 } from "lucide-react";
 import pathwayConfig from "@/config/pathways.json";
 import { courseDependencyStats } from "@/lib/catalog-view";
+import { requirementView } from "@/lib/requirements-v2";
 import { exploreFocusHref } from "@/lib/routes";
 import type { Pathway } from "@/lib/types";
 import { expressionLabel, getEligibility } from "@/lib/validation";
@@ -33,7 +34,7 @@ export function CourseDetail({ code }: { code: string }) {
     <div className="detail-meta"><span className={`badge ${course.requirementType === "core" ? "badge-core" : ""}`}>{course.requirementType === "core" ? "Required core" : course.requirementType === "external" ? "External prerequisite" : course.requirementType === "breadth" ? "Breadth / elective" : "Elective"}</span><strong>{creditLabel(course)} credits</strong>{completed && <span className="status-label"><CheckCircle2 size={15} /> Completed</span>}{waived && <span className="status-label"><ShieldCheck size={15} /> Waived</span>}</div>
     <CourseDependencyFields stats={stats} graphHref={exploreFocusHref(course.code)} onViewGraph={focusExplore} />
     <p className="detail-description">{course.description || "No description is available in the current cache."}</p>
-    {course.breadthCategories.length > 0 && <div className="detail-tags">{course.breadthCategories.map((id) => <span className="badge" key={id}>{catalog?.requirements.breadthRequirements.categories.find((category) => category.id === id)?.name ?? id}</span>)}</div>}
+    {course.breadthCategories.length > 0 && <div className="detail-tags">{course.breadthCategories.map((id) => <span className="badge" key={id}>{(catalog ? requirementView(catalog.requirements).areas : []).find((category) => category.id === id)?.name ?? id}</span>)}</div>}
     <section className="detail-section"><h3>Prerequisites</h3><RequirementTree expression={course.prerequisites} /><p className="raw-rule"><strong>Catalog wording</strong>{course.prerequisiteText || (course.prerequisites.type === "none" ? "None listed." : "Unavailable.")}</p></section>
     <section className="detail-section"><h3>Take together · corequisites</h3><RequirementTree expression={course.corequisites} />{course.corequisiteText && <p className="raw-rule"><strong>Catalog wording</strong>{course.corequisiteText}</p>}</section>
     <section className="detail-section"><h3><GitBranch size={16} /> What this can unlock</h3><p className="muted small-text">These courses reference {course.code}. Other requirements may still apply.</p><div className="detail-code-links">{course.unlocks.length ? <CodeLinks codes={course.unlocks} limit={1000} /> : <span className="muted">No downstream links found in this catalog.</span>}</div></section>

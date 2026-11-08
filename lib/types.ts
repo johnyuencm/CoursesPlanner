@@ -17,6 +17,12 @@ export interface Course {
   prerequisiteCodes: string[];
   corequisiteCodes: string[];
   unlocks: string[];
+  /**
+   * Course roles derived from the program's v2 rule groups by the parser (`requirementView`):
+   * `breadthCategories` are the `choose-areas` area ids that list the course, "core" is a course
+   * of a `choose-courses` group that needs every listed course, and `electiveEligible` means a
+   * `choose-credits` group lists it. Roadmaps use "program" or "external". The audit reads the tree, not these fields.
+   */
   breadthCategories: string[];
   requirementType: "core" | "breadth" | "elective" | "program" | "external";
   electiveEligible: boolean;
@@ -31,26 +37,6 @@ export interface BreadthCategory {
   id: string;
   name: string;
   courses: string[];
-}
-
-export interface DegreeRequirement {
-  name: string;
-  catalogYear: string;
-  totalCredits: number;
-  minimumGpa: number;
-  coreCourses: string[];
-  breadthRequirements: {
-    coursesRequired: number;
-    minCategories: number;
-    credits: number;
-    categories: BreadthCategory[];
-  };
-  electiveCredits: number;
-  eligibleElectives: string[];
-  officialUrl: string;
-  rawRules: string[];
-  uncertainties: string[];
-  lastUpdated: string;
 }
 
 interface RuleGroupBase {
@@ -134,7 +120,7 @@ export interface Catalog {
   program?: string;
   adapter?: string;
   courses: Course[];
-  requirements: DegreeRequirement;
+  requirements: DegreeRequirementV2;
   lastUpdated: string;
   sources: string[];
   warnings: string[];

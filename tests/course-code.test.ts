@@ -18,6 +18,7 @@ import { parsePlan } from "../lib/plan";
 import { parseExploreFocus } from "../lib/routes";
 import { matchCourseTarget } from "../lib/target-path";
 import type { Catalog, Course } from "../lib/types";
+import { mscsRequirements } from "./mscs-requirements";
 
 const grammar = northeasternCodeGrammar;
 // The hardcoded pattern that #68 replaces with the grammar.
@@ -142,20 +143,16 @@ function twoCourseCatalog(first: string, second: string, adapter?: string): Cata
   return {
     ...(adapter ? { adapter } : {}),
     courses: [course(first, []), course(second, [first])],
-    requirements: {
-      name: "Test program",
-      catalogYear: "2026-2027",
-      totalCredits: 8,
-      minimumGpa: 3,
-      coreCourses: [first],
-      breadthRequirements: { coursesRequired: 1, minCategories: 1, credits: 4, categories: [{ id: "area", name: "Area", courses: [second] }] },
+    requirements: mscsRequirements({
+      core: [first],
+      areas: [{ id: "area", name: "Area", courses: [second] }],
+      electives: [second],
+      breadth: { count: 1, minAreas: 1, credits: 4 },
       electiveCredits: 4,
-      eligibleElectives: [second],
+      totalCredits: 8,
       officialUrl: url,
-      rawRules: [],
-      uncertainties: [],
       lastUpdated: "2026-11-08T00:00:00.000Z",
-    },
+    }),
     lastUpdated: "2026-11-08T00:00:00.000Z",
     sources: [url],
     warnings: [],

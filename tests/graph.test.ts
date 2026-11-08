@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
+import { requirementView } from "../lib/requirements-v2";
 import {
   consumeGraphFitRequest,
   catalogRelations,
@@ -290,7 +291,7 @@ test("entire-program map includes isolated official MSCS Seattle courses and the
   assert.equal(visible.has("CS 5500"), true);
   assert.equal(visible.has("CS 5004"), true);
   assert.equal(visible.has("CS 1800"), false);
-  assert.ok(visible.size >= requirements.coreCourses.length + 20);
+  assert.ok(visible.size >= requirementView(requirements).core.length + 20);
 });
 
 test("immediate neighborhood of CS 5500 stays local while entire-program scope keeps isolated cores", () => {

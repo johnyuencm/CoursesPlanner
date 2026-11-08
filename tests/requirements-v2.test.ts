@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { requirementsV2FromV1, requirementTier, validatePlanV2 } from "../lib/requirements-v2";
+import { validateCatalog } from "../lib/catalog";
+import { requirementTier, requirementView, validatePlanV2 } from "../lib/requirements-v2";
 import type { Catalog, Course, DegreeRequirementV2, RuleGroup, StudentPlan } from "../lib/types";
 
 const seattle = JSON.parse(readFileSync(path.join(process.cwd(), "data", "catalog.json"), "utf8")) as Catalog;
@@ -58,9 +59,9 @@ function audit(root: RuleGroup, studentPlan: StudentPlan) {
 
 const base = { label: "", rawText: "" };
 
-test("MSCS Seattle v2 form comes from the same parsed v1 data and keeps catalog text", () => {
-  const v1 = seattle.requirements;
-  const v2 = requirementsV2FromV1(v1);
+test("the MSCS Seattle snapshot stores the v2 tree and keeps catalog text", () => {
+  const v2 = seattle.requirements;
+  assert.equal(v2.version, 2);
   assert.equal(v2.root.kind, "all");
   if (v2.root.kind !== "all") return;
   assert.deepEqual(v2.root.children.map((group) => `${group.id}:${group.kind}`), [
@@ -70,10 +71,12 @@ test("MSCS Seattle v2 form comes from the same parsed v1 data and keeps catalog 
     "total:total-credits",
   ]);
   const [core, breadth, electives, total] = v2.root.children;
-  assert.ok(core.kind === "choose-courses" && core.count === v1.coreCourses.length);
-  assert.ok(breadth.kind === "choose-areas" && breadth.areas === v1.breadthRequirements.categories);
-  assert.ok(electives.kind === "choose-credits" && electives.credits === v1.electiveCredits);
-  assert.ok(total.kind === "total-credits" && total.credits === v1.totalCredits);
+  assert.ok(core.kind === "choose-courses");
+  assert.deepEqual([core.count, core.courses], [3, ["CS 5010", "CS 5011", "CS 5800"]]);
+  assert.ok(breadth.kind === "choose-areas");
+  assert.deepEqual([breadth.count, breadth.minAreas, breadth.credits, breadth.areas.length], [3, 2, 12, 3]);
+  assert.ok(electives.kind === "choose-credits" && electives.credits === 12);
+  assert.ok(total.kind === "total-credits" && total.credits === 32);
   assert.match(v2.root.rawText, /Complete all courses/);
   assert.match(breadth.rawText, /three courses from at least two/);
   assert.match(electives.rawText, /12 semester hours/);
@@ -90,8 +93,8 @@ test("v2 gives the recorded v1 audit for 500 seeded plans over the real MSCS Sea
     return seed / 2147483648;
   };
   const pick = <T>(items: T[]) => items[Math.floor(random() * items.length)];
-  const requirements = seattle.requirements;
-  const tree = requirementsV2FromV1(requirements);
+  const tree = seattle.requirements;
+  const view = requirementView(tree);
   const actual: unknown[] = [];
   const record = (studentPlan: StudentPlan) => {
     const progress = validatePlanV2(studentPlan, seattle, tree);
@@ -100,7 +103,7 @@ test("v2 gives the recorded v1 audit for 500 seeded plans over the real MSCS Sea
     actual.push([
       progress.earnedCredits,
       progress.plannedCredits,
-      requirements.coreCourses.filter((code) => coreDone.includes(code)),
+      view.core.filter((code) => coreDone.includes(code)),
       breadth.courses,
       breadth.areas,
       breadth.satisfied,
@@ -126,16 +129,16 @@ test("v2 gives the recorded v1 audit for 500 seeded plans over the real MSCS Sea
     });
   }
   // Near-complete plans: the core (one course sometimes waived), then breadth and elective courses.
-  const breadthCodes = requirements.breadthRequirements.categories.flatMap((area) => area.courses);
+  const breadthCodes = view.areas.flatMap((area) => area.courses);
   for (let run = 0; run < 200; run += 1) {
     const take = (codes: string[], count: number) => Array.from({ length: count }, () => pick(codes));
-    const waived = random() < 0.3 ? [pick(requirements.coreCourses)] : [];
+    const waived = random() < 0.3 ? [pick(view.core)] : [];
     record({
       version: 1,
       completedCourses: [
-        ...requirements.coreCourses.filter((code) => !waived.includes(code)),
+        ...view.core.filter((code) => !waived.includes(code)),
         ...take(breadthCodes, 2 + Math.floor(random() * 4)),
-        ...take(requirements.eligibleElectives, Math.floor(random() * 4)),
+        ...take(view.electives!.courses, Math.floor(random() * 4)),
       ],
       waivedCourses: waived,
       completedCredits: {},
@@ -389,7 +392,7 @@ test("allocation meets every group exactly when a brute-force search can, on 400
 });
 
 test("tier: MSCS Seattle is Audit; an unmodeled group or credits that do not add up give Map", () => {
-  const mscs = requirementsV2FromV1(seattle.requirements);
+  const mscs = seattle.requirements;
   assert.equal(requirementTier(mscs, seattle.courses), "audit");
   const children = mscs.root.kind === "all" ? mscs.root.children : [];
   const tree = (...groups: RuleGroup[]): DegreeRequirementV2 => ({ ...mscs, root: { ...mscs.root, kind: "all", children: groups } as RuleGroup });
@@ -421,7 +424,7 @@ test("a Map-tier program still checks prerequisites and term order, without a de
 });
 
 test("the Plan audit for MSCS Seattle runs on v2, with the raw catalog rule on each modeled group", () => {
-  const progress = validatePlanV2(plan(["CS 5010", "CS 5800"], ["CS 5011"]), seattle, requirementsV2FromV1(seattle.requirements));
+  const progress = validatePlanV2(plan(["CS 5010", "CS 5800"], ["CS 5011"]), seattle, seattle.requirements);
   assert.equal(progress.tier, "audit");
   assert.equal(progress.requiredCredits, 32);
   const [core, breadth, electives, total] = progress.root.children;
@@ -430,7 +433,7 @@ test("the Plan audit for MSCS Seattle runs on v2, with the raw catalog rule on e
   assert.match(breadth.rawText, /three courses from at least two/);
   assert.equal(electives.summary, "0 of 12 credits");
   assert.equal(total.summary, "8 of 32 credits");
-  const missing = validatePlanV2(plan(["CS 5010"]), seattle, requirementsV2FromV1(seattle.requirements)).root.children[0];
+  const missing = validatePlanV2(plan(["CS 5010"]), seattle, seattle.requirements).root.children[0];
   assert.equal(missing.summary, "1 of 3 courses; needs CS 5011, CS 5800");
 });
 
@@ -478,4 +481,23 @@ test("a large credit group leaves a later group its course, and a pigeonhole tre
   assert.equal(slow.satisfied, false);
   assert.equal(slow.children[9].satisfied, true);
   assert.ok(performance.now() - started < 3000, `audit took ${performance.now() - started} ms`);
+});
+
+test("the catalog trust boundary accepts the v2 snapshot and rejects v1 or broken rule groups", () => {
+  const copy = () => JSON.parse(JSON.stringify(seattle)) as Catalog & { requirements: { root: { children: Record<string, unknown>[] } } };
+  validateCatalog(copy());
+  const v1 = copy() as unknown as { requirements: Record<string, unknown> };
+  v1.requirements = { ...v1.requirements, version: undefined, coreCourses: ["CS 5010"] };
+  assert.throws(() => validateCatalog(v1), /Degree requirements are invalid/);
+  const broken = (change: (groups: Record<string, unknown>[]) => void, message: RegExp) => {
+    const catalog = copy();
+    change(catalog.requirements.root.children);
+    assert.throws(() => validateCatalog(catalog), message);
+  };
+  broken((groups) => { groups[0].kind = "pick-some"; }, /core has an unknown kind/);
+  broken((groups) => { groups[0].courses = ["CS 5010", "CS 9999"]; }, /core lists courses not in the catalog: CS 9999/);
+  broken((groups) => { groups[0].count = 4; }, /core count/);
+  broken((groups) => { groups[1].minAreas = 4; }, /breadth count, minAreas or credits/);
+  broken((groups) => { groups[2].id = "core"; }, /duplicate id core/);
+  broken((groups) => { groups[3].credits = 0; }, /total credits/);
 });

@@ -15,6 +15,7 @@ import {
 import pathwayConfig from "@/config/pathways.json";
 import type { Course, Pathway } from "@/lib/types";
 import { analyzeResolvedCriticalPath } from "@/lib/critical-path";
+import { requirementView } from "@/lib/requirements-v2";
 import { catalogCodeGrammar } from "@/lib/course-code";
 import { PERSONA_PROMPT, buildPathwayOverlay, overlayNodeCopy } from "@/lib/pathway-overlay";
 import { routes } from "@/lib/routes";
@@ -84,7 +85,7 @@ export function PathwaysWorkspace() {
     const analysis = analyzeResolvedCriticalPath(null, selected.id, pathways, catalog.courses, plan);
     return buildPathwayOverlay({
       persona: selected,
-      coreCourses: catalog.requirements.coreCourses,
+      coreCourses: requirementView(catalog.requirements).core,
       bottleneck: analysis.status === "ok" ? analysis.bottleneck : [],
     });
   }, [catalog, selected, pathways, plan]);

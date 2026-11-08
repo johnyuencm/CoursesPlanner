@@ -26,6 +26,7 @@ import {
 } from "../lib/roadmaps";
 import type { Catalog, Course, DiscoveredProgram, ProgramRoadmap, StudentPlan } from "../lib/types";
 import { getEligibility } from "../lib/validation";
+import { mscsRequirements } from "./mscs-requirements";
 
 const summary = (overrides: Partial<UniversityRoadmapSummary>): UniversityRoadmapSummary => ({
   id: "example-university",
@@ -125,20 +126,15 @@ function course(code: string): Course {
 function catalog(courses: Course[]): Catalog {
   return {
     courses,
-    requirements: {
-      name: "Example",
-      catalogYear: "2026",
-      totalCredits: 32,
-      minimumGpa: 3,
-      coreCourses: ["CS 5010"],
-      breadthRequirements: { coursesRequired: 1, minCategories: 1, credits: 1, categories: [{ id: "systems", name: "Systems", courses: ["CS 5010"] }] },
+    requirements: mscsRequirements({
+      core: ["CS 5010"],
+      areas: [{ id: "systems", name: "Systems", courses: ["CS 5010"] }],
+      electives: [],
+      breadth: { count: 1, minAreas: 1, credits: 1 },
       electiveCredits: 4,
-      eligibleElectives: [],
       officialUrl: "https://catalog.example.edu/",
-      rawRules: [],
-      uncertainties: [],
       lastUpdated: "2026-09-16T00:00:00.000Z",
-    },
+    }),
     lastUpdated: "2026-09-16T00:00:00.000Z",
     sources: ["https://catalog.example.edu/"],
     warnings: [],

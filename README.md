@@ -166,7 +166,7 @@ The UI's **Refresh Catalog** button calls same-origin `POST /api/catalog`. That 
 - `data/catalog.json`: complete validated payload used by the application for the default program.
 - `data/catalogs/<id>/`: per-program snapshots written by the catalog service. `data/catalogs/` is git-ignored except the committed Northeastern roadmap (`data/catalogs/northeastern/programs.json` and `roadmaps/computer-science-mscs-sea-8b0d00dbda.json`), which is regenerated offline from the tracked 2026-09-12 cache and keeps that source date. `data/published.json` lists the published roadmaps. The build copies them, `data/catalog.json` and the registry to the Worker static assets.
 - `data/courses.json`: normalized courses. Export/inspection only: no runtime code reads it, `data/catalog.json` already embeds the same courses.
-- `data/requirements.json`: normalized degree rules. Export/inspection only, same as above.
+- `data/requirements.json`: normalized degree rules as a requirement model v2 tree of rule groups (`DegreeRequirementV2` in `lib/types.ts`). Export/inspection only, same as above.
 - `data/raw/.catalog-cache.json`: source URLs, validators, and fetch timestamps.
 
 Do not hand-edit generated prerequisite relationships. Refresh or fix the parser instead.
