@@ -80,6 +80,7 @@ export function AppShell({ university, program, children }: { university: string
             <summary aria-label="Local plan menu"><span className="avatar">LP</span><span>Local plan<small>This device</small></span></summary>
             <div className="profile-dropdown">
               {app.refreshAvailable && <button type="button" disabled={app.catalogBusy} onClick={() => void app.refreshCatalog()}><RefreshCw size={14} className={app.catalogBusy ? "spin" : ""} />{app.catalogBusy ? "Loading…" : "Refresh catalog"}</button>}
+              <Link href="/">Change college or program</Link>
               <button type="button" onClick={app.resetPlan}>Reset local plan</button>
               {app.catalog && <OfficialLink href={app.catalog.requirements.officialUrl} sources={app.catalog.sources}>Official catalog</OfficialLink>}
               {app.catalog && <span className="muted">{app.catalog.requirements.catalogYear} · refreshed {dateLabel(app.catalog.lastUpdated)}</span>}
