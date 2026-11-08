@@ -1,0 +1,69 @@
+// Server-rendered program facts. Crawlers and first paint see real text while the
+// interactive client views still load the catalog. Every fact comes from the catalog or config/pathways.json.
+import Link from "next/link";
+import pathwayConfig from "@/config/pathways.json";
+import { courseSlug, creditsLabel, publicCourses, transitiveUnlocks } from "@/lib/course-pages";
+import type { Catalog, Pathway } from "@/lib/types";
+
+const pathways = pathwayConfig as Pathway[];
+
+function courseLinker(catalog: Catalog) {
+  const byCode = new Map(catalog.courses.map((course) => [course.code, course]));
+  const pageCodes = new Set(publicCourses(catalog).map((course) => course.code));
+  return (code: string) => {
+    const label = <><strong>{code}</strong> {byCode.get(code)?.title}</>;
+    return pageCodes.has(code) ? <Link href={`/courses/${courseSlug(code)}`}>{label}</Link> : label;
+  };
+}
+
+export function DegreeRules({ catalog }: { catalog: Catalog }) {
+  const rules = catalog.requirements;
+  const link = courseLinker(catalog);
+  const byCode = new Map(catalog.courses.map((course) => [course.code, course]));
+  const breadth = rules.breadthRequirements;
+  return <section aria-labelledby="degree-rules-title">
+    <h2 id="degree-rules-title">{rules.name}: degree rules</h2>
+    <p>The {rules.catalogYear} Northeastern catalog asks for {rules.totalCredits} credits and a minimum {rules.minimumGpa.toFixed(1)} GPA.
+      This map models those rules from the official catalog. It is not an official degree audit.</p>
+    <h3>Required core courses</h3>
+    <ul className="static-list">{rules.coreCourses.map((code) => <li key={code}>{link(code)}
+      {byCode.get(code) && <small>{creditsLabel(byCode.get(code)!)}</small>}</li>)}</ul>
+    <h3>Breadth areas</h3>
+    <p>Take {breadth.coursesRequired} breadth courses ({breadth.credits} credits) from at least {breadth.minCategories} of these {breadth.categories.length} areas.</p>
+    {breadth.categories.map((category) => <details key={category.id}>
+      <summary>{category.name} ({category.courses.length} courses)</summary>
+      <ul className="static-list">{category.courses.map((code) => <li key={code}>{link(code)}</li>)}</ul>
+    </details>)}
+    <h3>Electives</h3>
+    <p>Complete {rules.electiveCredits} more credits from the breadth courses and the other listed electives.
+      The catalog lists {rules.eligibleElectives.length} courses that can count here. The <Link href="/courses">course index</Link> shows how each course counts. <a href={rules.officialUrl} rel="noopener">Official program requirements</a>.</p>
+  </section>;
+}
+
+/** Courses that open the most other courses, directly or through a chain. */
+export function UnlockLeaders({ catalog, limit }: { catalog: Catalog; limit: number }) {
+  const link = courseLinker(catalog);
+  const ranked = publicCourses(catalog)
+    .map((course) => ({ course, total: transitiveUnlocks(course.code, catalog.courses).length }))
+    .filter((item) => item.total > 0)
+    .sort((a, b) => b.total - a.total || b.course.unlocks.length - a.course.unlocks.length)
+    .slice(0, limit);
+  return <section aria-labelledby="unlock-leaders-title">
+    <h2 id="unlock-leaders-title">Courses that unlock the most</h2>
+    <p>Other courses list these as prerequisites, directly or through a chain. Plan them before the courses that need them.</p>
+    <ul className="static-list">{ranked.map(({ course, total }) => <li key={course.code}>{link(course.code)}
+      <small>Direct prerequisite for {course.unlocks.length} course{course.unlocks.length === 1 ? "" : "s"}, {total} in the full chain</small></li>)}</ul>
+  </section>;
+}
+
+export function PathwayList({ catalog }: { catalog: Catalog }) {
+  const link = courseLinker(catalog);
+  return <section aria-labelledby="pathway-list-title">
+    <h2 id="pathway-list-title">Paths</h2>
+    <p>A path is a suggested set of courses for one career goal. It never changes the degree requirements.</p>
+    <ul className="static-list">{pathways.map((pathway) => <li key={pathway.id}>
+      <Link href={`/pathways/${pathway.id}`}><strong>{pathway.name}</strong></Link> <small>{pathway.description}</small>
+      {pathway.groups.map((group) => <small key={group.label}>{group.label}: {group.courses.map((code, index) => <span key={code}>{index ? ", " : ""}{link(code)}</span>)}</small>)}
+    </li>)}</ul>
+  </section>;
+}

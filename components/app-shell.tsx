@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {app.refreshAvailable && <button type="button" disabled={app.catalogBusy} onClick={() => void app.refreshCatalog()}><RefreshCw size={14} className={app.catalogBusy ? "spin" : ""} />{app.catalogBusy ? "Loading…" : "Refresh catalog"}</button>}
               <button type="button" onClick={app.resetPlan}>Reset local plan</button>
               {app.catalog && <OfficialLink href={app.catalog.requirements.officialUrl} sources={app.catalog.sources}>Official catalog</OfficialLink>}
-              <span className="muted">{app.catalog ? `${app.catalog.requirements.catalogYear} · refreshed ${dateLabel(app.catalog.lastUpdated)}` : "Catalog not loaded"}</span>
+              {app.catalog && <span className="muted">{app.catalog.requirements.catalogYear} · refreshed {dateLabel(app.catalog.lastUpdated)}</span>}
             </div>
           </details>
         </div>

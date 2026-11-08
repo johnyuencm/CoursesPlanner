@@ -27,10 +27,9 @@ export async function readOptionalJson(filePath: string): Promise<unknown> {
   try {
     return JSON.parse(await readBoundedFile(filePath));
   } catch (error) {
-    const embedded = embeddedJson(filePath);
-    if (embedded !== undefined) return embedded;
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-    throw error;
+    // Only a missing file uses the bundle. A corrupt or oversize disk file must fail loudly.
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    return embeddedJson(filePath);
   }
 }
 

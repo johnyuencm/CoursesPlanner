@@ -129,7 +129,7 @@ export function useAppContextValue(): AppContextValue {
   const [catalogBusy, setCatalogBusy] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [catalogMessage, setCatalogMessage] = useState<string | null>(null);
-  const [refreshAvailable, setRefreshAvailable] = useState(true);
+  const [refreshAvailable, setRefreshAvailable] = useState(false); // false until the server says so: no "Loading…" button in first paint
   const [plan, setPlan] = useState<StudentPlan>(() => emptyPlan());
   const [hydrated, setHydrated] = useState(false);
   const [storageBlocked, setStorageBlocked] = useState(false);
