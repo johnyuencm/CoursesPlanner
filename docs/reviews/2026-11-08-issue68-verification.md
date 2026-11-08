@@ -46,4 +46,4 @@ Browser check: `/explore?focus=cs5800` opens the course chain for `CS 5800`. The
 - **Grammar with no catalog.** Plan and pathway storage keys are Northeastern-only, and the plan can load before the catalog. `catalogCodeGrammar()` gives the Northeastern grammar in that case. A `ponytail:` comment names #69 as the upgrade path.
 - **Scraper.** The parser reads Northeastern HTML only. It uses `northeasternCodeGrammar.textPattern` directly. The generic CourseLeaf adapter will pass its own grammar.
 - **One adapter-id list.** `KNOWN_ADAPTER_IDS` now comes from the grammar map in `lib/course-code.ts`. `lib/source-types.ts` re-exports it.
-- **Small UX change.** The Courses search "is not in this catalog" message now uses `grammar.normalize`. It now also shows for `CS 58` or `cs-5800`, and no longer for 7+ letter subjects.
+- **Small UX change.** The Courses search "is not in this catalog" message now uses `grammar.normalize`. It now also shows for `CS 58` or `cs-9999`, and no longer for 7+ letter subjects. Review fix: the known-code check also uses `grammar.normalize`, so `cs-5800` (a catalog course) does not show the message.

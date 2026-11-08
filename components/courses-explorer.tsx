@@ -112,9 +112,10 @@ function Explorer() {
     });
     setLimit(18);
   };
-  const codeNeedle = search.trim().toUpperCase().replace(/\s+/g, "");
-  const looksLikeCode = catalogCodeGrammar(catalog).normalize(search) !== null;
-  const knownCode = catalog.courses.some((course) => course.code.replace(/\s/g, "") === codeNeedle);
+  // "cs-5800" and "CS5800" both normalize to "CS 5800", so a known code never shows "not in this catalog".
+  const searchCode = catalogCodeGrammar(catalog).normalize(search);
+  const looksLikeCode = searchCode !== null;
+  const knownCode = catalog.courses.some((course) => course.code === searchCode);
   return <>
     <PageHeading title="Courses" description="Official MSCS Seattle courses, ranked by what they require and what they unlock. Search a code, then open the dependency graph for that course." />
     <div className="page-with-rail">
