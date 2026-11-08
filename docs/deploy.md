@@ -64,7 +64,7 @@ flowchart LR
 - The readers try disk first (dev, tests, CLI, prerender). When a file is missing (`ENOENT`), the Worker reads it through the `ASSETS` binding ([`lib/snapshot-assets.ts`](../lib/snapshot-assets.ts)), from `import { env } from "cloudflare:workers"`. It reads only files that the manifest lists. A corrupt disk file gives an error.
 - The Worker does not validate the files again, because the build did. It parses each file once per isolate. The API routes keep the serialized body in memory, as before.
 - `npm run dev:vinext` also runs in workerd without project files. There, a virtual module from `vite.config.ts` gives the same files.
-- The files are public at `/_snapshots/...`. They hold the same data that `/api/catalog` and `/api/roadmaps` return.
+- The files are public at `/_snapshots/...`. They hold the data that `/api/catalog` and `/api/roadmaps` return. `universities.json` also keeps its `crawl` settings (adapter and source URLs). These settings are not secret, because the same file is public in the repo.
 - Node tools import no snapshot file. The CLI still works when you delete a `data/catalogs/<id>/` folder.
 
 ## Deploy
@@ -161,6 +161,16 @@ Live result after the fix. Worker version `aa68c23b` (master `0cfa0ae`), deploye
 | Real course page (`/courses/cs-5800`) | 31 | 4 ms | 11 ms | 22 ms | 4 of 31 |
 
 The unknown-course 404 p50 falls from 15 ms to 7 ms. The share over 10 ms falls from 82% to 16%. Real course pages do not change.
+
+After #61 (snapshots as static assets): Worker version `4ed89a10` (master `2584289`), 2026-11-08. Same method, 30 rounds:
+
+| Route | Requests | p50 | p90 | Max | Over 10 ms |
+| --- | --- | --- | --- | --- | --- |
+| Unknown course 404 | 29 | 6 ms | 47 ms | 85 ms | 7 of 29 |
+| Real course page (`/courses/cs-5800`) | 29 | 3 ms | 11 ms | 17 ms | 3 of 29 |
+| `/api/catalog` | 29 | 5 ms | 26 ms | 40 ms | 4 of 29 |
+
+The medians stay low and do not get worse. The p90 and max values change a lot between runs. The cause of the slow requests is not measured. A likely cause is the first request in a new isolate, which loads and parses the snapshot files.
 
 Measure again after a large change:
 
