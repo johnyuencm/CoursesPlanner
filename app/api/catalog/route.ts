@@ -96,7 +96,7 @@ export async function GET() {
   try {
     // refreshAvailable tells the UI whether POST refresh can ever succeed, so the
     // client can hide a control that would otherwise always answer 401 (CR3).
-    const catalog = readCatalog();
+    const catalog = await readCatalog();
     const refreshAvailable = isRefreshAuthorized();
     if (catalogBody?.catalog !== catalog || catalogBody.refreshAvailable !== refreshAvailable) {
       catalogBody = { catalog, refreshAvailable, body: JSON.stringify({ ...catalog, refreshAvailable }) };
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
   const now = Date.now();
   try {
     if (!activeRefresh && now - lastRefreshStartedAt < REFRESH_COOLDOWN_MS) {
-      return NextResponse.json(readCatalog(), {
+      return NextResponse.json(await readCatalog(), {
         headers: { "Cache-Control": "no-store", "X-Catalog-Refresh": "cooldown" },
       });
     }

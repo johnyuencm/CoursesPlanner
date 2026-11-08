@@ -9,9 +9,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/pathways" },
 };
 
-export default function PathwaysPage() {
+export default async function PathwaysPage() {
   return <>
     <PathwaysWorkspace />
-    <div className="static-page course-index"><PathwayList catalog={readCatalog()} /></div>
+    <div className="static-page course-index"><PathwayList catalog={await readCatalog()} /></div>
   </>;
 }

@@ -68,7 +68,7 @@ Explore shows a roadmap selector above the graph, backed by same-origin `GET /ap
 
 ### Production vs local
 
-Production is a Cloudflare Worker. It has no project filesystem, so it serves only the committed snapshot that [`lib/embedded-snapshot.ts`](lib/embedded-snapshot.ts) bundles. The crawler half of the architecture does not exist there. The UI checks what the server can do instead of assuming:
+Production is a Cloudflare Worker. It has no project filesystem. It serves only the published snapshots that the build copies to static assets (see [Published snapshots](docs/deploy.md#published-snapshots)). The crawler half of the architecture does not exist there. The UI checks what the server can do instead of assuming:
 
 | Feature | Local (`npm run dev` + `npm run catalog:serve`) | Production (Cloudflare Worker) |
 | --- | --- | --- |
@@ -93,7 +93,7 @@ Known limit: the saved plan keys courses by course code only (`StudentPlan` hold
 
 `catalog-service/universities.json` orders 20 US universities before 20 world universities. Only entries with `"support": "supported"`, `"enabled": true`, and a `crawl` config are fetched; metadata-only/unverified entries are listed but never requested. The crawler discovers official program links, extracts each program's course codes, parses the shared bulk course pages, and writes validated prerequisite roadmaps under `data/catalogs/<university-id>/` (`programs.json`, `roadmaps/<program-id>.json`, `.roadmap-crawl-status.json`). Runs are bounded and resume from persisted state.
 
-Production reads only the files that [`lib/embedded-snapshot.ts`](lib/embedded-snapshot.ts) bundles. When you commit a new `programs.json` or a new ready roadmap, add its path to `FILES` in that file. `tests/embedded-snapshot.test.ts` fails if a committed ready roadmap is missing from `FILES`.
+Production serves only the programs in [`data/published.json`](data/published.json). This file is the allowlist of catalog keys (`<university-id>/<program-id>`). To publish a ready roadmap, commit its files and add its key. To unpublish a program, remove its key. You do not change code. `npm run build` fails when a listed roadmap is missing, invalid or not ready. See [Published snapshots](docs/deploy.md#published-snapshots).
 
 ```bash
 npm run catalog:refresh -- --list-universities            # ordered directory with per-university status
@@ -164,7 +164,7 @@ The UI's **Refresh Catalog** button calls same-origin `POST /api/catalog`. That 
 ### Generated files
 
 - `data/catalog.json`: complete validated payload used by the application for the default program.
-- `data/catalogs/<id>/`: per-program snapshots written by the catalog service. `data/catalogs/` is git-ignored except the committed Northeastern roadmap (`data/catalogs/northeastern/programs.json` and `roadmaps/computer-science-mscs-sea-8b0d00dbda.json`), which is regenerated offline from the tracked 2026-09-12 cache and keeps that source date. `lib/embedded-snapshot.ts` bundles the registry and those two files into the Worker.
+- `data/catalogs/<id>/`: per-program snapshots written by the catalog service. `data/catalogs/` is git-ignored except the committed Northeastern roadmap (`data/catalogs/northeastern/programs.json` and `roadmaps/computer-science-mscs-sea-8b0d00dbda.json`), which is regenerated offline from the tracked 2026-09-12 cache and keeps that source date. `data/published.json` lists the published roadmaps. The build copies them, `data/catalog.json` and the registry to the Worker static assets.
 - `data/courses.json`: normalized courses. Export/inspection only: no runtime code reads it, `data/catalog.json` already embeds the same courses.
 - `data/requirements.json`: normalized degree rules. Export/inspection only, same as above.
 - `data/raw/.catalog-cache.json`: source URLs, validators, and fetch timestamps.

@@ -5,8 +5,8 @@ import { readCatalog } from "@/lib/catalog";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
-export default function OverviewPage() {
-  const catalog = readCatalog();
+export default async function OverviewPage() {
+  const catalog = await readCatalog();
   return <>
     <Overview />
     <div className="static-page course-index">

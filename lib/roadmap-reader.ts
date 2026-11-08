@@ -11,7 +11,7 @@ import type {
   RoadmapCrawlStatus,
 } from "./types";
 import type { UniversityDirectoryEntry, UniversityRoadmapSummary } from "./source-types";
-import { embeddedJson } from "./embedded-snapshot";
+import { snapshotAsset } from "./snapshot-assets";
 import { readBoundedFile } from "./read-bounded-file";
 
 const validId = (id: string) => /^[a-z0-9][a-z0-9-]{0,80}$/.test(id);
@@ -27,9 +27,9 @@ export async function readOptionalJson(filePath: string): Promise<unknown> {
   try {
     return JSON.parse(await readBoundedFile(filePath));
   } catch (error) {
-    // Only a missing file uses the bundle. A corrupt or oversize disk file must fail loudly.
+    // Only a missing file uses the published asset. A corrupt or oversize disk file must fail loudly.
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    return embeddedJson(filePath);
+    return snapshotAsset(filePath);
   }
 }
 

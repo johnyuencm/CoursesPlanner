@@ -23,8 +23,8 @@ type Props = { params: Promise<{ code: string }> };
 
 export const dynamicParams = false; // only the prerendered course pages exist; anything else is a 404
 
-export function generateStaticParams() {
-  return publicCourses(readCatalog()).map((course) => ({ code: courseSlug(course.code) }));
+export async function generateStaticParams() {
+  return publicCourses(await readCatalog()).map((course) => ({ code: courseSlug(course.code) }));
 }
 
 function unlockSummary(code: string, catalog: Catalog) {
@@ -37,7 +37,7 @@ function unlockSummary(code: string, catalog: Catalog) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params;
-  const catalog = readCatalog();
+  const catalog = await readCatalog();
   const course = courseBySlug(catalog, code);
   if (!course) return {};
   return {
@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CoursePage({ params }: Props) {
   const { code } = await params;
-  const catalog = readCatalog();
+  const catalog = await readCatalog();
   const course = courseBySlug(catalog, code);
   if (!course) notFound();
   const byCode = new Map(catalog.courses.map((item) => [item.code, item]));

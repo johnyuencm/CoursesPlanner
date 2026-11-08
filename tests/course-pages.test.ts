@@ -22,18 +22,18 @@ const course = (code: string, prerequisiteCodes: string[], unlocks: string[]): C
   requirementType: "elective", electiveEligible: true, topics: [], officialUrl: "https://catalog.northeastern.edu/", uncertainties: [],
 });
 
-test("course slugs are URL-safe and round-trip through the packaged catalog", () => {
+test("course slugs are URL-safe and round-trip through the packaged catalog", async () => {
   assert.equal(courseSlug("CS 5010"), "cs-5010");
   assert.equal(courseSlug("CS 7980A"), "cs-7980a");
-  const catalog = readCatalog();
+  const catalog = await readCatalog();
   const pages = publicCourses(catalog);
   assert.equal(new Set(pages.map((item) => courseSlug(item.code))).size, pages.length, "two courses share a slug");
   assert.equal(courseBySlug(catalog, "cs-5010")?.code, "CS 5010");
   assert.equal(courseBySlug(catalog, "../etc"), undefined);
 });
 
-test("placeholder courses (no catalog text) get no page", () => {
-  const catalog = readCatalog();
+test("placeholder courses (no catalog text) get no page", async () => {
+  const catalog = await readCatalog();
   const pages = publicCourses(catalog);
   assert.ok(pages.length > 90, `only ${pages.length} course pages`);
   assert.ok(pages.every((item) => !item.description.includes("unavailable in the cached")));
@@ -62,7 +62,7 @@ test("the shortest chain takes the long branch of an 'and' and the short branch 
   assert.deepEqual(shortestPrerequisiteChain("L", [loop, loop2]), ["L2", "L"], "a cycle stops");
 });
 
-test("prerequisite text keeps and/or, and unmet groups respect 'or'", () => {
+test("prerequisite text keeps and/or, and unmet groups respect 'or'", async () => {
   const expr = { type: "all" as const, items: [{ type: "any" as const, items: [one("CS 5800"), one("CS 7800")] }, one("MATH 2331")] };
   assert.equal(requirementText(expr), "(CS 5800 or CS 7800) and MATH 2331");
   assert.deepEqual(unmetRequirements(expr, new Set(["CS 5800"])), [["MATH 2331"]], "CS 7800 is an alternative, not a gap");
@@ -74,12 +74,12 @@ test("prerequisite text keeps and/or, and unmet groups respect 'or'", () => {
   const twoAnds = { type: "any" as const, items: [{ type: "all" as const, items: [one("A"), one("B")] }, { type: "all" as const, items: [one("C"), one("D")] }] };
   assert.deepEqual(unmetRequirements(twoAnds, new Set()), [["A"], ["B"]]);
   // Real data: CS 5500 lists CS 5010 twice (two grade floors) inside nested "or" groups.
-  const cs5500 = readCatalog().courses.find((item) => item.code === "CS 5500")!;
+  const cs5500 = (await readCatalog()).courses.find((item) => item.code === "CS 5500")!;
   assert.equal(requirementText(cs5500.prerequisites), "CS 5010 or CS 5004");
 });
 
-test("paths and requirement labels come from the packaged config and catalog", () => {
-  const catalog = readCatalog();
+test("paths and requirement labels come from the packaged config and catalog", async () => {
+  const catalog = await readCatalog();
   const used = pathwaysFor("CS 5335", pathwayConfig as Pathway[]);
   assert.ok(used.some(({ pathway, group }) => pathway.id === "robotics-software-engineer" && group === "High relevance"));
   assert.equal(requirementLabel(catalog.courses.find((item) => item.code === "CS 5010")!, catalog), "Required core course");

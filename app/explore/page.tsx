@@ -4,8 +4,8 @@ import { ExploreWorkspace } from "@/components/explore-workspace";
 import { UnlockLeaders } from "@/components/program-summary";
 import { readCatalog } from "@/lib/catalog";
 
-export default function ExplorePage() {
-  const catalog = readCatalog();
+export default async function ExplorePage() {
+  const catalog = await readCatalog();
   const links = catalog.courses.reduce((sum, course) => sum + course.unlocks.length, 0);
   return <>
     {/* The graph reads ?focus= in the browser, so it renders after load. The text below is in the first paint. */}

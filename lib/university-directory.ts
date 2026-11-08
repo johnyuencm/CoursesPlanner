@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { embeddedJson } from "./embedded-snapshot";
+import { snapshotAsset } from "./snapshot-assets";
 import { KNOWN_ADAPTER_IDS, type UniversityCrawlConfig, type UniversityDirectoryEntry } from "./source-types";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -168,7 +168,7 @@ export async function loadUniversityDirectory(
   try {
     raw = JSON.parse(await readFile(filePath, "utf8"));
   } catch (error) {
-    raw = (error as NodeJS.ErrnoException).code === "ENOENT" ? embeddedJson(filePath) : undefined; // missing file only
+    raw = (error as NodeJS.ErrnoException).code === "ENOENT" ? await snapshotAsset(filePath) : undefined; // missing file only
     if (raw === undefined) throw error;
   }
   const universities = parseUniversityDirectory(raw, label);
