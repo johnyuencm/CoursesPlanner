@@ -553,6 +553,20 @@ test("choose-areas 5 of 96 courses stays within the step budget, deterministic a
 });
 type GroupOfAreas = Extract<RuleGroup, { kind: "choose-areas" }>;
 
+// One combination is one step, but its area matching can cost count^3 checks. Before the matching
+// budget, "70 of 96 in 70 areas that each list every course" took 14 s although the catalog accepts it.
+test("choose-areas with many overlapping areas stays within the matching budget", () => {
+  const codes = programCourseCodes(seattle.requirements);
+  const mscs = seattle.requirements.root;
+  assert.ok(mscs.kind === "all");
+  const areas = Array.from({ length: 70 }, (_, index) => ({ id: `z${index}`, name: `Z${index}`, courses: codes }));
+  const breadth: GroupOfAreas = { ...(mscs.children[1] as GroupOfAreas), count: 70, minAreas: 70, credits: 1, areas };
+  const requirements = { ...seattle.requirements, root: { ...mscs, children: mscs.children.map((group) => (group.id === "breadth" ? breadth : group)) } };
+  assert.doesNotThrow(() => validateCatalog({ ...seattle, requirements }));
+  const result = withinBudget("70 of 96 in 70 areas", () => validatePlanV2(plan(seattle.courses.map((item) => item.code)), seattle, requirements));
+  assertHonest(breadth, result.root.children[1], new Map(seattle.courses.map((item) => [item.code, item.credits])), "70 of 96 in 70 areas");
+});
+
 test("choose-credits over 30+ candidates finds a minimal set within the step budget and leaves later groups their courses", () => {
   for (const size of [24, 32, 40]) {
     const ones = Array.from({ length: size }, (_, index) => `CS ${100 + index}`);

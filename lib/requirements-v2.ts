@@ -119,6 +119,8 @@ type Context = {
   audit: PlanCourseAudit;
   credits: Map<string, number>;
   steps: number;
+  /** Category checks in area matching. One combination can cost many, so they have their own budget. */
+  matching: number;
   /** For each group: the courses that later groups in its pool list. */
   later: Map<Leaf, Set<string>>;
 };
@@ -127,6 +129,8 @@ type Context = {
 // keeps the best allocation found so far, so it can miss a valid allocation but never claims a false one.
 // One step is one selection tried, one choose-areas combination or one node of the minimal-set search.
 export const SEARCH_LIMIT = 20_000;
+// About 60 ms of matching work. A normal tree uses less than a tenth of it.
+const MATCHING_LIMIT = 100 * SEARCH_LIMIT;
 
 /** Test hook: the steps that the last `validatePlanV2` call used. It is not part of the audit result. */
 export const lastAuditSearch = { steps: 0 };
@@ -165,12 +169,14 @@ function candidates(leaf: Leaf, free: Set<string>, { audit, credits }: Context):
 
 /**
  * Areas matched one course each (bipartite matching), so one course never fills two areas.
- * It stops when `enough` areas are matched.
+ * It stops when `enough` areas are matched. With a context, the work counts against the
+ * matching budget, and past that budget the search stops as at the step cap.
  */
-function categoryMatching(codes: string[], memberships: Map<string, string[]>, enough = Infinity): string[] {
+function categoryMatching(codes: string[], memberships: Map<string, string[]>, enough = Infinity, context?: Context): string[] {
   const categoryToCourse = new Map<string, string>();
   const assign = (code: string, seen: Set<string>): boolean => {
     for (const category of memberships.get(code) ?? []) {
+      if (context && ++context.matching > MATCHING_LIMIT) context.steps = Math.max(context.steps, SEARCH_LIMIT + 1);
       if (seen.has(category)) continue;
       seen.add(category);
       const owner = categoryToCourse.get(category);
@@ -313,7 +319,7 @@ function* selections(leaf: Leaf, free: Set<string>, context: Context): Generator
       // Combinations come one at a time, and each is one step. At the cap, keep the ones found so far.
       for (const combination of combinations(tryOrder, leaf.count)) {
         const picked = inOrder(combination);
-        all.push({ codes: picked, areas: categoryMatching(picked, membership), credits: creditsOf(picked, context) });
+        all.push({ codes: picked, areas: categoryMatching(picked, membership, Infinity, context), credits: creditsOf(picked, context) });
         context.steps += 1;
         if (context.steps > SEARCH_LIMIT) break;
       }
@@ -356,7 +362,7 @@ function canMeet(leaf: Leaf, free: Set<string>, context: Context): boolean {
   const best = codes.map((code) => context.credits.get(code) ?? 0).sort((a, b) => b - a).slice(0, leaf.count);
   return (
     codes.length >= leaf.count &&
-    Math.min(leaf.count, categoryMatching(codes, areaMembership(leaf), leaf.minAreas).length) >= leaf.minAreas &&
+    Math.min(leaf.count, categoryMatching(codes, areaMembership(leaf), leaf.minAreas, context).length) >= leaf.minAreas &&
     best.reduce((sum, value) => sum + value, 0) >= leaf.credits
   );
 }
@@ -506,7 +512,7 @@ export function validatePlanV2(plan: StudentPlan, catalog: Catalog, requirements
   // A Map-tier tree can miss courses, so every catalog course counts toward the plan credits.
   const degreeCodes = tier === "audit" ? groupCodes(requirements.root) : catalog.courses.map((course) => course.code);
   const audit = auditPlanCourses(plan, catalog, new Set(degreeCodes));
-  const context: Context = { audit, credits: new Map(audit.counted.map((course) => [course.code, course.credits])), steps: 0, later: new Map() };
+  const context: Context = { audit, credits: new Map(audit.counted.map((course) => [course.code, course.credits])), steps: 0, matching: 0, later: new Map() };
   const free = new Set([...audit.completed, ...audit.waived, ...audit.validPlanned]);
   const picks = new Map<RuleGroup, Pick>();
   const main: Leaf[] = [];
