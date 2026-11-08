@@ -39,7 +39,7 @@ export function Overview() {
       <section className="status-card-row four" aria-label="Plan snapshot">
         <article className="status-card">
           <span className="status-kicker"><GraduationCap size={15} /> Credits</span>
-          <strong>{snapshot.credits.current} / {snapshot.credits.required}</strong>
+          <strong>{snapshot.credits.current}{snapshot.credits.required !== null && ` / ${snapshot.credits.required}`}</strong>
           <p className="muted">Modeled from your local plan. Not an official degree audit.</p>
         </article>
         <article className="status-card">

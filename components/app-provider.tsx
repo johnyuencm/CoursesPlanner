@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import type { Catalog, DegreeProgress, StudentPlan } from "@/lib/types";
+import type { Catalog, DegreeProgressV2, StudentPlan } from "@/lib/types";
 import {
   DEFAULT_WORKSPACE_SELECTION,
   parseWorkspaceSelection,
@@ -26,7 +26,7 @@ import {
   type PlanBackupDownload,
 } from "@/lib/plan";
 import { planAfterStorageEvent } from "@/lib/cross-tab-plan";
-import { validatePlan } from "@/lib/validation";
+import { validatePlan } from "@/lib/requirements-v2";
 
 type PickerState = { semesterId?: string; courseCode?: string } | null;
 type CourseStatus = "completed" | "waived" | "none";
@@ -41,7 +41,7 @@ interface AppContextValue {
   refreshCatalog: () => Promise<void>;
   plan: StudentPlan;
   setPlan: Dispatch<SetStateAction<StudentPlan>>;
-  progress: DegreeProgress | null;
+  progress: DegreeProgressV2 | null;
   hydrated: boolean;
   persistence: PersistenceStatus;
   storageError: string | null;

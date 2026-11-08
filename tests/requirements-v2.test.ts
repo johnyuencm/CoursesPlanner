@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { requirementsV2FromV1, validatePlanV2 } from "../lib/requirements-v2";
+import { requirementsV2FromV1, requirementTier, validatePlanV2 } from "../lib/requirements-v2";
 import type { Catalog, Course, DegreeRequirementV2, RuleGroup, StudentPlan } from "../lib/types";
 import { validatePlan } from "./v2-equivalence";
 
@@ -154,7 +154,7 @@ test("total-credits counts degree courses only", () => {
     kind: "all",
     id: "program",
     children: [
-      { ...base, kind: "choose-credits", id: "electives", credits: 0, courses: ["CS 1", "CS 2"] },
+      { ...base, kind: "choose-credits", id: "electives", credits: 8, courses: ["CS 1", "CS 2"] },
       { ...base, kind: "total-credits", id: "total", credits: 8 },
     ],
   };
@@ -217,4 +217,189 @@ test("allocation is deterministic for any input order", () => {
   assert.deepEqual(forward.children[0].courses, ["CS 1", "CS 2"]);
   assert.deepEqual(backward.children[0].courses, forward.children[0].courses);
   assert.deepEqual([...backward.children[1].courses].sort(), [...forward.children[1].courses].sort());
+});
+
+// PR #92 review, finding 1: allocation must not be greedy in tree order.
+const program = (...children: RuleGroup[]): RuleGroup => ({ ...base, kind: "all", id: "program", children });
+const met = (root: RuleGroup, completed: string[]) =>
+  audit(root, plan(completed)).root.children.map((child) => child.satisfied);
+
+test("probe A: a credit group leaves a course for a later group that needs it", () => {
+  const root = program(
+    { ...base, kind: "choose-credits", id: "credits", credits: 4, courses: ["CS 1", "CS 2"] },
+    { ...base, kind: "choose-courses", id: "req", count: 1, courses: ["CS 2"] },
+  );
+  for (const order of [["CS 1", "CS 2"], ["CS 2", "CS 1"]]) {
+    const result = audit(root, plan(order)).root;
+    assert.deepEqual(result.children.map((child) => child.satisfied), [true, true]);
+    assert.deepEqual(result.children.map((child) => child.courses), [["CS 1"], ["CS 2"]]);
+    assert.equal(result.satisfied, true);
+  }
+});
+
+test("probe B: a choose group picks the course that a later group does not need", () => {
+  const either: RuleGroup = { ...base, kind: "choose-courses", id: "either", count: 1, courses: ["CS 1", "CS 2"] };
+  const only: RuleGroup = { ...base, kind: "choose-courses", id: "only", count: 1, courses: ["CS 1"] };
+  assert.deepEqual(met(program(either, only), ["CS 1", "CS 2"]), [true, true]);
+  assert.deepEqual(met(program(either, only), ["CS 2", "CS 1"]), [true, true]);
+  // An unfinished plan still gets the best allocation for the groups that it can meet.
+  const total: RuleGroup = { ...base, kind: "total-credits", id: "total", credits: 99 };
+  assert.deepEqual(met(program(either, only, total), ["CS 1", "CS 2"]), [true, true, false]);
+});
+
+test("allocation never reports a group as satisfied when no allocation can meet both", () => {
+  const root = program(
+    { ...base, kind: "choose-courses", id: "first", count: 1, courses: ["CS 1"] },
+    { ...base, kind: "choose-courses", id: "second", count: 1, courses: ["CS 1"] },
+  );
+  // Earlier groups have priority when not every group can be met.
+  assert.deepEqual(met(root, ["CS 1"]), [true, false]);
+  assert.equal(audit(root, plan(["CS 1"])).satisfied, false);
+});
+
+test("allocation searches choose-areas selections so a later group can be met", () => {
+  const root = program(
+    {
+      ...base,
+      kind: "choose-areas",
+      id: "breadth",
+      count: 2,
+      minAreas: 2,
+      credits: 8,
+      areas: [
+        { id: "a", name: "A", courses: ["CS 1", "CS 2"] },
+        { id: "b", name: "B", courses: ["CS 3"] },
+      ],
+    },
+    { ...base, kind: "choose-courses", id: "req", count: 1, courses: ["CS 1"] },
+  );
+  const result = audit(root, plan(["CS 1", "CS 2", "CS 3"])).root;
+  assert.deepEqual(result.children.map((child) => child.satisfied), [true, true]);
+  assert.deepEqual(result.children[0].courses, ["CS 2", "CS 3"]);
+});
+
+test("allocation meets every group exactly when a brute-force search can, on 400 random trees", () => {
+  const pool = ["CS 1", "CS 2", "CS 3", "CS 4", "CS 5"];
+  const credits: Record<string, number> = { "CS 1": 4, "CS 2": 2, "CS 3": 4, "CS 4": 3, "CS 5": 1 };
+  const varied: Catalog = { ...small, courses: pool.map((code) => course(code, credits[code])) };
+  let seed = 70;
+  const random = () => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed / 2147483648;
+  };
+  const some = () => pool.filter(() => random() < 0.5);
+  const count = (max: number) => Math.floor(random() * max) + 1;
+  const leaf = (id: string): RuleGroup => {
+    const kind = Math.floor(random() * 3);
+    if (kind === 0) return { ...base, kind: "choose-courses", id, count: count(2), courses: some() };
+    if (kind === 1) return { ...base, kind: "choose-credits", id, credits: count(8), courses: some() };
+    return {
+      ...base,
+      kind: "choose-areas",
+      id,
+      count: count(2),
+      minAreas: count(2),
+      credits: count(6),
+      areas: [{ id: "a", name: "A", courses: some() }, { id: "b", name: "B", courses: some() }],
+    };
+  };
+  // Independent check: can this group be met from these courses alone?
+  const canMeet = (group: RuleGroup, codes: string[]): boolean => {
+    const sum = (list: string[]) => list.reduce((total, code) => total + credits[code], 0);
+    if (group.kind === "choose-courses") return codes.filter((code) => group.courses.includes(code)).length >= group.count;
+    if (group.kind === "choose-credits") return sum(codes.filter((code) => group.courses.includes(code))) >= group.credits;
+    if (group.kind !== "choose-areas") return false;
+    const inArea = (code: string) => group.areas.filter((area) => area.courses.includes(code)).map((area) => area.id);
+    const subsets = (list: string[]): string[][] => (list.length ? subsets(list.slice(1)).flatMap((rest) => [rest, [list[0], ...rest]]) : [[]]);
+    const areaCount = (list: string[]): number =>
+      list.length ? Math.max(0, ...inArea(list[0]).map((id) => 1 + areaCount(list.slice(1).filter((code) => inArea(code).some((other) => other !== id))))) : 0;
+    return subsets(codes.filter((code) => inArea(code).length)).some(
+      (subset) => subset.length === group.count && sum(subset) >= group.credits && areaCount(subset) >= group.minAreas,
+    );
+  };
+  let valid = 0;
+  for (let run = 0; run < 400; run += 1) {
+    const groups = Array.from({ length: count(3) }, (_, index) => leaf(`g${index}`));
+    const completed = some();
+    let exists = false;
+    for (let assignment = 0; assignment < (groups.length + 1) ** completed.length && !exists; assignment += 1) {
+      const owned = groups.map((): string[] => []);
+      completed.forEach((code, index) => {
+        const owner = Math.floor(assignment / (groups.length + 1) ** index) % (groups.length + 1);
+        if (owner < groups.length) owned[owner].push(code);
+      });
+      exists = groups.every((group, index) => canMeet(group, owned[index]));
+    }
+    const result = validatePlanV2(plan(completed), varied, {
+      version: 2, name: "Random", catalogYear: "", officialUrl: "", uncertainties: [], lastUpdated: "", root: program(...groups),
+    }).root;
+    const label = JSON.stringify({ groups, completed });
+    assert.equal(result.children.every((child) => child.satisfied), exists, label);
+    // No group claims a course twice, and each satisfied group is met by its own courses.
+    const used = result.children.flatMap((child) => child.courses);
+    assert.equal(new Set(used).size, used.length, label);
+    result.children.forEach((child, index) => {
+      if (child.satisfied) assert.ok(canMeet(groups[index], child.courses), label);
+    });
+    const reversed = validatePlanV2(plan([...completed].reverse()), varied, {
+      version: 2, name: "Random", catalogYear: "", officialUrl: "", uncertainties: [], lastUpdated: "", root: program(...groups),
+    }).root;
+    assert.deepEqual(reversed, result, label);
+    if (exists) valid += 1;
+  }
+  assert.ok(valid > 100 && valid < 350, `${valid} of 400 random trees have a valid allocation`);
+});
+
+test("tier: MSCS Seattle is Audit; an unmodeled group or credits that do not add up give Map", () => {
+  const mscs = requirementsV2FromV1(seattle.requirements);
+  assert.equal(requirementTier(mscs, seattle.courses), "audit");
+  const children = mscs.root.kind === "all" ? mscs.root.children : [];
+  const tree = (...groups: RuleGroup[]): DegreeRequirementV2 => ({ ...mscs, root: { ...mscs.root, kind: "all", children: groups } as RuleGroup });
+  const unmodeled: RuleGroup = { ...base, kind: "unmodeled", id: "thesis", rawText: "Thesis option." };
+  assert.equal(requirementTier(tree(...children, unmodeled), seattle.courses), "map");
+  assert.equal(requirementTier(tree(...children.filter((group) => group.id !== "electives")), seattle.courses), "map");
+  assert.equal(requirementTier(tree(...children.filter((group) => group.kind !== "total-credits")), seattle.courses), "map");
+});
+
+test("a Map-tier program still checks prerequisites and term order, without a degree audit", () => {
+  const first = course("CS 1");
+  const second = { ...course("CS 2"), prerequisites: { type: "course" as const, code: "CS 1" } };
+  const catalog: Catalog = { ...small, courses: [first, second] };
+  const requirements: DegreeRequirementV2 = {
+    version: 2, name: "Map program", catalogYear: "", officialUrl: "", uncertainties: [], lastUpdated: "",
+    root: program({ ...base, kind: "unmodeled", id: "rules", rawText: "Complete 30 credits approved by an advisor." }),
+  };
+  const semester = (id: string, code: string) => ({ id, name: id, type: "academic" as const, courses: [{ code }] });
+  const wrongOrder = validatePlanV2({ ...plan([]), semesters: [semester("fall", "CS 2"), semester("spring", "CS 1")] }, catalog, requirements);
+  assert.equal(wrongOrder.tier, "map");
+  assert.equal(wrongOrder.satisfied, false);
+  assert.deepEqual(wrongOrder.issues.map((issue) => `${issue.kind}:${issue.courseCode}`), ["prerequisite:CS 2"]);
+  const rightOrder = validatePlanV2({ ...plan([]), semesters: [semester("fall", "CS 1"), semester("spring", "CS 2")] }, catalog, requirements);
+  assert.deepEqual(rightOrder.issues, []);
+  // Every catalog course counts toward the plan credits, but the plan is never "satisfied".
+  assert.equal(rightOrder.totalCredits, 8);
+  assert.equal(rightOrder.requiredCredits, null);
+  assert.equal(rightOrder.satisfied, false);
+});
+
+test("the Plan audit for MSCS Seattle runs on v2, with the raw catalog rule on each modeled group", () => {
+  const progress = validatePlanV2(plan(["CS 5010", "CS 5800"], ["CS 5011"]), seattle, requirementsV2FromV1(seattle.requirements));
+  assert.equal(progress.tier, "audit");
+  assert.equal(progress.requiredCredits, 32);
+  const [core, breadth, electives, total] = progress.root.children;
+  assert.deepEqual([core.satisfied, core.courses, core.waived, core.summary], [true, ["CS 5010", "CS 5800"], ["CS 5011"], "3 of 3 courses"]);
+  assert.equal(breadth.summary, "0 of 3 courses, 0 of 2 areas, 0 of 12 credits");
+  assert.match(breadth.rawText, /three courses from at least two/);
+  assert.equal(electives.summary, "0 of 12 credits");
+  assert.equal(total.summary, "8 of 32 credits");
+  const missing = validatePlanV2(plan(["CS 5010"]), seattle, requirementsV2FromV1(seattle.requirements)).root.children[0];
+  assert.equal(missing.summary, "1 of 3 courses; needs CS 5011, CS 5800");
+});
+
+// PR #92 review, finding 2: `shareCourses` is two-sided.
+test("probe C: a shared group may use a course that another group also uses", () => {
+  const only: RuleGroup = { ...base, kind: "choose-courses", id: "only", count: 1, courses: ["CS 1"] };
+  const shared: RuleGroup = { ...only, id: "shared", shareCourses: true };
+  assert.deepEqual(met(program(only, shared), ["CS 1"]), [true, true]);
+  assert.deepEqual(met(program(shared, only), ["CS 1"]), [true, true]);
 });
