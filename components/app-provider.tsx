@@ -28,9 +28,9 @@ import {
   CATALOG_KEY_PREFERENCE,
   DEFAULT_CATALOG_KEY,
   readCatalogValue,
-  rememberedCatalogKey,
   writeCatalogValue,
 } from "@/lib/catalog-key";
+import { programRoutes } from "@/lib/routes";
 import { validatePlan } from "@/lib/requirements-v2";
 
 type PickerState = { semesterId?: string; courseCode?: string } | null;
@@ -78,21 +78,10 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
-/**
- * The catalog key of this page load: the remembered key, else the default.
- * ponytail: fixed per page load, because no UI changes the program yet. Make it state when the program picker ships.
- */
-function pageCatalogKey(): string {
-  try {
-    return rememberedCatalogKey(window.localStorage);
-  } catch {
-    return DEFAULT_CATALOG_KEY;
-  }
-}
-
-let sessionCatalog: Catalog | null = null;
+// One loaded catalog per tab, for the catalog key of the URL.
+let sessionCatalog: { key: string; catalog: Catalog } | null = null;
 let sessionRefreshAvailable = true;
-let catalogGetInflight: Promise<CatalogLoad> | null = null;
+let catalogGetInflight: { key: string; load: Promise<CatalogLoad> } | null = null;
 
 function isCatalogPayload(data: unknown): data is Catalog {
   if (!data || typeof data !== "object") return false;
@@ -108,8 +97,8 @@ function isCatalogPayload(data: unknown): data is Catalog {
 
 type CatalogLoad = { catalog: Catalog; refreshStatus: string | null; refreshAvailable: boolean };
 
-async function loadCatalogFromNetwork(refresh: boolean): Promise<CatalogLoad> {
-  const url = refresh ? "/api/catalog" : `/api/catalog?key=${encodeURIComponent(pageCatalogKey())}`;
+async function loadCatalogFromNetwork(refresh: boolean, key: string): Promise<CatalogLoad> {
+  const url = refresh ? "/api/catalog" : `/api/catalog?key=${encodeURIComponent(key)}`;
   const response = await fetch(url, { method: refresh ? "POST" : "GET", cache: "no-store" });
   const refreshStatus = response.headers.get("x-catalog-refresh");
   const data: unknown = await response.json();
@@ -124,26 +113,31 @@ async function loadCatalogFromNetwork(refresh: boolean): Promise<CatalogLoad> {
   const refreshAvailable = typeof (data as unknown as { refreshAvailable?: unknown }).refreshAvailable === "boolean"
     ? (data as unknown as { refreshAvailable: boolean }).refreshAvailable
     : true;
-  sessionCatalog = data;
+  sessionCatalog = { key, catalog: data };
   return { catalog: data, refreshStatus, refreshAvailable };
 }
 
-async function requestCatalog(refresh: boolean): Promise<CatalogLoad> {
-  if (!refresh && sessionCatalog) return { catalog: sessionCatalog, refreshStatus: null, refreshAvailable: sessionRefreshAvailable };
-  if (!refresh) {
-    if (!catalogGetInflight) {
-      catalogGetInflight = loadCatalogFromNetwork(false).finally(() => {
-        catalogGetInflight = null;
-      });
-    }
-    return catalogGetInflight;
+async function requestCatalog(refresh: boolean, key: string): Promise<CatalogLoad> {
+  if (!refresh && sessionCatalog?.key === key) {
+    return { catalog: sessionCatalog.catalog, refreshStatus: null, refreshAvailable: sessionRefreshAvailable };
   }
-  return loadCatalogFromNetwork(true);
+  if (!refresh) {
+    if (catalogGetInflight?.key !== key) {
+      const load = loadCatalogFromNetwork(false, key).finally(() => {
+        if (catalogGetInflight?.load === load) catalogGetInflight = null;
+      });
+      catalogGetInflight = { key, load };
+    }
+    return catalogGetInflight.load;
+  }
+  return loadCatalogFromNetwork(true, key);
 }
 
-/** The shared context value; exported so tests can check its identity across renders (CR8). */
-export function useAppContextValue(): AppContextValue {
-  const [catalogKey, setCatalogKey] = useState(DEFAULT_CATALOG_KEY);
+/**
+ * The shared context value; exported so tests can check its identity across renders (CR8).
+ * `catalogKey` comes from the URL (`/<universityId>/<programId>/...`) and is fixed for one provider.
+ */
+export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): AppContextValue {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogBusy, setCatalogBusy] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -169,7 +163,7 @@ export function useAppContextValue(): AppContextValue {
     setCatalogMessage(null);
     try {
       if (refresh) sessionCatalog = null;
-      const { catalog: nextCatalog, refreshStatus, refreshAvailable: canRefresh } = await requestCatalog(refresh);
+      const { catalog: nextCatalog, refreshStatus, refreshAvailable: canRefresh } = await requestCatalog(refresh, catalogKey);
       sessionRefreshAvailable = canRefresh;
       setRefreshAvailable(canRefresh);
       setCatalog(nextCatalog);
@@ -181,13 +175,13 @@ export function useAppContextValue(): AppContextValue {
     } catch (error) {
       setCatalogError(error instanceof Error ? error.message : "Unable to reach the catalog. Try again.");
     } finally { setCatalogBusy(false); }
-  }, []);
+  }, [catalogKey]);
 
   useEffect(() => { void fetchCatalog(false); }, [fetchCatalog]);
   useEffect(() => {
-    const key = pageCatalogKey();
-    setCatalogKey(key);
+    const key = catalogKey;
     try {
+      // The program of the URL becomes the remembered program.
       window.localStorage.setItem(CATALOG_KEY_PREFERENCE, key);
     } catch {
       /* The remembered program is optional. */
@@ -208,7 +202,7 @@ export function useAppContextValue(): AppContextValue {
       setPersistence("blocked");
     }
     setHydrated(true);
-  }, []);
+  }, [catalogKey]);
   // Two tabs sharing this plan would otherwise overwrite each other silently
   // (CR2). Reload the plan this tab is showing when another tab writes it, but
   // never overwrite data that is currently unreadable.
@@ -233,7 +227,7 @@ export function useAppContextValue(): AppContextValue {
     return () => window.removeEventListener("storage", onStorage);
   }, [storageBlocked, catalogKey]);
   useEffect(() => {
-    const key = pageCatalogKey();
+    const key = catalogKey;
     try {
       const saved = readCatalogValue(window.localStorage, "career-target", key);
       if (saved) setCareerTargetIdState(saved);
@@ -252,7 +246,7 @@ export function useAppContextValue(): AppContextValue {
     } catch {
       /* Graph/plan selection is optional; plan persistence is separate. */
     }
-  }, []);
+  }, [catalogKey]);
   const setCareerTargetId = useCallback((id: string | null) => {
     setCareerTargetIdState(id);
     try {
@@ -485,12 +479,18 @@ export function useAppContextValue(): AppContextValue {
   return contextValue;
 }
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  return <AppContext.Provider value={useAppContextValue()}>{children}</AppContext.Provider>;
+export function AppProvider({ catalogKey, children }: { catalogKey: string; children: ReactNode }) {
+  return <AppContext.Provider value={useAppContextValue(catalogKey)}>{children}</AppContext.Provider>;
 }
 
 export function useApp() {
   const context = useContext(AppContext);
   if (!context) throw new Error("NEU MSCS Course Planner must be used inside AppProvider.");
   return context;
+}
+
+/** Page paths of the program that this provider shows. */
+export function useRoutes() {
+  const { catalogKey } = useApp();
+  return useMemo(() => programRoutes(catalogKey), [catalogKey]);
 }

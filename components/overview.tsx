@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { ArrowUpRight, GraduationCap, KeyRound, Share2, Target } from "lucide-react";
 import pathwayConfig from "@/config/pathways.json";
-import { useApp } from "@/components/app-provider";
+import { useApp, useRoutes } from "@/components/app-provider";
 import { CatalogState } from "@/components/catalog-state";
 import { OfficialLink, PageHeading } from "@/components/ui";
 import { overviewSnapshot } from "@/lib/overview";
-import { routes } from "@/lib/routes";
 import { targetPathSnapshot } from "@/lib/target-path";
 import type { Pathway } from "@/lib/types";
 
@@ -15,6 +14,7 @@ const pathways = pathwayConfig as Pathway[];
 
 export function Overview() {
   const { catalog, plan, progress, openCourse, careerTargetId, courseTargetCode } = useApp();
+  const routes = useRoutes();
   const heading = <PageHeading
     title="Overview"
     description="A lightweight snapshot of your local plan. Explore the course map to understand what every course unlocks."

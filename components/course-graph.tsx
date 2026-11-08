@@ -60,8 +60,7 @@ import {
 } from "@/lib/pathway-overlay";
 import { resolveGraphCourses, resolveProgramScope, roadmapFocusCourse, roadmapProgramLabel } from "@/lib/roadmaps";
 import { requirementView } from "@/lib/requirements-v2";
-import { routes } from "@/lib/routes";
-import { useApp } from "./app-provider";
+import { useApp, useRoutes } from "./app-provider";
 import { CodeLinks, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
 import { TargetPathCard, SetAsTargetButton, WhyBlockedCard, CriticalPathCard } from "./target-path";
@@ -211,6 +210,7 @@ export function GraphInspectorActions({
 
 function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRoadmap | null; requestedFocus?: string | null }) {
   const { catalog, openCourse, openPicker, plan, addCourses, hydrated, careerTargetId, courseTargetCode, workspaceSelection, setWorkspaceSelection, announce } = useApp();
+  const routes = useRoutes();
   const overrideActive = roadmap !== null;
   const courses = useMemo(() => resolveGraphCourses(catalog, roadmap), [catalog, roadmap]);
   const programCodes = useMemo(() => resolveProgramScope(catalog, roadmap), [catalog, roadmap]);

@@ -2,13 +2,15 @@ import { strict as assert } from "node:assert";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import CoursePage from "../app/courses/[code]/page";
+import CoursePage from "../app/[universityId]/[programId]/courses/[code]/page";
 import pathwayConfig from "../config/pathways.json";
 import { readCatalog } from "../lib/catalog";
+import { CATALOGS, DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
 import {
   courseBySlug,
   courseSlug,
-  isUnknownCoursePath,
+  isUnknownProgramPath,
+  programPagePaths,
   needsReview,
   requirementText,
   shortestPrerequisiteChain,
@@ -36,15 +38,32 @@ test("course slugs are URL-safe and round-trip through the packaged catalog", as
   assert.equal(courseBySlug(catalog, "../etc"), undefined);
 });
 
-test("unknown course slugs go to the 404 route miss; real course pages do not", async () => {
-  const slugs = new Set(publicCourses(await readCatalog()).map((item) => courseSlug(item.code)));
-  assert.equal(isUnknownCoursePath("/courses/cs-5800", slugs), false);
-  assert.equal(isUnknownCoursePath("/courses/cs-5010", slugs), false);
-  assert.equal(isUnknownCoursePath("/courses/zz-9999", slugs), true);
-  assert.equal(isUnknownCoursePath("/courses/cis-200m", slugs), true, "placeholder course has no page");
-  assert.equal(isUnknownCoursePath("/courses", slugs), false, "course list page");
-  assert.equal(isUnknownCoursePath("/courses/", slugs), false, "trailing slash redirect stays with vinext");
-  assert.equal(isUnknownCoursePath("/pathways/zz-9999", slugs), false);
+test("unknown programs and course slugs go to the 404 route miss; real pages do not", async () => {
+  const pages = new Set(programPagePaths(DEFAULT_CATALOG_KEY, await readCatalog()));
+  const p = `/${DEFAULT_CATALOG_KEY}`;
+  for (const real of [p, `${p}/explore`, `${p}/planner`, `${p}/courses`, `${p}/pathways`, `${p}/courses/cs-5800`, `${p}/courses/cs-5010`, `${p}/pathways/systems`]) {
+    assert.equal(isUnknownProgramPath(real, pages), false, real);
+  }
+  assert.equal(isUnknownProgramPath(`${p}/courses/zz-9999`, pages), true);
+  assert.equal(isUnknownProgramPath(`${p}/courses/cis-200m`, pages), true, "placeholder course has no page");
+  assert.equal(isUnknownProgramPath(`${p}/pathways/zz-9999`, pages), true);
+  assert.equal(isUnknownProgramPath(`${p}/nothing`, pages), true);
+  assert.equal(isUnknownProgramPath("/northeastern/no-such-program", pages), true, "unknown program");
+  assert.equal(isUnknownProgramPath("/zz/yy/courses/cs-5800", pages), true, "unknown university");
+  assert.equal(isUnknownProgramPath(`${p}/courses/`, pages), false, "trailing slash redirect stays with vinext");
+  // Old top-level URLs redirect (next.config.ts); API routes and static files stay with vinext.
+  for (const other of ["/courses/cs-5800", "/courses/zz-9999", "/pathways/systems", "/explore", "/api/catalog", "/api/roadmaps/x", "/_next/static/a.js", "/_snapshots/manifest.json", "/nothing", "/"]) {
+    assert.equal(isUnknownProgramPath(other, pages), false, other);
+  }
+});
+
+test("each catalog key in the manifest allowlist has program pages", async () => {
+  // data/published.json lists the published programs; CATALOGS lists the catalogs that the pages can read.
+  const published = (await import("../data/published.json", { with: { type: "json" } })).default as string[];
+  assert.deepEqual([...published].sort(), Object.keys(CATALOGS).sort());
+  const paths = programPagePaths(DEFAULT_CATALOG_KEY, await readCatalog());
+  assert.equal(new Set(paths).size, paths.length, "two pages share a path");
+  assert.ok(paths.every((path) => path.startsWith(`/${DEFAULT_CATALOG_KEY}`)));
 });
 
 test("placeholder courses (no catalog text) get no page", async () => {
@@ -119,7 +138,7 @@ test("an unknown clause is never treated as met (B3, #67)", async () => {
 });
 
 test("course page shows the and/or structure of prerequisites (B2, #66)", async () => {
-  const pageText = async (code: string) => renderToStaticMarkup(await CoursePage({ params: Promise.resolve({ code }) }))
+  const pageText = async (code: string) => renderToStaticMarkup(await CoursePage({ params: Promise.resolve({ universityId: "northeastern", programId: "computer-science-mscs-sea-8b0d00dbda", code }) }))
     .replace(/<[^>]+>/g, "");
   // CS 6510 needs (CS 5004 or CS 5010) and CS 5500.
   assert.match(await pageText("cs-6510"), /Take all of these:One of: CS 5004 [^,]+, CS 5010 [^,]+CS 5500 /);
@@ -129,4 +148,18 @@ test("course page shows the and/or structure of prerequisites (B2, #66)", async 
   assert.doesNotMatch(cs5400, /Needs review/);
   // CS 5330: "MATH 2331 or graduate program admission". The unclear option shows as needing review.
   assert.match(await pageText("cs-5330"), /One of: MATH 2331[^,]*, Needs review — graduate program admission/);
+});
+
+test("the sitemap and canonical URLs use the program paths (#71)", async () => {
+  const { default: sitemap } = await import("../app/sitemap");
+  const { generateMetadata } = await import("../app/[universityId]/[programId]/courses/[code]/page");
+  const p = `https://coursesplanner.johnyc.com/${DEFAULT_CATALOG_KEY}`;
+  const urls = (await sitemap()).map((entry) => entry.url);
+  for (const url of [p, `${p}/explore`, `${p}/courses`, `${p}/pathways`, `${p}/courses/cs-5800`, `${p}/pathways/systems`]) {
+    assert.ok(urls.includes(url), url);
+  }
+  assert.ok(!urls.includes(`${p}/planner`), "Plan has no catalog text of its own");
+  assert.ok(urls.every((url) => url.startsWith(p)), "an old top-level URL is in the sitemap");
+  const params = Promise.resolve({ universityId: "northeastern", programId: "computer-science-mscs-sea-8b0d00dbda", code: "cs-5800" });
+  assert.equal((await generateMetadata({ params })).alternates?.canonical, `/${DEFAULT_CATALOG_KEY}/courses/cs-5800`);
 });

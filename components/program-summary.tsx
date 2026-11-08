@@ -4,23 +4,24 @@ import Link from "next/link";
 import pathwayConfig from "@/config/pathways.json";
 import { courseSlug, creditsLabel, publicCourses, transitiveUnlocks } from "@/lib/course-pages";
 import { requirementView } from "@/lib/requirements-v2";
+import type { ProgramRoutes } from "@/lib/routes";
 import type { Catalog, Pathway } from "@/lib/types";
 
 const pathways = pathwayConfig as Pathway[];
 
-function courseLinker(catalog: Catalog) {
+function courseLinker(catalog: Catalog, routes: ProgramRoutes) {
   const byCode = new Map(catalog.courses.map((course) => [course.code, course]));
   const pageCodes = new Set(publicCourses(catalog).map((course) => course.code));
   return (code: string) => {
     const label = <><strong>{code}</strong> {byCode.get(code)?.title}</>;
-    return pageCodes.has(code) ? <Link href={`/courses/${courseSlug(code, catalog)}`}>{label}</Link> : label;
+    return pageCodes.has(code) ? <Link href={routes.course(courseSlug(code, catalog))}>{label}</Link> : label;
   };
 }
 
-export function DegreeRules({ catalog }: { catalog: Catalog }) {
+export function DegreeRules({ catalog, routes }: { catalog: Catalog; routes: ProgramRoutes }) {
   const rules = catalog.requirements;
   const { totalCredits, core, breadth, electives } = requirementView(rules);
-  const link = courseLinker(catalog);
+  const link = courseLinker(catalog, routes);
   const byCode = new Map(catalog.courses.map((course) => [course.code, course]));
   return <section aria-labelledby="degree-rules-title">
     <h2 id="degree-rules-title">{rules.name}: degree rules</h2>
@@ -37,13 +38,13 @@ export function DegreeRules({ catalog }: { catalog: Catalog }) {
     </details>)}</>}
     {electives && <><h3>Electives</h3>
     <p>Complete {electives.credits} more credits from the breadth courses and the other listed electives.
-      The catalog lists {electives.courses.length} courses that can count here. The <Link href="/courses">course index</Link> shows how each course counts. <a href={rules.officialUrl} rel="noopener">Official program requirements</a>.</p></>}
+      The catalog lists {electives.courses.length} courses that can count here. The <Link href={routes.courses}>course index</Link> shows how each course counts. <a href={rules.officialUrl} rel="noopener">Official program requirements</a>.</p></>}
   </section>;
 }
 
 /** Courses that open the most other courses, directly or through a chain. */
-export function UnlockLeaders({ catalog, limit }: { catalog: Catalog; limit: number }) {
-  const link = courseLinker(catalog);
+export function UnlockLeaders({ catalog, routes, limit }: { catalog: Catalog; routes: ProgramRoutes; limit: number }) {
+  const link = courseLinker(catalog, routes);
   const ranked = publicCourses(catalog)
     .map((course) => ({ course, total: transitiveUnlocks(course.code, catalog.courses).length }))
     .filter((item) => item.total > 0)
@@ -57,13 +58,13 @@ export function UnlockLeaders({ catalog, limit }: { catalog: Catalog; limit: num
   </section>;
 }
 
-export function PathwayList({ catalog }: { catalog: Catalog }) {
-  const link = courseLinker(catalog);
+export function PathwayList({ catalog, routes }: { catalog: Catalog; routes: ProgramRoutes }) {
+  const link = courseLinker(catalog, routes);
   return <section aria-labelledby="pathway-list-title">
     <h2 id="pathway-list-title">Paths</h2>
     <p>A path is a suggested set of courses for one career goal. It never changes the degree requirements.</p>
     <ul className="static-list">{pathways.map((pathway) => <li key={pathway.id}>
-      <Link href={`/pathways/${pathway.id}`}><strong>{pathway.name}</strong></Link> <small>{pathway.description}</small>
+      <Link href={routes.pathway(pathway.id)}><strong>{pathway.name}</strong></Link> <small>{pathway.description}</small>
       {pathway.groups.map((group) => <small key={group.label}>{group.label}: {group.courses.map((code, index) => <span key={code}>{index ? ", " : ""}{link(code)}</span>)}</small>)}
     </li>)}</ul>
   </section>;

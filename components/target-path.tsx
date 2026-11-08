@@ -7,10 +7,9 @@ import pathwayConfig from "@/config/pathways.json";
 import { analyzeCriticalPath, analyzeResolvedCriticalPath, type CriticalPathAnalysis } from "@/lib/critical-path";
 import { previewChainInsert, type ChainInsertPreview } from "@/lib/plan";
 import { catalogCodeGrammar } from "@/lib/course-code";
-import { criticalPathHref, routes, targetPathHref } from "@/lib/routes";
 import { matchCourseTarget, targetPathSnapshot } from "@/lib/target-path";
 import type { Pathway } from "@/lib/types";
-import { useApp } from "./app-provider";
+import { useApp, useRoutes } from "./app-provider";
 
 const pathways = pathwayConfig as Pathway[];
 
@@ -19,6 +18,7 @@ const roleLabel = (role: ChainInsertPreview["nodes"][number]["role"]) =>
 
 export function CourseTargetControl() {
   const { catalog, courseTargetCode, setCourseTargetCode } = useApp();
+  const routes = useRoutes();
   const [draft, setDraft] = useState(courseTargetCode ?? "");
   useEffect(() => {
     setDraft(courseTargetCode ?? "");
@@ -63,7 +63,7 @@ export function CourseTargetControl() {
           <option key={course.code} value={course.code} label={`${course.code} · ${course.title}`} />
         ))}
       </datalist>
-      <Link href={courseTargetCode ? `${routes.explore}` : routes.paths}>{courseTargetCode ? "Path" : "Paths"}</Link>
+      <Link href={courseTargetCode ? routes.explore : routes.paths}>{courseTargetCode ? "Path" : "Paths"}</Link>
     </div>
   );
 }
@@ -227,6 +227,7 @@ export function CriticalPathView({
 
 export function CriticalPathCard({ compact = false }: { compact?: boolean }) {
   const { catalog, plan, courseTargetCode, careerTargetId, openCourse } = useApp();
+  const routes = useRoutes();
   const analysis = useMemo(
     () =>
       catalog
@@ -250,13 +251,14 @@ export function CriticalPathCard({ compact = false }: { compact?: boolean }) {
         </span>
       </div>
       <CriticalPathView analysis={analysis} compact={compact} onSelectCode={openCourse} />
-      {compact ? <Link className="text-link" href={criticalPathHref}>Open in Plan</Link> : null}
+      {compact ? <Link className="text-link" href={routes.criticalPath}>Open in Plan</Link> : null}
     </section>
   );
 }
 
 export function TargetPathCard({ compact = false }: { compact?: boolean }) {
   const { catalog, plan, courseTargetCode, setCourseTargetCode, addPrerequisiteChain, openCourse, hydrated } = useApp();
+  const routes = useRoutes();
   const snapshot = useMemo(
     () => (catalog && courseTargetCode ? targetPathSnapshot(courseTargetCode, catalog.courses, plan) : null),
     [catalog, courseTargetCode, plan],
@@ -300,7 +302,7 @@ export function TargetPathCard({ compact = false }: { compact?: boolean }) {
         onApply={() => addPrerequisiteChain(courseTargetCode)}
         applyEnabled={hydrated}
         extraHeading={<button type="button" className="text-button" onClick={() => setCourseTargetCode(null)}>Clear target</button>}
-        extraFooter={<Link className="text-link" href={targetPathHref}>Open in Plan</Link>}
+        extraFooter={<Link className="text-link" href={routes.targetPath}>Open in Plan</Link>}
       />
       {delayCopy ? <p className="delay-impact-copy">{delayCopy}</p> : null}
       <p className="muted small-text">

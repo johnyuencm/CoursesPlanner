@@ -5,8 +5,7 @@ import { ArrowRight, Check, Plus, Share2 } from "lucide-react";
 import type { Course, Pathway, StudentPlan } from "@/lib/types";
 import type { CourseDependencyStats } from "@/lib/catalog-view";
 import { catalogTakeStatus, courseDependencyStats } from "@/lib/catalog-view";
-import { exploreFocusHref } from "@/lib/routes";
-import { useApp } from "./app-provider";
+import { useApp, useRoutes } from "./app-provider";
 import { SetAsTargetButton } from "./target-path";
 import { RequirementChips } from "./requirement-tree";
 import { creditLabel } from "./ui";
@@ -67,7 +66,7 @@ export function CourseCard({ course, compact = false }: { course: Course; compac
   const badge = requirementBadge(course.requirementType);
   const topic = course.topics[0];
   const stats = courseDependencyStats(course, pathways, careerTargetId);
-  const graphHref = exploreFocusHref(course.code);
+  const graphHref = useRoutes().exploreFocus(course.code);
   const focusExplore = () => {
     setWorkspaceSelection({ selectedCode: course.code, focusCode: course.code });
     openCourse(null);

@@ -3,7 +3,8 @@ import test from "node:test";
 
 import { overviewSnapshot } from "../lib/overview";
 import { emptyPlan } from "../lib/plan";
-import { criticalPathHref, exploreFocusHref, legacyRedirects, parseExploreFocus, primaryNav, routes, targetPathHref } from "../lib/routes";
+import { DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
+import { legacyRedirects, parseExploreFocus, primaryNav, programRoutes } from "../lib/routes";
 import type { Catalog, Course, RequirementExpression, StudentPlan } from "../lib/types";
 import { validatePlan } from "../lib/requirements-v2";
 import { mscsRequirements } from "./mscs-requirements";
@@ -70,33 +71,47 @@ function catalog(): Catalog {
   };
 }
 
-test("primary nav is Explore, Plan, Courses, Paths", () => {
+const base = `/${DEFAULT_CATALOG_KEY}`;
+const routes = programRoutes(DEFAULT_CATALOG_KEY);
+
+test("primary nav is Explore, Plan, Courses, Paths under the program path", () => {
   assert.deepEqual(
-    primaryNav.map((item) => item.label),
+    primaryNav(routes).map((item) => item.label),
     ["Explore", "Plan", "Courses", "Paths"],
   );
   assert.deepEqual(
-    primaryNav.map((item) => item.href),
-    [routes.explore, routes.plan, routes.courses, routes.paths],
+    primaryNav(routes).map((item) => item.href),
+    [`${base}/explore`, `${base}/planner`, `${base}/courses`, `${base}/pathways`],
   );
-  assert.equal(routes.explore, "/explore");
-  assert.equal(routes.overview, "/");
+  assert.equal(routes.overview, base);
+  assert.equal(base, "/northeastern/computer-science-mscs-sea-8b0d00dbda");
+  assert.equal(programRoutes("mit/eecs").course("6-1010"), "/mit/eecs/courses/6-1010");
+  assert.equal(programRoutes("mit/eecs").pathway("systems"), "/mit/eecs/pathways/systems");
 });
 
-test("legacy /map bookmark redirects to Explore", () => {
-  assert.deepEqual([...legacyRedirects], [{ source: "/map", destination: "/explore", permanent: true }]);
+test("old top-level URLs redirect to the default program (#71)", () => {
+  assert.deepEqual(legacyRedirects, [
+    { source: "/", destination: base, permanent: false }, // T8 (#72) makes / the program picker
+    { source: "/map", destination: `${base}/explore`, permanent: true },
+    { source: "/explore", destination: `${base}/explore`, permanent: true },
+    { source: "/planner", destination: `${base}/planner`, permanent: true },
+    { source: "/courses", destination: `${base}/courses`, permanent: true },
+    { source: "/pathways", destination: `${base}/pathways`, permanent: true },
+    { source: "/courses/:slug", destination: `${base}/courses/:slug`, permanent: true },
+    { source: "/pathways/:id", destination: `${base}/pathways/:id`, permanent: true },
+  ]);
 });
 
 test("target path panel is anchored on Plan", () => {
-  assert.equal(targetPathHref, "/planner#target-path");
+  assert.equal(routes.targetPath, `${base}/planner#target-path`);
 });
 
 test("critical path panel is anchored on Plan", () => {
-  assert.equal(criticalPathHref, "/planner#critical-path");
+  assert.equal(routes.criticalPath, `${base}/planner#critical-path`);
 });
 
 test("Courses View dependency graph deep-links into Explore focus", () => {
-  assert.equal(exploreFocusHref("CS 5500"), "/explore?focus=CS%205500");
+  assert.equal(routes.exploreFocus("CS 5500"), `${base}/explore?focus=CS%205500`);
   assert.equal(parseExploreFocus("CS5500"), "CS 5500");
 });
 

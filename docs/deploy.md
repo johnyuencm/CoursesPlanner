@@ -36,13 +36,13 @@ flowchart LR
   S -->|ASSETS binding| A
 ```
 
-- `npm run build` runs `vite build`. vinext prerenders every static page at build time: `/`, `/explore`, `/planner`, `/courses`, all `/courses/<slug>`, all `/pathways/<id>`. The Worker serves them from static assets (`X-Vinext-Cache: HIT`).
+- `npm run build` runs `vite build`. vinext prerenders every page of each published program at build time: `/<universityId>/<programId>` and its `explore`, `planner`, `courses`, `pathways`, all `courses/<slug>` and all `pathways/<id>`. The Worker serves them from static assets (`X-Vinext-Cache: HIT`). See [`docs/ia.md`](ia.md).
 - `/api/catalog`, `/api/roadmaps`, `/sitemap.xml`, `/robots.txt` and 404 pages run in the Worker.
 - Workers has no project filesystem. The Worker reads the published snapshots from static assets. See [Published snapshots](#published-snapshots).
 - `POST /api/catalog` (refresh) stays off in production: it answers 401. Refresh the catalog with `npm run catalog:refresh`, commit `data/`, then deploy.
 - `app/global-not-found.tsx` renders route misses without the root layout, because a full layout render costs more CPU than the Free plan allows.
-- [`worker.ts`](../worker.ts) is the Worker entry (`main` in `wrangler.jsonc`). It changes an unknown `/courses/<slug>` request to a route miss, then calls vinext. All other requests go to vinext unchanged.
-- `/`, `/explore`, `/pathways`, `/planner` and `/courses` put server-rendered catalog text in the prerendered HTML ([`components/program-summary.tsx`](../components/program-summary.tsx)). Crawlers read it without JavaScript. The interactive views load after it.
+- [`worker.ts`](../worker.ts) is the Worker entry (`main` in `wrangler.jsonc`). It changes a request for an unknown program, course or path page to a route miss, then calls vinext. All other requests go to vinext unchanged.
+- The program overview, Explore, Paths, Plan and Courses pages put server-rendered catalog text in the prerendered HTML ([`components/program-summary.tsx`](../components/program-summary.tsx)). Crawlers read it without JavaScript. The interactive views load after it.
 
 ## Published snapshots
 
@@ -59,8 +59,9 @@ flowchart LR
 - `npm run build` runs [`lib/snapshot-manifest.ts`](../lib/snapshot-manifest.ts) from a plugin in [`vite.config.ts`](../vite.config.ts). It validates each listed roadmap, its `programs.json`, `data/catalog.json` and `catalog-service/universities.json`.
 - The build fails when a listed roadmap is missing, invalid or not `ready`. The Worker never lists a program that answers 503.
 - The build writes the files to `dist/client/_snapshots/<repo path>`. It also writes `_snapshots/manifest.json`. Each manifest entry has a catalog key, a tier (`audit` or `map`), an edition (the snapshot `lastUpdated`) and a file.
-- The shipped `programs.json` keeps only the published programs. To unpublish a program, remove its key and deploy. You do not change code.
+- The shipped `programs.json` keeps only the published programs. To unpublish a program, remove its key and deploy.
 - To publish a new program, commit its roadmap and `programs.json` (see `.gitignore`), then add its key.
+- The program pages (#71) come from `CATALOGS` in `lib/catalog-key.ts`. Add or remove the same key there. A test in `tests/course-pages.test.ts` fails when `data/published.json` and `CATALOGS` differ.
 - The readers try disk first (dev, tests, CLI, prerender). When a file is missing (`ENOENT`), the Worker reads it through the `ASSETS` binding ([`lib/snapshot-assets.ts`](../lib/snapshot-assets.ts)), from `import { env } from "cloudflare:workers"`. It reads only files that the manifest lists. A corrupt disk file gives an error.
 - The Worker does not validate the files again, because the build did. It parses each file once per isolate. The API routes keep the serialized body in memory, as before.
 - `npm run dev:vinext` also runs in workerd without project files. There, a virtual module from `vite.config.ts` gives the same files.
@@ -142,7 +143,8 @@ flowchart LR
   M --> G[global-not-found 404, no layout]
 ```
 
-- The check is one `URL` parse and one `Set` lookup. The slug `Set` comes from the published `data/catalog.json` (static assets, through `readCatalog()`), once for each isolate. The first `/courses/*` request of an isolate reads and parses that file. If the read fails, the request goes to vinext unchanged.
+- The check is one `URL` parse and one `Set` lookup. The `Set` holds every program page path (`programPagePaths()` in `lib/course-pages.ts`). It comes from the published `data/catalog.json` (static assets, through `readCatalog()`), once for each isolate. The first program-path request of an isolate reads and parses that file. If the read fails, the request goes to vinext unchanged.
+- Since #71 the check covers every `/<universityId>/<programId>/...` path, not only `/courses/<slug>`. An unknown program (`/zz/yy`) also gets the small 404.
 - vinext middleware does not run, so real course pages do not pay for the check. The old `proxy.ts` used vinext middleware.
 - `tests/course-pages.test.ts` pins the rule: unknown slugs and placeholder courses go to the 404, real course pages do not.
 
@@ -171,6 +173,20 @@ After #61 (snapshots as static assets): Worker version `4ed89a10` (master `25842
 | `/api/catalog` | 29 | 5 ms | 26 ms | 40 ms | 4 of 29 |
 
 The medians stay low and do not get worse. The p90 and max values change a lot between runs. The cause of the slow requests is not measured. A likely cause is the first request in a new isolate, which loads and parses the snapshot files.
+
+### Program paths, 2026-11-08 (issue #71)
+
+Local check: `npm run build`, then `wrangler dev` on `127.0.0.1:3171`. This is not a CPU measurement. `<program>` is `/northeastern/computer-science-mscs-sea-8b0d00dbda`.
+
+| Request | Status | Evidence |
+| --- | --- | --- |
+| `<program>`, `/explore`, `/planner`, `/courses`, `/courses/cs-5800`, `/pathways`, `/pathways/systems` | 200 | `X-Vinext-Cache: HIT` (prerendered) |
+| `/courses?q=data` | 308 | `Location: <program>/courses?q=data` |
+| `/map?focus=CS%205800` | 308 | `Location: <program>/explore?focus=CS%205800` |
+| `/` | 307 | `Location: <program>` |
+| `<program>/courses/zz-9999`, `/zz/yy`, `/northeastern/no-such-program` | 404 | 6,463 bytes (`global-not-found`, as `/nothing` with 6,428 bytes) |
+
+The build prerenders 126 routes, as before. Live CPU numbers for the new paths are not measured yet. Measure them after the next deploy.
 
 Measure again after a large change:
 

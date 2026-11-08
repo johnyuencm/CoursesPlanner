@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { AppProvider } from "@/components/app-provider";
-import { AppShell } from "@/components/app-shell";
 import { SITE_URL } from "@/lib/course-pages";
 import "@xyflow/react/dist/style.css";
 import "./globals.css";
@@ -11,12 +9,11 @@ export const metadata: Metadata = {
   description: "Understand what every course unlocks in Northeastern's MSCS Seattle curriculum. Explore the prerequisite map, then plan locally.",
 };
 
+// The app shell and its client state are in app/[universityId]/[programId]/layout.tsx.
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body>
-        <AppProvider><AppShell>{children}</AppShell></AppProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
