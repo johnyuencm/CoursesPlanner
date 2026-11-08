@@ -1,14 +1,21 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 
-import type { Catalog, Course, RequirementExpression, StudentPlan } from "../lib/types";
+import type { Catalog, Course, DegreeProgressV2, RequirementExpression, StudentPlan } from "../lib/types";
 import {
   dependencyClosure,
   evaluateRequirement,
   expressionLabel,
   getEligibility,
 } from "../lib/validation";
-import { validatePlan } from "./v2-equivalence";
+import { validatePlan } from "../lib/requirements-v2";
+
+/** A top-level rule group of the MSCS v2 audit: core, breadth, electives or total. */
+const group = (progress: DegreeProgressV2, id: string) => {
+  const found = progress.root.children.find((child) => child.id === id);
+  assert.ok(found, `No rule group ${id}`);
+  return found;
+};
 
 const none: RequirementExpression = { type: "none" };
 const req = (code: string, options: { minimumGrade?: string; concurrent?: boolean } = {}): RequirementExpression => ({
@@ -230,7 +237,7 @@ test("plan ordering enforces earlier prerequisites and accepts same-term corequi
   );
   assert.equal(reciprocalCorequisites.issues.some((issue) => issue.kind === "corequisite"), false);
   assert.equal(reciprocalCorequisites.plannedCredits, 4);
-  assert.equal(reciprocalCorequisites.core.find((item) => item.code === "CS 5011")?.satisfied, true);
+  assert.ok(group(reciprocalCorequisites, "core").courses.includes("CS 5011"));
 });
 
 test("breadth allocation uses three unique courses across category ids and leaves extra breadth for electives", () => {
@@ -251,11 +258,11 @@ test("breadth allocation uses three unique courses across category ids and leave
     catalog(),
   );
   assert.equal(progress.earnedCredits, 32);
-  assert.equal(progress.breadth.assignedCourses.length, 3);
-  assert.equal(new Set(progress.breadth.assignedCourses).size, 3);
-  assert.ok(progress.breadth.categoriesSatisfied.length >= 2);
-  assert.equal(progress.breadth.satisfied, true);
-  assert.equal(progress.electiveCredits, 12);
+  assert.equal(group(progress, "breadth").courses.length, 3);
+  assert.equal(new Set(group(progress, "breadth").courses).size, 3);
+  assert.ok(group(progress, "breadth").areas.length >= 2);
+  assert.equal(group(progress, "breadth").satisfied, true);
+  assert.equal(group(progress, "electives").credits, 12);
   assert.equal(progress.satisfied, true);
 });
 
@@ -269,9 +276,9 @@ test("breadth diversity cannot count one course twice", () => {
     plan({ completedCourses: ["CS 5100", "CS 5101", "CS 5200"] }),
     narrowCatalog,
   );
-  assert.equal(progress.breadth.assignedCourses.length, 3);
-  assert.deepEqual(progress.breadth.categoriesSatisfied, ["systems"]);
-  assert.equal(progress.breadth.satisfied, false);
+  assert.equal(group(progress, "breadth").courses.length, 3);
+  assert.deepEqual(group(progress, "breadth").areas, ["systems"]);
+  assert.equal(group(progress, "breadth").satisfied, false);
 });
 
 test("waived core grants no credit while zero-credit recitation remains satisfied", () => {
@@ -293,12 +300,9 @@ test("waived core grants no credit while zero-credit recitation remains satisfie
     catalog(),
   );
   assert.equal(progress.earnedCredits, 32);
-  assert.deepEqual(progress.core.find((item) => item.code === "CS 5010"), {
-    code: "CS 5010",
-    satisfied: true,
-    waived: true,
-  });
-  assert.equal(progress.core.find((item) => item.code === "CS 5011")?.satisfied, true);
+  assert.deepEqual(group(progress, "core").waived, ["CS 5010"]);
+  assert.ok(group(progress, "core").courses.includes("CS 5011"));
+  assert.equal(group(progress, "core").satisfied, true);
   assert.equal(progress.satisfied, true);
 });
 

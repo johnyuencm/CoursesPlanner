@@ -238,26 +238,6 @@ export interface PlanIssue {
   relatedCourses: string[];
 }
 
-export interface DegreeProgress {
-  earnedCredits: number;
-  plannedCredits: number;
-  totalCredits: number;
-  requiredCredits: number;
-  core: { code: string; satisfied: boolean; waived: boolean }[];
-  breadth: {
-    assignedCourses: string[];
-    categoriesSatisfied: string[];
-    coursesRequired: number;
-    minCategories: number;
-    satisfied: boolean;
-  };
-  electiveCredits: number;
-  requiredElectiveCredits: number;
-  issues: PlanIssue[];
-  satisfied: boolean;
-  notes: string[];
-}
-
 export interface Pathway {
   id: string;
   name: string;
