@@ -174,6 +174,26 @@ After #61 (snapshots as static assets): Worker version `4ed89a10` (master `25842
 
 The medians stay low and do not get worse. The p90 and max values change a lot between runs. The cause of the slow requests is not measured. A likely cause is the first request in a new isolate, which loads and parses the snapshot files.
 
+After #71 (program routes): Worker version `2424a379` (master `d72891d`), 2026-11-08. Same method. Paths start with `/northeastern/computer-science-mscs-sea-8b0d00dbda`.
+
+Round 1, right after the deploy (many cold isolates), 31 requests per route:
+
+| Route | p50 | p90 | Max | Over 10 ms |
+| --- | --- | --- | --- | --- |
+| Old URL `/courses/cs-5800` (308) | 2 ms | 4 ms | 7 ms | 0 of 31 |
+| New course page | 7 ms | 37 ms | 57 ms | 12 of 31 |
+| New unknown course 404 | 11 ms | 59 ms | 123 ms | 16 of 31 |
+
+Round 2, a few minutes later, 40 requests per route:
+
+| Route | p50 | p90 | Max | Over 10 ms |
+| --- | --- | --- | --- | --- |
+| New course page | 5 ms | 8 ms | 9 ms | 0 of 40 |
+| New explore page | 4 ms | 9 ms | 10 ms | 0 of 40 |
+| New unknown course 404 | 9 ms | 16 ms | 20 ms | 14 of 40 |
+
+The unknown-course 404 is slower again: p50 9 ms, against 6 ms after #61. Course pages are about 1 to 2 ms slower. Issue #110 tracks the fix.
+
 ### Program paths, 2026-11-08 (issue #71)
 
 Local check: `npm run build`, then `wrangler dev` on `127.0.0.1:3171`. This is not a CPU measurement. `<program>` is `/northeastern/computer-science-mscs-sea-8b0d00dbda`.
