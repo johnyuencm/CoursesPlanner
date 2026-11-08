@@ -126,7 +126,10 @@ type Context = {
 // ponytail: a step cap keeps a pathological tree from freezing the planner. Past the cap the audit
 // keeps the best allocation found so far, so it can miss a valid allocation but never claims a false one.
 // One step is one selection tried, one choose-areas combination or one node of the minimal-set search.
-const SEARCH_LIMIT = 20_000;
+export const SEARCH_LIMIT = 20_000;
+
+/** Test hook: the steps that the last `validatePlanV2` call used. It is not part of the audit result. */
+export const lastAuditSearch = { steps: 0 };
 
 const isLeaf = (group: RuleGroup): group is Leaf =>
   group.kind === "choose-courses" || group.kind === "choose-credits" || group.kind === "choose-areas";
@@ -508,6 +511,7 @@ export function validatePlanV2(plan: StudentPlan, catalog: Catalog, requirements
   const picks = new Map<RuleGroup, Pick>();
   const main: Leaf[] = [];
   for (const pool of pools(requirements.root, main, [main])) allocate(pool, free, context, picks);
+  lastAuditSearch.steps = context.steps;
   const root = groupResult(requirements.root, picks, context);
   const earnedCredits = sumCredits(audit.counted, "earned");
   const plannedCredits = sumCredits(audit.counted, "planned");

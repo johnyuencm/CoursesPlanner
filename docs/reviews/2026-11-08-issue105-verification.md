@@ -44,16 +44,18 @@ In the test suite (warm), the worst single audit is about 80 ms on the 60 worst-
 
 ## Tests (`tests/requirements-v2.test.ts`)
 
-- "choose-areas 5 of 96 courses ...": met case, reversed plan gives the same result, 21 credits (impossible) is not met. Each audit under 200 ms.
-- "choose-credits over 30+ candidates ...": 24, 32 and 40 one-credit courses plus a 40-credit course. A later group that needs one of the one-credit courses is met. Each audit under 200 ms.
+Each new audit check is deterministic. It reads `lastAuditSearch.steps`, a test hook in `lib/requirements-v2.ts` that is not part of the audit result. The steps must stay at or below `SEARCH_LIMIT + 1 + 2 × groups`: past the cap, each group still takes one selection (at most 2 steps). A wall-clock check of 2,000 ms per audit stays only as a hang guard. The first CI run used a 200 ms clock limit and failed on a slow runner ("random tree 16 took 201.3 ms").
+
+- "choose-areas 5 of 96 courses ...": met case, reversed plan gives the same result, 21 credits (impossible) is not met. Each audit within the step budget.
+- "choose-credits over 30+ candidates ...": 24, 32 and 40 one-credit courses plus a 40-credit course. A later group that needs one of the one-credit courses is met. Each audit within the step budget.
 - "the PR #98 review probes keep their results": probe D, probe F at N = 18, 20, 24, 32, probe G at 2 to 13 groups.
-- "worst-case random trees ...": 60 seeded trees, 2 to 10 groups over 15 to 40 courses, wide overlapping lists, all courses completed. Each audit under 200 ms, no course used twice, each satisfied group checked independently, same result for the reversed plan.
+- "worst-case random trees ...": 60 seeded trees, 2 to 10 groups over 15 to 40 courses, wide overlapping lists, all courses completed. Each audit within the step budget, no course used twice, each satisfied group checked independently, same result for the reversed plan.
 - Before the fix: the 30+ test took 3,255 ms at n = 24 and failed. The random test failed at 357 ms on tree 10. "5 of 96" ran out of memory.
 - Unchanged and passing: probes A, B, C, the 400-tree brute-force test, and the 500-plan fixture `tests/fixtures/mscs-v1-audits.json` (file not changed).
 
 ## Checks
 
-- `npm ci`, `npm run typecheck`, `npm test` (322 pass, two runs), `npm run build`: pass.
+- `npm ci`, `npm run typecheck`, `npm test` (322 pass, two runs after the step-budget change), `npm run build`: pass.
 
 ## Limits
 

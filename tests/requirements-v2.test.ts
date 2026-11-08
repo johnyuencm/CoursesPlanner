@@ -4,8 +4,8 @@ import path from "node:path";
 import test from "node:test";
 
 import { validateCatalog } from "../lib/catalog";
-import { programCourseCodes, requirementTier, requirementView, validatePlanV2 } from "../lib/requirements-v2";
-import type { Catalog, Course, DegreeRequirementV2, RuleGroup, StudentPlan } from "../lib/types";
+import { lastAuditSearch, programCourseCodes, requirementTier, requirementView, SEARCH_LIMIT, validatePlanV2 } from "../lib/requirements-v2";
+import type { Catalog, Course, DegreeProgressV2, DegreeRequirementV2, RuleGroup, RuleGroupResult, StudentPlan } from "../lib/types";
 
 const seattle = JSON.parse(readFileSync(path.join(process.cwd(), "data", "catalog.json"), "utf8")) as Catalog;
 
@@ -484,11 +484,17 @@ test("a large credit group leaves a later group its course, and a pigeonhole tre
 });
 
 // Issue #105: the planner runs the audit on every plan change, so a large group must not freeze it.
-const within200ms = <T>(label: string, run: () => T): T => {
+// The step count is the deterministic check. Past the cap, each group still takes one selection
+// (at most 2 steps), so the search can end a little above the cap. The clock is only a hang guard.
+const leafCount = (result: RuleGroupResult): number =>
+  result.kind === "all" ? result.children.reduce((sum, child) => sum + leafCount(child), 0) : result.kind.startsWith("choose-") ? 1 : 0;
+const withinBudget = (label: string, run: () => DegreeProgressV2): DegreeProgressV2 => {
   const started = performance.now();
   const result = run();
   const ms = performance.now() - started;
-  assert.ok(ms < 200, `${label} took ${ms.toFixed(1)} ms`);
+  const limit = SEARCH_LIMIT + 1 + 2 * leafCount(result.root);
+  assert.ok(lastAuditSearch.steps <= limit, `${label} used ${lastAuditSearch.steps} steps, limit ${limit}`);
+  assert.ok(ms < 2000, `${label} took ${ms.toFixed(1)} ms`);
   return result;
 };
 const largeTree = (root: RuleGroup): DegreeRequirementV2 => ({
@@ -517,7 +523,7 @@ function assertHonest(group: RuleGroup, result: { satisfied: boolean; courses: s
   }
 }
 
-test("choose-areas 5 of 96 courses is fast, deterministic and never falsely satisfied", () => {
+test("choose-areas 5 of 96 courses stays within the step budget, deterministic and never falsely satisfied", () => {
   const codes = programCourseCodes(seattle.requirements);
   assert.equal(codes.length, 96);
   const everything = seattle.courses.map((item) => item.code);
@@ -534,31 +540,31 @@ test("choose-areas 5 of 96 courses is fast, deterministic and never falsely sati
     validatePlanV2(plan(completed), seattle, { ...seattle.requirements, root: { ...mscs, children: mscs.children.map((group) => (group.id === "breadth" ? breadth : group)) } });
 
   const breadth = breadthOf({});
-  const result = within200ms("5 of 96", () => run(breadth, everything)).root.children[1];
+  const result = withinBudget("5 of 96", () => run(breadth, everything)).root.children[1];
   assert.equal(result.satisfied, true);
   assertHonest(breadth, result, credits, "5 of 96");
-  assert.deepEqual(within200ms("5 of 96, reversed plan", () => run(breadth, [...everything].reverse())).root.children[1], result);
+  assert.deepEqual(withinBudget("5 of 96, reversed plan", () => run(breadth, [...everything].reverse())).root.children[1], result);
 
   // Five courses carry at most 20 credits, so 21 credits can never be met.
   const impossible = breadthOf({ credits: 21 });
-  const none = within200ms("5 of 96, 21 credits", () => run(impossible, everything)).root.children[1];
+  const none = withinBudget("5 of 96, 21 credits", () => run(impossible, everything)).root.children[1];
   assert.equal(none.satisfied, false);
   assert.equal(none.courses.length, 5);
 });
 type GroupOfAreas = Extract<RuleGroup, { kind: "choose-areas" }>;
 
-test("choose-credits over 30+ candidates finds a minimal set fast and leaves later groups their courses", () => {
+test("choose-credits over 30+ candidates finds a minimal set within the step budget and leaves later groups their courses", () => {
   for (const size of [24, 32, 40]) {
     const ones = Array.from({ length: size }, (_, index) => `CS ${100 + index}`);
     const catalog: Catalog = { ...small, courses: [...ones.map((code) => course(code, 1)), course("CS 999", 40)] };
     const listed = [...ones, "CS 999"];
     const electives: RuleGroup = { ...base, kind: "choose-credits", id: "electives", credits: 40, courses: listed };
     const first: RuleGroup = { ...base, kind: "choose-courses", id: "first", count: 1, courses: [ones[0]] };
-    const audit40 = (root: RuleGroup) => within200ms(`${size} one-credit courses`, () => validatePlanV2(plan(listed), catalog, largeTree(root))).root;
+    const audit40 = (root: RuleGroup) => withinBudget(`${size} one-credit courses`, () => validatePlanV2(plan(listed), catalog, largeTree(root))).root;
     assert.equal(audit40(program(electives)).satisfied, true);
     assert.deepEqual(audit40(program(electives, first)).children.map((child) => child.satisfied), [true, true]);
     // The 40-credit course alone meets the group. Without it, the group needs 40 one-credit courses.
-    const withoutBig = within200ms("no 40-credit course", () => validatePlanV2(plan(ones), catalog, largeTree(program(electives)))).root;
+    const withoutBig = withinBudget("no 40-credit course", () => validatePlanV2(plan(ones), catalog, largeTree(program(electives)))).root;
     assert.equal(withoutBig.satisfied, size >= 40);
   }
 });
@@ -566,18 +572,16 @@ test("choose-credits over 30+ candidates finds a minimal set fast and leaves lat
 // PR #98 review probes D, F and G at their larger sizes.
 test("the PR #98 review probes keep their results", () => {
   // D: an unmet group keeps its partial progress and holds its courses.
-  assert.deepEqual(
-    met(program(
-      { ...base, kind: "choose-courses", id: "two", count: 2, courses: ["CS 1", "CS 2"] },
-      { ...base, kind: "choose-courses", id: "one", count: 1, courses: ["CS 1"] },
-    ), ["CS 1"]),
-    [false, false],
-  );
+  const probeD = withinBudget("probe D", () => audit(program(
+    { ...base, kind: "choose-courses", id: "two", count: 2, courses: ["CS 1", "CS 2"] },
+    { ...base, kind: "choose-courses", id: "one", count: 1, courses: ["CS 1"] },
+  ), plan(["CS 1"])));
+  assert.deepEqual(probeD.root.children.map((child) => child.satisfied), [false, false]);
   // F: 30 credits of N three-credit courses, then one named course.
   for (const size of [18, 20, 24, 32]) {
     const many = Array.from({ length: size }, (_, index) => `CS ${100 + index}`);
     const catalog: Catalog = { ...small, courses: many.map((code) => course(code, 3)) };
-    const result = within200ms(`probe F, ${size} courses`, () => validatePlanV2(plan(many), catalog, largeTree(program(
+    const result = withinBudget(`probe F, ${size} courses`, () => validatePlanV2(plan(many), catalog, largeTree(program(
       { ...base, kind: "choose-credits", id: "electives", credits: 30, courses: many },
       { ...base, kind: "choose-courses", id: "req", count: 1, courses: [many[0]] },
     )))).root;
@@ -587,7 +591,7 @@ test("the PR #98 review probes keep their results", () => {
   for (let size = 2; size <= 13; size += 1) {
     const others = Array.from({ length: size - 1 }, (_, index) => `CS ${100 + index}`);
     const catalog: Catalog = { ...small, courses: ["CS A", "CS B", ...others].map((code) => course(code)) };
-    const result = within200ms(`probe G, ${size} groups`, () => validatePlanV2(plan(["CS A", "CS B", ...others]), catalog, largeTree(program(
+    const result = withinBudget(`probe G, ${size} groups`, () => validatePlanV2(plan(["CS A", "CS B", ...others]), catalog, largeTree(program(
       { ...base, kind: "choose-courses", id: "first", count: 1, courses: ["CS A", "CS B"] },
       ...Array.from({ length: size }, (_, index): RuleGroup => ({ ...base, kind: "choose-courses", id: `g${index}`, count: 1, courses: ["CS A", ...others] })),
     )))).root;
@@ -595,7 +599,7 @@ test("the PR #98 review probes keep their results", () => {
   }
 });
 
-test("worst-case random trees finish fast, never claim a false satisfied group and ignore plan order", () => {
+test("worst-case random trees stay within the step budget, never claim a false satisfied group and ignore plan order", () => {
   let seed = 105;
   const random = () => {
     seed = (seed * 1103515245 + 12345) % 2147483648;
@@ -618,11 +622,11 @@ test("worst-case random trees finish fast, never claim a false satisfied group a
     });
     const tree = largeTree(program(...groups));
     const label = `random tree ${run}`;
-    const result = within200ms(label, () => validatePlanV2(plan(pool), catalog, tree)).root;
+    const result = withinBudget(label, () => validatePlanV2(plan(pool), catalog, tree)).root;
     const used = result.children.flatMap((child) => [...child.courses, ...child.waived]);
     assert.equal(new Set(used).size, used.length, label);
     groups.forEach((group, index) => assertHonest(group, result.children[index], credits, label));
-    assert.deepEqual(within200ms(`${label}, reversed`, () => validatePlanV2(plan([...pool].reverse()), catalog, tree)).root, result, label);
+    assert.deepEqual(withinBudget(`${label}, reversed`, () => validatePlanV2(plan([...pool].reverse()), catalog, tree)).root, result, label);
   }
 });
 
