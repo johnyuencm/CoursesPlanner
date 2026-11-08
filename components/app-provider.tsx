@@ -6,7 +6,6 @@ import {
   DEFAULT_WORKSPACE_SELECTION,
   parseWorkspaceSelection,
   sameWorkspaceSelection,
-  WORKSPACE_SELECTION_KEY,
   type WorkspaceSelection,
 } from "@/lib/graph";
 import {
@@ -17,15 +16,21 @@ import {
   createPlanBackupDownload,
   emptyPlan,
   loadPlan,
-  parsePlan,
   previewChainInsert,
   recordedCourseCodes,
   restorePlan,
-  STORAGE_KEY,
+  savePlan,
   suggestedPrerequisiteFix,
   type PlanBackupDownload,
 } from "@/lib/plan";
 import { planAfterStorageEvent } from "@/lib/cross-tab-plan";
+import {
+  CATALOG_KEY_PREFERENCE,
+  DEFAULT_CATALOG_KEY,
+  readCatalogValue,
+  rememberedCatalogKey,
+  writeCatalogValue,
+} from "@/lib/catalog-key";
 import { validatePlan } from "@/lib/requirements-v2";
 
 type PickerState = { semesterId?: string; courseCode?: string } | null;
@@ -33,6 +38,8 @@ type CourseStatus = "completed" | "waived" | "none";
 type PersistenceStatus = "loading" | "saved" | "blocked" | "error";
 
 interface AppContextValue {
+  /** `<universityId>/<programId>` of the catalog that this tab shows. Per-program storage uses it. */
+  catalogKey: string;
   catalog: Catalog | null;
   catalogBusy: boolean;
   catalogError: string | null;
@@ -70,8 +77,18 @@ interface AppContextValue {
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
-const CAREER_TARGET_KEY = "neu-mscs-career-target-v1";
-const COURSE_TARGET_KEY = "neu-mscs-course-target-v1";
+
+/**
+ * The catalog key of this page load: the remembered key, else the default.
+ * ponytail: fixed per page load, because no UI changes the program yet. Make it state when the program picker ships.
+ */
+function pageCatalogKey(): string {
+  try {
+    return rememberedCatalogKey(window.localStorage);
+  } catch {
+    return DEFAULT_CATALOG_KEY;
+  }
+}
 
 let sessionCatalog: Catalog | null = null;
 let sessionRefreshAvailable = true;
@@ -92,7 +109,8 @@ function isCatalogPayload(data: unknown): data is Catalog {
 type CatalogLoad = { catalog: Catalog; refreshStatus: string | null; refreshAvailable: boolean };
 
 async function loadCatalogFromNetwork(refresh: boolean): Promise<CatalogLoad> {
-  const response = await fetch("/api/catalog", { method: refresh ? "POST" : "GET", cache: "no-store" });
+  const url = refresh ? "/api/catalog" : `/api/catalog?key=${encodeURIComponent(pageCatalogKey())}`;
+  const response = await fetch(url, { method: refresh ? "POST" : "GET", cache: "no-store" });
   const refreshStatus = response.headers.get("x-catalog-refresh");
   const data: unknown = await response.json();
   if (!response.ok) {
@@ -125,6 +143,7 @@ async function requestCatalog(refresh: boolean): Promise<CatalogLoad> {
 
 /** The shared context value; exported so tests can check its identity across renders (CR8). */
 export function useAppContextValue(): AppContextValue {
+  const [catalogKey, setCatalogKey] = useState(DEFAULT_CATALOG_KEY);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogBusy, setCatalogBusy] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -166,8 +185,15 @@ export function useAppContextValue(): AppContextValue {
 
   useEffect(() => { void fetchCatalog(false); }, [fetchCatalog]);
   useEffect(() => {
+    const key = pageCatalogKey();
+    setCatalogKey(key);
     try {
-      const loaded = loadPlan(window.localStorage);
+      window.localStorage.setItem(CATALOG_KEY_PREFERENCE, key);
+    } catch {
+      /* The remembered program is optional. */
+    }
+    try {
+      const loaded = loadPlan(window.localStorage, key);
       setPlan(loaded.plan);
       if (loaded.error) {
         setStorageBlocked(true);
@@ -196,7 +222,7 @@ export function useAppContextValue(): AppContextValue {
         return;
       }
       setPlan((current) => {
-        const next = planAfterStorageEvent(event, current, storage);
+        const next = planAfterStorageEvent(event, current, storage, catalogKey);
         if (next === current) return current;
         setPersistence("saved");
         setStorageError(null);
@@ -205,22 +231,23 @@ export function useAppContextValue(): AppContextValue {
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [storageBlocked]);
+  }, [storageBlocked, catalogKey]);
   useEffect(() => {
+    const key = pageCatalogKey();
     try {
-      const saved = window.localStorage.getItem(CAREER_TARGET_KEY);
+      const saved = readCatalogValue(window.localStorage, "career-target", key);
       if (saved) setCareerTargetIdState(saved);
     } catch {
       /* Career target is optional; plan persistence is separate. */
     }
     try {
-      const saved = window.localStorage.getItem(COURSE_TARGET_KEY);
+      const saved = readCatalogValue(window.localStorage, "course-target", key);
       if (saved) setCourseTargetCodeState(saved);
     } catch {
       /* Course target is optional; plan persistence is separate. */
     }
     try {
-      const saved = window.localStorage.getItem(WORKSPACE_SELECTION_KEY);
+      const saved = readCatalogValue(window.localStorage, "workspace-selection", key);
       if (saved) setWorkspaceSelectionState(parseWorkspaceSelection(JSON.parse(saved)));
     } catch {
       /* Graph/plan selection is optional; plan persistence is separate. */
@@ -229,41 +256,39 @@ export function useAppContextValue(): AppContextValue {
   const setCareerTargetId = useCallback((id: string | null) => {
     setCareerTargetIdState(id);
     try {
-      if (id) window.localStorage.setItem(CAREER_TARGET_KEY, id);
-      else window.localStorage.removeItem(CAREER_TARGET_KEY);
+      writeCatalogValue(window.localStorage, "career-target", catalogKey, id || null);
     } catch {
       /* Ignore optional preference write failures. */
     }
-  }, []);
+  }, [catalogKey]);
   const setCourseTargetCode = useCallback((code: string | null) => {
     setCourseTargetCodeState(code);
     try {
-      if (code) window.localStorage.setItem(COURSE_TARGET_KEY, code);
-      else window.localStorage.removeItem(COURSE_TARGET_KEY);
+      writeCatalogValue(window.localStorage, "course-target", catalogKey, code || null);
     } catch {
       /* Ignore optional preference write failures. */
     }
-  }, []);
+  }, [catalogKey]);
   const setWorkspaceSelection = useCallback((next: WorkspaceSelection) => {
     setWorkspaceSelectionState((current) => (sameWorkspaceSelection(current, next) ? current : next));
     try {
-      window.localStorage.setItem(WORKSPACE_SELECTION_KEY, JSON.stringify(next));
+      writeCatalogValue(window.localStorage, "workspace-selection", catalogKey, JSON.stringify(next));
     } catch {
       /* Ignore optional preference write failures. */
     }
-  }, []);
+  }, [catalogKey]);
 
   const save = useCallback(() => {
     if (!hydrated || storageBlocked) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsePlan(plan)));
+      savePlan(window.localStorage, plan, catalogKey);
       setPersistence("saved");
       setStorageError(null);
     } catch (error) {
       setPersistence("error");
       setStorageError(error instanceof Error ? error.message : "Your browser could not save this plan.");
     }
-  }, [hydrated, storageBlocked, plan]);
+  }, [hydrated, storageBlocked, plan, catalogKey]);
   useEffect(save, [save]);
 
   const progress = useMemo(() => catalog ? validatePlan(plan, catalog) : null, [plan, catalog]);
@@ -287,7 +312,7 @@ export function useAppContextValue(): AppContextValue {
   const restorePlanBackup = useCallback((candidate: StudentPlan) => {
     try {
       // Persist first: a failed write must never replace the plan the user is viewing.
-      const restored = restorePlan(window.localStorage, candidate);
+      const restored = restorePlan(window.localStorage, candidate, catalogKey);
       setPlan(restored);
       setStorageBlocked(false);
       setBlockedRawStorage(null);
@@ -301,7 +326,7 @@ export function useAppContextValue(): AppContextValue {
       announce("Backup could not be restored because this browser could not save it. Your current plan is unchanged.");
       return false;
     }
-  }, [announce]);
+  }, [announce, catalogKey]);
   const additionNotice = useCallback((nextPlan: StudentPlan, added: string[], semesterName: string) => {
     const addedLabel = added.join(added.length === 2 ? " and " : ", ");
     if (!catalog) return `${addedLabel} added to ${semesterName}. Check the live audit for prerequisites and corequisites.`;
@@ -444,13 +469,13 @@ export function useAppContextValue(): AppContextValue {
   }, []);
   const closePicker = useCallback(() => setPicker(null), []);
   const contextValue = useMemo<AppContextValue>(() => ({
-    catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog, plan, setPlan, progress,
+    catalogKey, catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog, plan, setPlan, progress,
     hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode,
     openCourse, picker, openPicker, closePicker, setCourseStatus, addCourse, addCourses, careerTargetId,
     setCareerTargetId, courseTargetCode, setCourseTargetCode, addTargetChain, addPrerequisiteChain,
     workspaceSelection, setWorkspaceSelection, notice, announce,
   }), [
-    catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog, plan, progress, hydrated,
+    catalogKey, catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog, plan, progress, hydrated,
     persistence, storageError, save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker,
     openPicker, closePicker, setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId,
     courseTargetCode, setCourseTargetCode, addTargetChain, addPrerequisiteChain, workspaceSelection,

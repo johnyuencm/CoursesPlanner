@@ -31,7 +31,7 @@ test("the build manifest lists every published snapshot, and each listed file sh
   const assets = await buildSnapshotAssets(ROOT);
   const manifest = manifestOf(assets);
   assert.deepEqual(manifest.catalogs.map(({ key, tier, file }) => ({ key, tier, file })), [
-    { key: "neu-mscs-seattle", tier: "audit", file: "data/catalog.json" },
+    { key: "northeastern/computer-science-mscs-sea-8b0d00dbda", tier: "audit", file: "data/catalog.json" },
     { key: KEY, tier: "map", file: ROADMAP },
   ]);
   assert.equal(manifest.catalogs[1].edition, "2026-09-12T01:09:37.140Z");

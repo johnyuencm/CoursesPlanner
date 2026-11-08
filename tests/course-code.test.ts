@@ -209,6 +209,10 @@ test("grammar lookup ignores inherited keys, and the adapter id list has one sou
   assert.deepEqual([...KNOWN_ADAPTER_IDS].sort(), registeredAdapters().sort());
   assert.equal(catalogCodeGrammar(null), northeasternCodeGrammar);
   assert.equal(catalogCodeGrammar({}), northeasternCodeGrammar);
+  // #69: with no catalog, the grammar comes from the stored catalog key (or the old catalog id).
+  assert.equal(catalogCodeGrammar(null, "northeastern/computer-science-mscs-sea-8b0d00dbda"), northeasternCodeGrammar);
+  assert.equal(catalogCodeGrammar(null, "neu-mscs-seattle"), northeasternCodeGrammar);
+  assert.throws(() => catalogCodeGrammar(null, "nowhere/nothing"), /Unknown catalog key/);
 });
 
 test("no hardcoded course-code pattern outside lib/course-code.ts", () => {
