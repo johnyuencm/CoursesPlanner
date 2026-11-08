@@ -5,7 +5,7 @@ import test from "node:test";
 
 import { addableLineCourses, addableProgramCodes, appendCoursesToSemester, applyPrerequisiteFix, canRestorePlanBackup, createPlanBackupDownload, emptyPlan, isCatalogOutage, loadPlan, MAX_COURSES_PER_SEMESTER, migratePlan, moveCourseToSemester, parsePlan, parsePlanBackup, PLAN_BACKUP_FILENAME, PLAN_RECOVERY_FILENAME, recordedCourseCodes, restorePlan, serializePlanBackup, STORAGE_KEY, suggestedPrerequisiteFix, summarizePlan } from "../lib/plan";
 import type { Catalog } from "../lib/types";
-import { validatePlan } from "../lib/validation";
+import { validatePlan } from "./v2-equivalence";
 
 test("emptyPlan starts in Fall 2026 with five fresh terms and one co-op", () => {
   const first = emptyPlan();

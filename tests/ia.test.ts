@@ -5,7 +5,7 @@ import { overviewSnapshot } from "../lib/overview";
 import { emptyPlan } from "../lib/plan";
 import { criticalPathHref, exploreFocusHref, legacyRedirects, parseExploreFocus, primaryNav, routes, targetPathHref } from "../lib/routes";
 import type { Catalog, Course, RequirementExpression, StudentPlan } from "../lib/types";
-import { validatePlan } from "../lib/validation";
+import { validatePlan } from "./v2-equivalence";
 
 const none: RequirementExpression = { type: "none" };
 const req = (code: string): RequirementExpression => ({ type: "course", code });
