@@ -114,7 +114,7 @@ test("university directory loads the approved 20 US and 20 world entries", async
     ["mit", "MIT", "https://catalog.mit.edu/"],
     ["stanford", "Stanford", "https://bulletin.stanford.edu/"],
     ["carnegie-mellon", "Carnegie Mellon", "https://coursecatalog.web.cmu.edu/"],
-    ["uc-berkeley", "UC Berkeley", "https://registrar.berkeley.edu/catalog/"],
+    ["uc-berkeley", "UC Berkeley", "https://undergraduate.catalog.berkeley.edu/"],
     ["uiuc", "UIUC", "https://catalog.illinois.edu/"],
     ["georgia-tech", "Georgia Tech", "https://catalog.gatech.edu/"],
     ["washington", "University of Washington", "https://www.washington.edu/students/gencat/degree_programs.html"],
@@ -122,7 +122,7 @@ test("university directory loads the approved 20 US and 20 world entries", async
     ["princeton", "Princeton", "https://ua.princeton.edu/"],
     ["ut-austin", "UT Austin", "https://catalog.utexas.edu/"],
     ["uc-san-diego", "UC San Diego", "https://catalog.ucsd.edu/"],
-    ["michigan", "University of Michigan", "https://admissions.umich.edu/academics-majors/majors-degrees"],
+    ["michigan", "University of Michigan", "https://webapps.lsa.umich.edu/CrsMaint/Public/CB_PublicBulletin.aspx?crselevel=ug"],
     ["ucla", "UCLA", "https://catalog.registrar.ucla.edu/"],
     ["columbia", "Columbia", "https://bulletin.columbia.edu/"],
     ["harvard", "Harvard", "https://www.harvard.edu/programs/"],
@@ -268,6 +268,15 @@ test("enabled universities require supported adapter and discovery crawl config"
     () => parseUniversityDirectory([withoutCrawl], "test universities"),
     /enabled requires crawl config/,
   );
+});
+
+test("university directory keeps platform fields and rejects unknown platforms", () => {
+  const { crawl: _crawl, ...rest } = supportedUniversity();
+  const entry = { ...rest, support: "unverified", enabled: false, platform: "coursedog", platformEvidence: "https://example.edu/" };
+  const [parsed] = parseUniversityDirectory([entry], "test universities");
+  assert.equal(parsed.platform, "coursedog");
+  assert.equal(parsed.platformEvidence, "https://example.edu/");
+  assert.throws(() => parseUniversityDirectory([{ ...entry, platform: "nope" }], "test universities"), /platform must be one of/);
 });
 
 test("university crawl URLs must use allowed origins", () => {
@@ -578,6 +587,8 @@ test("catalog service HTTP handlers list sources and universities without changi
       region: "us",
       priority: 1,
       catalogUrl: "https://catalog.mit.edu/",
+      platform: "courseleaf",
+      platformEvidence: "https://catalog.mit.edu/",
       support: "unverified",
       enabled: false,
     },
