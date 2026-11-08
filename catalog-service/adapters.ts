@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import * as cheerio from "cheerio";
-import type { Course, DegreeRequirement, ProgramKind } from "../lib/types";
+import type { Course, DegreeRequirementV2, ProgramKind } from "../lib/types";
 import {
   buildCourseGraph,
   buildRoadmapCourseGraph,
@@ -28,9 +28,9 @@ export interface CatalogAdapter {
   id: string;
   /** Must be `courseCodeGrammar(id)`; tests/course-code.test.ts checks this. */
   codeGrammar: CourseCodeGrammar;
-  parseProgram(html: string, officialUrl: string, lastUpdated: string): DegreeRequirement;
+  parseProgram(html: string, officialUrl: string, lastUpdated: string): DegreeRequirementV2;
   parseCourses(html: string, pageUrl: string): Course[];
-  buildGraph(courses: Course[], requirements: DegreeRequirement): Course[];
+  buildGraph(courses: Course[], requirements: DegreeRequirementV2): Course[];
   discoverPrograms?: (source: string, sourceUrl: string) => AdapterProgramLink[];
   parseProgramScope?: (html: string, officialUrl: string) => AdapterProgramScope | null;
   courseSources?: (programCourseCodes: string[], origin: string) => PageSource[];

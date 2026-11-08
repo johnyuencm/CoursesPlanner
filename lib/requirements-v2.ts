@@ -2,7 +2,6 @@ import type {
   Catalog,
   Course,
   DegreeProgressV2,
-  DegreeRequirement,
   DegreeRequirementV2,
   RuleGroup,
   RuleGroupResult,
@@ -13,63 +12,6 @@ import { auditNotes, auditPlanCourses, hasBlockingIssue, sumCredits, type PlanCo
 
 const unique = (values: Iterable<string>): string[] => [...new Set(values)];
 const byCodeOrder = (a: string, b: string) => a.localeCompare(b);
-
-/** Expresses a v1 (fixed MSCS shape) requirement as a v2 rule-group tree. */
-export function requirementsV2FromV1(requirements: DegreeRequirement): DegreeRequirementV2 {
-  const rule = (pattern: RegExp) => requirements.rawRules.find((text) => pattern.test(text)) ?? "";
-  const breadth = requirements.breadthRequirements;
-  return {
-    version: 2,
-    name: requirements.name,
-    catalogYear: requirements.catalogYear,
-    minimumGpa: requirements.minimumGpa,
-    officialUrl: requirements.officialUrl,
-    uncertainties: requirements.uncertainties,
-    lastUpdated: requirements.lastUpdated,
-    root: {
-      kind: "all",
-      id: "program",
-      label: requirements.name,
-      rawText: rule(/complete all courses/i),
-      children: [
-        {
-          kind: "choose-courses",
-          id: "core",
-          label: "Core requirements",
-          rawText: "",
-          count: requirements.coreCourses.length,
-          courses: requirements.coreCourses,
-        },
-        {
-          kind: "choose-areas",
-          id: "breadth",
-          label: "Breadth areas",
-          rawText: rule(/from at least/i),
-          count: breadth.coursesRequired,
-          minAreas: breadth.minCategories,
-          credits: breadth.credits,
-          areas: breadth.categories,
-        },
-        {
-          // The catalog lets breadth-area courses that breadth did not use count here.
-          kind: "choose-credits",
-          id: "electives",
-          label: "Electives",
-          rawText: rule(/semester hours from/i),
-          credits: requirements.electiveCredits,
-          courses: unique([...requirements.eligibleElectives, ...breadth.categories.flatMap((area) => area.courses)]),
-        },
-        {
-          kind: "total-credits",
-          id: "total",
-          label: "Total credits",
-          rawText: rule(/total semester hours/i),
-          credits: requirements.totalCredits,
-        },
-      ],
-    },
-  };
-}
 
 function groupCodes(group: RuleGroup): string[] {
   switch (group.kind) {
@@ -84,6 +26,36 @@ function groupCodes(group: RuleGroup): string[] {
     case "unmodeled":
       return [];
   }
+}
+
+/** Every course code that the tree lists, in tree order. */
+export function programCourseCodes(requirements: DegreeRequirementV2): string[] {
+  return unique(groupCodes(requirements.root));
+}
+
+const flatGroups = (group: RuleGroup): RuleGroup[] =>
+  group.kind === "all" ? [group, ...group.children.flatMap(flatGroups)] : [group];
+
+type GroupOf<K extends RuleGroup["kind"]> = Extract<RuleGroup, { kind: K }>;
+
+/** A flat view of the tree for pages and the parser that list courses by role. */
+export function requirementView(requirements: DegreeRequirementV2) {
+  const groups = flatGroups(requirements.root);
+  const ofKind = <K extends RuleGroup["kind"]>(kind: K) => groups.filter((group): group is GroupOf<K> => group.kind === kind);
+  const areaGroups = ofKind("choose-areas");
+  const creditGroups = ofKind("choose-credits");
+  return {
+    totalCredits: requiredCredits(requirements.root),
+    /** Courses of `choose-courses` groups that need every listed course. */
+    core: unique(ofKind("choose-courses").filter((group) => group.count >= unique(group.courses).length).flatMap((group) => group.courses)),
+    areas: areaGroups.flatMap((group) => group.areas),
+    /** The first `choose-areas` group, if any. */
+    breadth: areaGroups[0] as GroupOf<"choose-areas"> | undefined,
+    /** The first `choose-credits` group, if any. */
+    electives: creditGroups[0] as GroupOf<"choose-credits"> | undefined,
+    /** Courses that any `choose-credits` group lists. */
+    electiveCourses: unique(creditGroups.flatMap((group) => group.courses)),
+  };
 }
 
 function hasUnmodeled(group: RuleGroup): boolean {
@@ -477,5 +449,5 @@ export function validatePlanV2(plan: StudentPlan, catalog: Catalog, requirements
 
 /** The Plan audit for a catalog snapshot. */
 export function validatePlan(plan: StudentPlan, catalog: Catalog): DegreeProgressV2 {
-  return validatePlanV2(plan, catalog, requirementsV2FromV1(catalog.requirements));
+  return validatePlanV2(plan, catalog, catalog.requirements);
 }

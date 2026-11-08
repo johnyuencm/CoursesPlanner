@@ -222,68 +222,86 @@ export function validateCatalog(value: unknown, grammar?: CourseCodeGrammar): as
 
   const requirements = value.requirements;
   if (
+    requirements.version !== 2 ||
     typeof requirements.name !== "string" ||
     requirements.name.length === 0 ||
     typeof requirements.catalogYear !== "string" ||
-    typeof requirements.totalCredits !== "number" ||
-    !Number.isFinite(requirements.totalCredits) ||
-    requirements.totalCredits <= 0 ||
-    typeof requirements.minimumGpa !== "number" ||
-    !Number.isFinite(requirements.minimumGpa) ||
-    requirements.minimumGpa <= 0 ||
-    !isStringArray(requirements.coreCourses) ||
-    !isRecord(requirements.breadthRequirements) ||
-    typeof requirements.electiveCredits !== "number" ||
-    !Number.isFinite(requirements.electiveCredits) ||
-    requirements.electiveCredits <= 0 ||
-    !isStringArray(requirements.eligibleElectives) ||
+    (requirements.minimumGpa !== undefined &&
+      (typeof requirements.minimumGpa !== "number" || !Number.isFinite(requirements.minimumGpa) || requirements.minimumGpa <= 0)) ||
     !isOfficialUrl(requirements.officialUrl, officialHosts) ||
-    !isStringArray(requirements.rawRules) ||
     !isStringArray(requirements.uncertainties) ||
     typeof requirements.lastUpdated !== "string" ||
     Number.isNaN(Date.parse(requirements.lastUpdated))
   ) {
     throw new Error("Degree requirements are invalid");
   }
-  if (!requirements.coreCourses.length || requirements.coreCourses.some((code) => !codes.has(code))) {
-    throw new Error("Core course mapping is incomplete");
-  }
-  if (requirements.eligibleElectives.some((code) => !codes.has(code))) {
-    throw new Error("Elective course mapping is incomplete");
-  }
+  validateRuleGroup(requirements.root, codes, new Set(), new Set(), 0);
+}
 
-  const breadth = requirements.breadthRequirements;
-  if (
-    typeof breadth.coursesRequired !== "number" ||
-    !Number.isInteger(breadth.coursesRequired) ||
-    breadth.coursesRequired <= 0 ||
-    typeof breadth.minCategories !== "number" ||
-    !Number.isInteger(breadth.minCategories) ||
-    breadth.minCategories <= 0 ||
-    typeof breadth.credits !== "number" ||
-    !Number.isFinite(breadth.credits) ||
-    breadth.credits <= 0 ||
-    !Array.isArray(breadth.categories) ||
-    !breadth.categories.length ||
-    breadth.minCategories > breadth.categories.length
-  ) {
-    throw new Error("Breadth requirement is invalid");
-  }
-  const categoryIds = new Set<string>();
-  for (const rawCategory of breadth.categories) {
-    if (
-      !isRecord(rawCategory) ||
-      typeof rawCategory.id !== "string" ||
-      !rawCategory.id ||
-      categoryIds.has(rawCategory.id) ||
-      typeof rawCategory.name !== "string" ||
-      !isStringArray(rawCategory.courses) ||
-      !rawCategory.courses.length ||
-      rawCategory.courses.some((code) => !codes.has(code))
-    ) {
-      throw new Error("Breadth category mapping is invalid");
+const positive = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && value > 0;
+const positiveInteger = (value: unknown): value is number => positive(value) && Number.isInteger(value);
+const MAX_RULE_DEPTH = 8;
+
+/** Requirement model v2 at the trust boundary: known kinds, unique ids, and listed courses that exist. */
+function validateRuleGroup(value: unknown, codes: Set<string>, groupIds: Set<string>, areaIds: Set<string>, depth: number): void {
+  const fail = (reason: string): never => {
+    throw new Error(`Requirement rule group is invalid: ${reason}`);
+  };
+  if (!isRecord(value)) fail("not an object");
+  const group = value as Record<string, unknown>;
+  const id = typeof group.id === "string" && group.id ? group.id : fail("missing id");
+  if (depth > MAX_RULE_DEPTH) fail(`${id} is nested too deep`);
+  if (groupIds.has(id)) fail(`duplicate id ${id}`);
+  groupIds.add(id);
+  if (typeof group.label !== "string" || typeof group.rawText !== "string") fail(`${id} label or rawText`);
+  if (group.shareCourses !== undefined && typeof group.shareCourses !== "boolean") fail(`${id} shareCourses`);
+  const listed = (courses: unknown) => {
+    if (!isStringArray(courses) || !courses.length) fail(`${id} lists no courses`);
+    const missing = (courses as string[]).filter((code) => !codes.has(code));
+    if (missing.length) fail(`${id} lists courses not in the catalog: ${missing.slice(0, 5).join(", ")}`);
+    return new Set(courses as string[]).size;
+  };
+  switch (group.kind) {
+    case "all":
+      if (!Array.isArray(group.children) || !group.children.length) fail(`${id} has no children`);
+      for (const child of group.children as unknown[]) validateRuleGroup(child, codes, groupIds, areaIds, depth + 1);
+      return;
+    case "choose-courses": {
+      const distinct = listed(group.courses);
+      if (!positiveInteger(group.count) || group.count > distinct) fail(`${id} count`);
+      return;
     }
-    categoryIds.add(rawCategory.id);
+    case "choose-credits":
+      listed(group.courses);
+      if (!positive(group.credits)) fail(`${id} credits`);
+      return;
+    case "choose-areas": {
+      if (!Array.isArray(group.areas) || !group.areas.length) fail(`${id} has no areas`);
+      for (const area of group.areas as unknown[]) {
+        if (!isRecord(area) || typeof area.id !== "string" || !area.id || areaIds.has(area.id) || typeof area.name !== "string") {
+          fail(`${id} has an invalid area`);
+        }
+        areaIds.add((area as { id: string }).id);
+        listed((area as { courses: unknown }).courses);
+      }
+      if (
+        !positiveInteger(group.count) ||
+        !positiveInteger(group.minAreas) ||
+        group.minAreas > (group.areas as unknown[]).length ||
+        group.count < group.minAreas ||
+        !positive(group.credits)
+      ) {
+        fail(`${id} count, minAreas or credits`);
+      }
+      return;
+    }
+    case "total-credits":
+      if (!positive(group.credits)) fail(`${id} credits`);
+      return;
+    case "unmodeled":
+      return;
+    default:
+      fail(`${id} has an unknown kind`);
   }
 }
 

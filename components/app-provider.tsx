@@ -83,9 +83,9 @@ function isCatalogPayload(data: unknown): data is Catalog {
   return (
     Array.isArray(value.courses) &&
     Boolean(value.requirements) &&
-    Array.isArray(value.requirements.coreCourses) &&
-    Array.isArray(value.requirements.breadthRequirements?.categories) &&
-    typeof value.requirements.totalCredits === "number"
+    value.requirements.version === 2 &&
+    typeof value.requirements.root === "object" &&
+    value.requirements.root !== null
   );
 }
 

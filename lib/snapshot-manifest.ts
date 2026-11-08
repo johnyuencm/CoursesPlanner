@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { readCatalog } from "./catalog";
-import { requirementsV2FromV1, requirementTier } from "./requirements-v2";
+import { requirementTier } from "./requirements-v2";
 import { findUniversity, readReadyRoadmap, readState } from "./roadmap-reader";
 import { SNAPSHOT_ASSET_DIR } from "./snapshot-assets";
 import type { SupportTier } from "./types";
@@ -35,7 +35,7 @@ export async function buildSnapshotAssets(rootDir: string): Promise<Map<string, 
   const catalog = await readCatalog(path.join(rootDir, CATALOG_FILE));
   contents.set(CATALOG_FILE, catalog);
   // The tier comes from validation of the requirement model. A roadmap has no model, so it is Map.
-  const tier = requirementTier(requirementsV2FromV1(catalog.requirements), catalog.courses);
+  const tier = requirementTier(catalog.requirements, catalog.courses);
   catalogs.push({ key: catalog.id ?? "default", tier, edition: catalog.lastUpdated, file: CATALOG_FILE });
 
   const keys: unknown = JSON.parse(await readFile(path.join(rootDir, PUBLISHED_FILE), "utf8"));

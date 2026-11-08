@@ -3,6 +3,7 @@
 import Link from "next/link";
 import pathwayConfig from "@/config/pathways.json";
 import { courseSlug, creditsLabel, publicCourses, transitiveUnlocks } from "@/lib/course-pages";
+import { requirementView } from "@/lib/requirements-v2";
 import type { Catalog, Pathway } from "@/lib/types";
 
 const pathways = pathwayConfig as Pathway[];
@@ -18,25 +19,25 @@ function courseLinker(catalog: Catalog) {
 
 export function DegreeRules({ catalog }: { catalog: Catalog }) {
   const rules = catalog.requirements;
+  const { totalCredits, core, breadth, electives } = requirementView(rules);
   const link = courseLinker(catalog);
   const byCode = new Map(catalog.courses.map((course) => [course.code, course]));
-  const breadth = rules.breadthRequirements;
   return <section aria-labelledby="degree-rules-title">
     <h2 id="degree-rules-title">{rules.name}: degree rules</h2>
-    <p>The {rules.catalogYear} Northeastern catalog asks for {rules.totalCredits} credits and a minimum {rules.minimumGpa.toFixed(1)} GPA.
+    <p>The {rules.catalogYear} Northeastern catalog asks for {totalCredits} credits{rules.minimumGpa !== undefined && <> and a minimum {rules.minimumGpa.toFixed(1)} GPA</>}.
       This map models those rules from the official catalog. It is not an official degree audit.</p>
-    <h3>Required core courses</h3>
-    <ul className="static-list">{rules.coreCourses.map((code) => <li key={code}>{link(code)}
-      {byCode.get(code) && <small>{creditsLabel(byCode.get(code)!)}</small>}</li>)}</ul>
-    <h3>Breadth areas</h3>
-    <p>Take {breadth.coursesRequired} breadth courses ({breadth.credits} credits) from at least {breadth.minCategories} of these {breadth.categories.length} areas.</p>
-    {breadth.categories.map((category) => <details key={category.id}>
+    {core.length > 0 && <><h3>Required core courses</h3>
+    <ul className="static-list">{core.map((code) => <li key={code}>{link(code)}
+      {byCode.get(code) && <small>{creditsLabel(byCode.get(code)!)}</small>}</li>)}</ul></>}
+    {breadth && <><h3>Breadth areas</h3>
+    <p>Take {breadth.count} breadth courses ({breadth.credits} credits) from at least {breadth.minAreas} of these {breadth.areas.length} areas.</p>
+    {breadth.areas.map((category) => <details key={category.id}>
       <summary>{category.name} ({category.courses.length} courses)</summary>
       <ul className="static-list">{category.courses.map((code) => <li key={code}>{link(code)}</li>)}</ul>
-    </details>)}
-    <h3>Electives</h3>
-    <p>Complete {rules.electiveCredits} more credits from the breadth courses and the other listed electives.
-      The catalog lists {rules.eligibleElectives.length} courses that can count here. The <Link href="/courses">course index</Link> shows how each course counts. <a href={rules.officialUrl} rel="noopener">Official program requirements</a>.</p>
+    </details>)}</>}
+    {electives && <><h3>Electives</h3>
+    <p>Complete {electives.credits} more credits from the breadth courses and the other listed electives.
+      The catalog lists {electives.courses.length} courses that can count here. The <Link href="/courses">course index</Link> shows how each course counts. <a href={rules.officialUrl} rel="noopener">Official program requirements</a>.</p></>}
   </section>;
 }
 

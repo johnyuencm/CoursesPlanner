@@ -6,6 +6,7 @@ import { emptyPlan } from "../lib/plan";
 import { criticalPathHref, exploreFocusHref, legacyRedirects, parseExploreFocus, primaryNav, routes, targetPathHref } from "../lib/routes";
 import type { Catalog, Course, RequirementExpression, StudentPlan } from "../lib/types";
 import { validatePlan } from "../lib/requirements-v2";
+import { mscsRequirements } from "./mscs-requirements";
 
 const none: RequirementExpression = { type: "none" };
 const req = (code: string): RequirementExpression => ({ type: "course", code });
@@ -54,29 +55,15 @@ function catalog(): Catalog {
   ];
   return {
     courses,
-    requirements: {
-      name: "MSCS",
-      catalogYear: "2026-2027",
-      totalCredits: 32,
-      minimumGpa: 3,
-      coreCourses: ["CS 5010", "CS 5011", "CS 5800"],
-      breadthRequirements: {
-        coursesRequired: 3,
-        minCategories: 2,
-        credits: 12,
-        categories: [
-          { id: "systems", name: "Systems", courses: ["CS 5500", "CS 6510"] },
-          { id: "theory", name: "Theory", courses: [] },
-          { id: "software", name: "Software", courses: [] },
-        ],
-      },
-      electiveCredits: 12,
-      eligibleElectives: ["CS 6100"],
-      officialUrl: "https://example.test/program",
-      rawRules: [],
-      uncertainties: [],
-      lastUpdated: "2026-09-10",
-    },
+    requirements: mscsRequirements({
+      core: ["CS 5010", "CS 5011", "CS 5800"],
+      areas: [
+        { id: "systems", name: "Systems", courses: ["CS 5500", "CS 6510"] },
+        { id: "theory", name: "Theory", courses: [] },
+        { id: "software", name: "Software", courses: [] },
+      ],
+      electives: ["CS 6100"],
+    }),
     lastUpdated: "2026-09-10",
     sources: [],
     warnings: [],

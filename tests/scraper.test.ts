@@ -6,6 +6,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { validateCatalog } from "../lib/catalog";
+import { programCourseCodes, requirementView } from "../lib/requirements-v2";
 import type { Catalog, RequirementExpression } from "../lib/types";
 import {
   PROGRAM_URL,
@@ -32,14 +33,19 @@ test("parses official MSCS Seattle program requirements from cached HTML", () =>
     "2026-09-11T00:00:00.000Z",
   );
 
-  assert.equal(requirements.totalCredits, 32);
-  assert.equal(requirements.breadthRequirements.credits, 12);
-  assert.equal(requirements.breadthRequirements.coursesRequired, 3);
-  assert.equal(requirements.breadthRequirements.minCategories, 2);
-  assert.equal(requirements.breadthRequirements.categories.length, 3);
-  assert.equal(requirements.electiveCredits, 12);
-  assert.deepEqual(requirements.coreCourses, ["CS 5010", "CS 5011", "CS 5800"]);
+  const view = requirementView(requirements);
+  assert.equal(requirements.version, 2);
+  assert.equal(view.totalCredits, 32);
+  assert.equal(view.breadth?.credits, 12);
+  assert.equal(view.breadth?.count, 3);
+  assert.equal(view.breadth?.minAreas, 2);
+  assert.equal(view.areas.length, 3);
+  assert.equal(view.electives?.credits, 12);
+  assert.deepEqual(view.core, ["CS 5010", "CS 5011", "CS 5800"]);
   assert.equal(requirements.officialUrl, PROGRAM_URL);
+  // The committed snapshot holds exactly what the parser emits (v2), from the same cached page.
+  const committed = JSON.parse(readFileSync(path.join(process.cwd(), "data", "requirements.json"), "utf8"));
+  assert.deepEqual(parseProgramRequirements(fixture("mscs-sea-program.html"), PROGRAM_URL, committed.lastUpdated), committed);
 });
 
 test("parses reciprocal corequisites and grouped prerequisites from cached bulk CS HTML", () => {
@@ -151,11 +157,7 @@ test("builds downstream prerequisite unlocks without adding corequisite unlocks"
   assert.equal(byCode.has("CS 1800"), false, "unrelated undergraduate bulk listings stay out of the published catalog");
   assert.equal(
     graph.filter((course) => course.requirementType !== "external").length,
-    new Set([
-      ...requirements.coreCourses,
-      ...requirements.eligibleElectives,
-      ...requirements.breadthRequirements.categories.flatMap((category) => category.courses),
-    ]).size,
+    programCourseCodes(requirements).length,
   );
 });
 
@@ -210,11 +212,11 @@ test("forced refresh retains usable cached sources when the catalog is offline",
       now: () => new Date("2026-09-11T00:00:00.000Z"),
     });
 
-    assert.equal(catalog.requirements.totalCredits, 32);
+    assert.equal(requirementView(catalog.requirements).totalCredits, 32);
     assert.ok(catalog.courses.some((course) => course.code === "CS 5010"));
     assert.ok(catalog.warnings.some((warning) => warning.startsWith("Using stale cache for")));
     assert.ok(catalog.warnings.some((warning) => warning.includes("optional") && warning.includes("placeholder")));
-    assert.equal(JSON.parse(readFileSync(path.join(rootDir, "data", "catalog.json"), "utf8")).requirements.totalCredits, 32);
+    assert.equal(requirementView(JSON.parse(readFileSync(path.join(rootDir, "data", "catalog.json"), "utf8")).requirements).totalCredits, 32);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
