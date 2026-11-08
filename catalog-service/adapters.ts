@@ -8,7 +8,8 @@ import {
   parseProgramRequirements,
 } from "../scraper/parser";
 import type { PageSource } from "../lib/source-types";
-import { type CourseCodeGrammar, northeasternCodeGrammar } from "../lib/course-code";
+import { type CourseCodeGrammar, courseCodeGrammar } from "../lib/course-code";
+import { COURSELEAF_CONFIGS, type CourseLeafConfig, type CourseLeafLayout, courseLeafLayout } from "./courseleaf";
 
 export interface AdapterProgramLink {
   id: string;
@@ -59,10 +60,8 @@ function programId(officialUrl: string): string {
   return `${slug.slice(0, 60)}-${digest}`;
 }
 
-const PROGRAM_ROOTS = ["/undergraduate/", "/graduate/", "/professional-studies/"];
-const NON_PROGRAM_PATH = /\/(?:academic-policies-procedures|admissions?|course-descriptions|faculty|general-information|student-resources)(?:\/|$)/;
-
-function northeasternProgramLinks(source: string, sourceUrl: string): AdapterProgramLink[] {
+function courseLeafProgramLinks(layout: CourseLeafLayout, source: string, sourceUrl: string): AdapterProgramLink[] {
+  const { programRoots } = layout.config;
   const sourceOrigin = new URL(sourceUrl).origin;
   const xml = cheerio.load(source, { xmlMode: true });
   const sitemapUrls = xml("loc")
@@ -72,7 +71,7 @@ function northeasternProgramLinks(source: string, sourceUrl: string): AdapterPro
   const namedLinks = new Map<string, string>();
   const rawUrls = sitemapUrls.length
     ? sitemapUrls
-    : html!("#azindex a[href], .azindex a[href], .programs a[href], [data-program][href]")
+    : html!(layout.config.selectors.programIndexLinks)
         .map((_index, element) => {
           const href = html!(element).attr("href");
           if (!href) return "";
@@ -98,14 +97,14 @@ function northeasternProgramLinks(source: string, sourceUrl: string): AdapterPro
         url &&
           url.protocol === "https:" &&
           url.origin === sourceOrigin &&
-          PROGRAM_ROOTS.some((root) => url.pathname.startsWith(root)),
+          programRoots.some((root) => url.pathname.startsWith(root)),
       ),
     );
   const paths = sectionUrls.map((url) => url.pathname);
   return sectionUrls
     .filter(
       (url) =>
-        !NON_PROGRAM_PATH.test(url.pathname) &&
+        !layout.nonProgramPath.test(url.pathname) &&
         !paths.some((candidate) => candidate !== url.pathname && candidate.startsWith(url.pathname)),
     )
     .map((url) => {
@@ -120,66 +119,79 @@ function northeasternProgramLinks(source: string, sourceUrl: string): AdapterPro
     .sort((left, right) => left.officialUrl.localeCompare(right.officialUrl));
 }
 
-function northeasternProgramScope(html: string, _officialUrl: string): AdapterProgramScope | null {
+function courseLeafProgramScope(layout: CourseLeafLayout, html: string): AdapterProgramScope | null {
+  const { selectors } = layout.config;
   const $ = cheerio.load(html);
-  const root = $("#programrequirementstextcontainer");
+  const root = $(selectors.programRequirements);
   if (!root.length) return null;
-  const name = normalize($("h1").first().text());
+  const name = normalize($(selectors.programName).first().text());
   if (!name) return null;
   const programCourseCodes = [
     ...new Set(
       root
-        .find("a.code")
+        .find(selectors.codeLink)
         .map((_index, element) => normalize($(element).text()).toUpperCase())
         .get()
-        .filter((code) => northeasternCodeGrammar.pattern.test(code)),
+        .filter((code) => layout.grammar.pattern.test(code)),
     ),
   ].sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
   if (!programCourseCodes.length) return null;
   return { name, kind: programKind(name), programCourseCodes, warnings: [] };
 }
 
-function northeasternCourseSources(programCourseCodes: string[], origin: string): PageSource[] {
+function courseLeafCourseSources(layout: CourseLeafLayout, programCourseCodes: string[], origin: string): PageSource[] {
   const parsedOrigin = new URL(origin);
   if (parsedOrigin.protocol !== "https:" || parsedOrigin.origin !== origin) {
-    throw new Error(`Northeastern course source origin must be HTTPS: ${origin}`);
+    throw new Error(`CourseLeaf course source origin must be HTTPS: ${origin}`);
   }
   const subjects = [
     ...new Set(
       programCourseCodes
-        .map((code) => northeasternCodeGrammar.subject(code))
+        .map((code) => layout.grammar.subject(code))
         .filter((subject): subject is string => Boolean(subject)),
     ),
   ].sort();
   return subjects.map((subject) => ({
     key: `course:${subject}`,
-    url: `${origin}/course-descriptions/${subject.toLowerCase()}/`,
+    url: layout.config.courseDescriptionUrl.replace("{subject}", subject.toLowerCase()),
     fileName: `courses-${subject.toLowerCase()}.html`,
     required: true,
   }));
 }
 
-const northeasternAcalog: CatalogAdapter = {
-  id: "northeastern-acalog",
-  codeGrammar: northeasternCodeGrammar,
-  parseProgram: parseProgramRequirements,
-  parseCourses,
-  buildGraph: buildCourseGraph,
-  discoverPrograms: northeasternProgramLinks,
-  parseProgramScope: northeasternProgramScope,
-  courseSources: northeasternCourseSources,
-  buildRoadmapGraph: buildRoadmapCourseGraph,
-};
+/** The generic CourseLeaf adapter for one college config. `id` is `courseleaf-<config id>` or an alias. */
+function courseLeafAdapter(id: string, config: CourseLeafConfig): CatalogAdapter {
+  const layout = courseLeafLayout(config);
+  if (courseCodeGrammar(id) !== layout.grammar) {
+    throw new Error(`Adapter "${id}" has a different grammar in lib/course-code.ts than codeGrammar "${config.codeGrammar}"`);
+  }
+  return {
+    id,
+    codeGrammar: layout.grammar,
+    parseProgram: (html, officialUrl, lastUpdated) => parseProgramRequirements(html, officialUrl, lastUpdated, layout),
+    parseCourses: (html, pageUrl) => parseCourses(html, pageUrl, layout),
+    buildGraph: (courses, requirements) => buildCourseGraph(courses, requirements, layout),
+    discoverPrograms: (source, sourceUrl) => courseLeafProgramLinks(layout, source, sourceUrl),
+    parseProgramScope: (html) => courseLeafProgramScope(layout, html),
+    courseSources: (programCourseCodes, origin) => courseLeafCourseSources(layout, programCourseCodes, origin),
+    buildRoadmapGraph: (courses, programCourseCodes) => buildRoadmapCourseGraph(courses, programCourseCodes, layout),
+  };
+}
 
-const adapters: Record<string, CatalogAdapter> = {
-  [northeasternAcalog.id]: northeasternAcalog,
-};
+const adapters: Record<string, CatalogAdapter> = {};
+for (const config of COURSELEAF_CONFIGS) {
+  // An alias keeps its own id, so snapshots that name it stay byte-identical.
+  for (const id of [`courseleaf-${config.id}`, ...config.aliases]) {
+    if (Object.hasOwn(adapters, id)) throw new Error(`Duplicate catalog adapter id: ${id}`);
+    adapters[id] = courseLeafAdapter(id, config);
+  }
+}
 
 export function getAdapter(id: string): CatalogAdapter {
-  const adapter = adapters[id];
+  const adapter = Object.hasOwn(adapters, id) ? adapters[id] : undefined;
   if (!adapter) {
     throw new Error(
-      `No catalog adapter registered for "${id}". Add an adapter in catalog-service/adapters.ts, then point a source JSON file at it.`,
+      `No catalog adapter registered for "${id}". Add a CourseLeaf config in catalog-service/courseleaf/ or an adapter in catalog-service/adapters.ts, then point a source JSON file at it.`,
     );
   }
   return adapter;

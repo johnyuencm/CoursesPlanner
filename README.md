@@ -103,7 +103,7 @@ Production is a Cloudflare Worker. It has no project filesystem. It serves only 
 1. Inspect the official catalog the same way Northeastern was inspected. Do not invent requirements, and do not crawl `robots.txt` disallowed paths.
 2. Copy `catalog-service/sources/.example.json` to `catalog-service/sources/<id>.json`.
 3. Fill in HTTPS program and bulk-subject URLs, allowlisted origins, and poll settings. Leave `"enabled": false` until the parser output is validated.
-4. Reuse `northeastern-acalog` only when the HTML matches Acalog course blocks and program tables. Otherwise add an adapter in `catalog-service/adapters.ts` and point the source JSON at it.
+4. For a CourseLeaf catalog, add a config file. See [Add a CourseLeaf college](docs/add-courseleaf-college.md). `northeastern-acalog` is an alias of `courseleaf-northeastern`. For another platform, add an adapter in `catalog-service/adapters.ts` and point the source JSON at it.
 5. Refresh one source with `npm run catalog:refresh -- --id=<id> --force`, then enable polling.
 
 The service does not fetch a second live university until that source file exists and is enabled. `catalog-service/universities.json` is the ordered 20-US / 20-world directory and `/universities` listing; enabled directory rows still need a matching source file and crawl config before refresh.
