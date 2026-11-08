@@ -128,7 +128,14 @@ Local check (`npm run build`, then `wrangler dev` on `127.0.0.1`). This is not a
 | Before (`main`: `vinext/server/fetch-handler`) | 404, 17,678 bytes (root layout) | 200, `X-Vinext-Cache: HIT` |
 | After (`main`: `./worker.ts`) | 404, 6,026 bytes (`global-not-found`, as `/nothing` with 5,981 bytes) | 200, `X-Vinext-Cache: HIT` |
 
-After the next deploy, measure again with the method above. Expect the unknown-course 404 near the route miss 404 (p50 about 6 ms). Expect no change on real course pages. Add the live numbers to this section.
+Live result after the fix. Worker version `aa68c23b` (master `0cfa0ae`), deployed 2026-11-08. Same method, 30 pairs of requests:
+
+| Route | Requests | p50 | p90 | Max | Over 10 ms |
+| --- | --- | --- | --- | --- | --- |
+| Unknown course 404 (`/courses/zz-9001` … `zz-9030`) | 31 | 7 ms | 32 ms | 60 ms | 5 of 31 |
+| Real course page (`/courses/cs-5800`) | 31 | 4 ms | 11 ms | 22 ms | 4 of 31 |
+
+The unknown-course 404 p50 falls from 15 ms to 7 ms. The share over 10 ms falls from 82% to 16%. Real course pages do not change.
 
 Measure again after a large change:
 
