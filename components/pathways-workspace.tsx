@@ -15,6 +15,7 @@ import {
 import pathwayConfig from "@/config/pathways.json";
 import type { Course, Pathway } from "@/lib/types";
 import { analyzeResolvedCriticalPath } from "@/lib/critical-path";
+import { catalogCodeGrammar } from "@/lib/course-code";
 import { PERSONA_PROMPT, buildPathwayOverlay, overlayNodeCopy } from "@/lib/pathway-overlay";
 import { routes } from "@/lib/routes";
 import { getEligibility } from "@/lib/validation";
@@ -26,6 +27,7 @@ import { PageHeading, creditLabel } from "@/components/ui";
 const STORAGE_KEY = "neu-mscs-planner-pathways-v1";
 
 function validPathways(value: unknown): value is Pathway[] {
+  const codePattern = catalogCodeGrammar().pattern; // Northeastern-only storage key; see catalogCodeGrammar.
   if (!Array.isArray(value) || value.length === 0 || value.length > 20) return false;
   const ids = new Set<string>();
   return value.every((pathway) => {
@@ -40,7 +42,7 @@ function validPathways(value: unknown): value is Pathway[] {
         const record = group as Record<string, unknown>;
         return typeof record.label === "string" && record.label.length > 0 && record.label.length <= 100 && record.label.trim() === record.label &&
           Array.isArray(record.courses) && record.courses.length <= 30 && new Set(record.courses).size === record.courses.length &&
-          record.courses.every((code) => typeof code === "string" && /^[A-Z]{2,6} \d{2,4}[A-Z]{0,2}$/.test(code));
+          record.courses.every((code) => typeof code === "string" && codePattern.test(code));
       });
   });
 }

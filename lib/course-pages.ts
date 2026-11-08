@@ -1,12 +1,13 @@
+import { catalogCodeGrammar } from "./course-code";
 import { simplifyRequirement } from "./requirement-logic";
 import type { Catalog, Course, Pathway, RequirementExpression } from "./types";
 
 /** Public site origin for canonical URLs and the sitemap. */
 export const SITE_URL = "https://coursesplanner.johnyc.com";
 
-/** "CS 5010" -> "cs-5010" (URL segment for /courses/<slug>). */
-export function courseSlug(code: string): string {
-  return code.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+/** URL segment for /courses/<slug>, from the catalog's code grammar ("CS 5010" -> "cs-5010"). */
+export function courseSlug(code: string, catalog?: Pick<Catalog, "adapter"> | null): string {
+  return catalogCodeGrammar(catalog).slug(code);
 }
 
 /** Courses that get their own page: every course with real catalog text. Placeholder externals stay out (thin). */
@@ -23,7 +24,7 @@ export function isUnknownCoursePath(pathname: string, slugs: ReadonlySet<string>
 }
 
 export function courseBySlug(catalog: Catalog, slug: string): Course | undefined {
-  return publicCourses(catalog).find((course) => courseSlug(course.code) === slug);
+  return publicCourses(catalog).find((course) => courseSlug(course.code, catalog) === slug);
 }
 
 /** Every course that this course opens, directly or through a chain. */

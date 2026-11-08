@@ -10,7 +10,7 @@ import { courseSlug, isUnknownCoursePath, publicCourses } from "./lib/course-pag
 let slugs: Promise<Set<string>> | undefined;
 
 function courseSlugs(): Promise<Set<string>> {
-  slugs ??= readCatalog().then((catalog) => new Set(publicCourses(catalog).map((course) => courseSlug(course.code))));
+  slugs ??= readCatalog().then((catalog) => new Set(publicCourses(catalog).map((course) => courseSlug(course.code, catalog))));
   slugs.catch(() => { slugs = undefined; }); // try again on the next request
   return slugs;
 }

@@ -9,6 +9,7 @@ import { CatalogState } from "@/components/catalog-state";
 import { CourseCard } from "@/components/course-card";
 import { EmptyState, PageHeading } from "@/components/ui";
 import { catalogTakeStatus, DEFAULT_CATALOG_FILTERS, filterCatalogCourses } from "@/lib/catalog-view";
+import { catalogCodeGrammar } from "@/lib/course-code";
 import { routes } from "@/lib/routes";
 
 const topics = ["Robotics", "AI / ML", "Systems", "Software Engineering", "Data", "Networks / Security"];
@@ -112,7 +113,7 @@ function Explorer() {
     setLimit(18);
   };
   const codeNeedle = search.trim().toUpperCase().replace(/\s+/g, "");
-  const looksLikeCode = /^[A-Z]{2,}\d{3,4}[A-Z]?$/.test(codeNeedle);
+  const looksLikeCode = catalogCodeGrammar(catalog).normalize(search) !== null;
   const knownCode = catalog.courses.some((course) => course.code.replace(/\s/g, "") === codeNeedle);
   return <>
     <PageHeading title="Courses" description="Official MSCS Seattle courses, ranked by what they require and what they unlock. Search a code, then open the dependency graph for that course." />

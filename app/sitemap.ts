@@ -10,7 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date(catalog.lastUpdated);
   const paths = [
     routes.overview, routes.explore, routes.courses, routes.paths,
-    ...publicCourses(catalog).map((course) => `/courses/${courseSlug(course.code)}`),
+    ...publicCourses(catalog).map((course) => `/courses/${courseSlug(course.code, catalog)}`),
     ...(pathwayConfig as Pathway[]).map((pathway) => `/pathways/${pathway.id}`),
   ];
   return paths.map((path) => ({ url: `${SITE_URL}${path === "/" ? "" : path}`, lastModified }));

@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { northeasternCodeGrammar } from "../lib/course-code";
 import { listedProgramCodes } from "../lib/graph";
 import type {
   BreadthCategory,
@@ -12,6 +13,15 @@ export const PROGRAM_URL =
 
 const normalize = (value: string) => value.replace(/ /g, " ").replace(/\s+/g, " ").trim();
 const normalizeCode = (value: string) => normalize(value).toUpperCase();
+
+// ponytail: this parser reads Northeastern CourseLeaf HTML only, so it uses that grammar directly.
+// Upgrade path: the generic CourseLeaf adapter (#60) passes its college's grammar in.
+const grammar = northeasternCodeGrammar;
+const CODE_AT_START = new RegExp(`^(?:${grammar.textPattern.source})`, grammar.textPattern.flags);
+const TITLE_LINE = new RegExp(
+  `^(${grammar.textPattern.source})\\.\\s+(.+)\\.\\s+\\(([^()]*(?:Hour|Hours))\\)$`,
+  grammar.textPattern.flags,
+);
 
 interface Token {
   type: "course" | "unknown" | "and" | "or" | "lparen" | "rparen";
@@ -51,9 +61,9 @@ function tokenizeRequirement(input: string): Token[] {
       continue;
     }
 
-    const courseMatch = rest.match(/^([A-Z]{2,6})\s+(\d{2,4}[A-Z]{0,2})\b/i);
-    if (courseMatch) {
-      const code = `${courseMatch[1].toUpperCase()} ${courseMatch[2].toUpperCase()}`;
+    const courseMatch = rest.match(CODE_AT_START);
+    const code = courseMatch && grammar.normalize(courseMatch[0]);
+    if (courseMatch && code) {
       index += courseMatch[0].length;
       let tail = input.slice(index);
       const gap = tail.match(/^\s*/)?.[0] ?? "";
@@ -226,12 +236,10 @@ export function parseCourses(html: string, officialUrl: string): Course[] {
   blocks.each((_index, element) => {
     const block = $(element);
     const titleLine = normalize(block.find("p.courseblocktitle").first().text());
-    const match = titleLine.match(
-      /^([A-Z]{2,6}\s+\d{2,4}[A-Z]{0,2})\.\s+(.+)\.\s+\(([^()]*(?:Hour|Hours))\)$/i,
-    );
-    if (!match) throw new Error(`Unrecognized course title line in ${officialUrl}: ${titleLine}`);
+    const match = titleLine.match(TITLE_LINE);
+    const code = match && grammar.normalize(match[1]);
+    if (!match || !code) throw new Error(`Unrecognized course title line in ${officialUrl}: ${titleLine}`);
 
-    const code = normalizeCode(match[1]);
     const title = normalize(match[2]);
     const creditRange = parseCredits(match[3]);
     const description = normalize(block.find("p.cb_desc").first().text());

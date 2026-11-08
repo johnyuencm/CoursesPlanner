@@ -1,3 +1,4 @@
+import { catalogCodeGrammar } from "./course-code";
 import type { Course, RequirementExpression, Semester, StudentPlan } from "./types";
 
 export type TargetPathRole = "completed" | "waived" | "planned" | "remaining" | "target";
@@ -620,13 +621,20 @@ export function targetPathSnapshot(
   return { path, earliest: earliestFeasibleTerm(path, courses, plan) };
 }
 
-export function matchCourseTarget(query: string, courses: readonly Course[]): string | null {
+/**
+ * Target code for the "My Target" input. Strictness (#68):
+ * 1. A catalog course matches with case and spaces ignored ("cs5500" -> "CS 5500").
+ * 2. A code outside the catalog must already be canonical after upper-casing and one-space collapsing
+ *    ("cs  9999" -> "CS 9999"). `grammar.normalize` is not used here on purpose: it would also accept
+ *    "CS9999" and "cs-9999" for codes outside the catalog, which widens today's input.
+ */
+export function matchCourseTarget(query: string, courses: readonly Course[], grammar = catalogCodeGrammar()): string | null {
   const compact = query.trim().toUpperCase().replace(/\s+/g, "");
   if (!compact) return null;
   const match = courses.find((course) => course.code.replace(/\s/g, "") === compact);
   if (match) return match.code;
   const spaced = query.trim().toUpperCase().replace(/\s+/g, " ");
-  return /^[A-Z]{2,6} \d{2,4}[A-Z]{0,2}$/.test(spaced) ? spaced : null;
+  return grammar.pattern.test(spaced) ? spaced : null;
 }
 
 export function termSlug(name: string): string {
