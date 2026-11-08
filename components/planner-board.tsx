@@ -36,7 +36,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import type { Course, PlannedCourse, Semester } from "@/lib/types";
+import type { Course, PlannedCourse, RuleGroupResult, Semester } from "@/lib/types";
 import {
   addableProgramCodes,
   applyPrerequisiteFix,
@@ -52,6 +52,13 @@ import { CatalogState } from "./catalog-state";
 import { requirementBadge } from "./course-card";
 import { CriticalPathCard, TargetPathCard } from "./target-path";
 import { CreditSelect, EmptyState, Meter, PageHeading, creditLabel } from "./ui";
+
+const groupTone: Partial<Record<RuleGroupResult["kind"], string>> = { "choose-courses": "core", "choose-areas": "breadth", "choose-credits": "elective" };
+
+/** Top-level requirement groups; total credits has its own status card. */
+function topLevelGroups(root: RuleGroupResult): RuleGroupResult[] {
+  return (root.kind === "all" ? root.children : [root]).filter((group) => group.kind !== "total-credits");
+}
 
 function planCourseDomId(code: string) {
   return `plan-course-${code.replaceAll(" ", "-")}`;
@@ -237,6 +244,7 @@ export default function PlannerBoard() {
   useEffect(() => {
     document.getElementById(planCourseDomId(workspaceSelection.selectedCode))?.scrollIntoView({ block: "nearest" });
   }, [workspaceSelection.selectedCode]);
+  const ruleGroups = progress ? topLevelGroups(progress.root) : [];
   if (!catalog) return <>
     <PageHeading title="Build My Plan" description="Your local plan remains available for backup while the catalog is unavailable." actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span></div>} />
     <PlanBackup />
@@ -297,8 +305,10 @@ export default function PlannerBoard() {
     <TargetPathCard />
     <CriticalPathCard />
     {progress && <section className="status-card-row four" aria-label="Plan status">
-      <article className="status-card"><span className="status-kicker">Total credits in plan</span><strong>{progress.totalCredits} / {progress.requiredCredits}</strong><Meter value={progress.totalCredits} max={progress.requiredCredits} label="Total credits in plan" /></article>
-      <article className="status-card"><span className="status-kicker">Requirements status</span><strong>{Number(progress.core.every((item) => item.satisfied)) + Number(progress.breadth.satisfied) + Number(progress.electiveCredits >= progress.requiredElectiveCredits)} / 3</strong><p className="muted">Core, breadth, and elective credit buckets</p></article>
+      <article className="status-card"><span className="status-kicker">Total credits in plan</span><strong>{progress.totalCredits}{progress.requiredCredits !== null && ` / ${progress.requiredCredits}`}</strong>{progress.requiredCredits !== null && <Meter value={progress.totalCredits} max={progress.requiredCredits} label="Total credits in plan" />}</article>
+      {progress.tier === "audit"
+        ? <article className="status-card"><span className="status-kicker">Requirements status · Audit tier</span><strong>{ruleGroups.filter((group) => group.satisfied).length} / {ruleGroups.length}</strong><p className="muted">Modeled requirement groups met</p></article>
+        : <article className="status-card"><span className="status-kicker">Requirements status · Map tier</span><strong>No degree audit</strong><p className="muted">The model does not cover every catalog rule. Plan checks prerequisites and term order only.</p></article>}
       <article className={`status-card ${progress.issues.length === 0 ? "success" : ""}`}><span className="status-kicker">Plan validity</span><strong>{progress.issues.length === 0 ? "No blocking issues" : `${progress.issues.length} issue${progress.issues.length === 1 ? "" : "s"}`}</strong><p className="muted">{progress.satisfied ? "Modeled requirements are satisfied." : "Keep resolving catalog-based checks."}</p></article>
       <article className="status-card"><span className="status-kicker">Plan timeline</span><strong>{plan.semesters[plan.semesters.length - 1]?.name ?? "No terms"}</strong><p className="muted">Last term in this local plan — not a graduation date</p></article>
     </section>}
@@ -311,11 +321,12 @@ export default function PlannerBoard() {
       </DndContext>
       {!plan.semesters.length && <EmptyState icon={<CalendarPlus size={25} />} title="Start with your first semester" action={<button className="button button-primary" onClick={() => addTerm()}><Plus size={15} /> Add semester</button>}>Create a term, then add courses from the catalog.</EmptyState>}
     </div><AuditPanel onApplyFix={applyFix} onViewDependency={viewDependency} /></div>
-    {progress && <section className="suggestion-strip" aria-label="Smart suggestions">
-      {progress.core.some((item) => !item.satisfied) && <article className="suggestion-card core"><strong>Core remaining</strong><p>{progress.core.filter((item) => !item.satisfied).map((item) => item.code).join(", ")} still needed for modeled core.</p></article>}
-      {!progress.breadth.satisfied && <article className="suggestion-card breadth"><strong>Breadth diversity</strong><p>{progress.breadth.assignedCourses.length}/{progress.breadth.coursesRequired} breadth courses; {progress.breadth.categoriesSatisfied.length}/{progress.breadth.minCategories} required areas represented.</p></article>}
-      {progress.electiveCredits < progress.requiredElectiveCredits && <article className="suggestion-card elective"><strong>Elective credits</strong><p>{progress.electiveCredits}/{progress.requiredElectiveCredits} eligible elective credits counted in this plan.</p></article>}
-      {progress.core.every((item) => item.satisfied) && progress.breadth.satisfied && progress.electiveCredits >= progress.requiredElectiveCredits && <article className="suggestion-card ok"><strong>Modeled requirements</strong><p>Core, breadth, and elective credit targets are met in this plan model. Offerings are not verified.</p></article>}
+    {progress?.tier === "audit" && <section className="suggestion-strip" aria-label="Degree requirements">
+      {ruleGroups.map((group) => <article className={`suggestion-card ${group.satisfied ? "ok" : groupTone[group.kind] ?? ""}`} key={group.id}>
+        <strong>{group.label}: {group.satisfied ? "met" : "not met yet"}</strong>
+        <p>{group.summary}{group.courses.length ? ` · ${group.courses.join(", ")}` : ""}{group.waived.length ? ` · waived ${group.waived.join(", ")}` : ""}</p>
+        <p className="muted">Catalog rule: {group.rawText || progress.root.rawText || "The catalog gives no separate wording for this rule."}</p>
+      </article>)}
     </section>}
   </>;
 }

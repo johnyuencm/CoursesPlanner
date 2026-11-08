@@ -1,7 +1,8 @@
 import type { Catalog, Course, Eligibility, PlannedCourse, PlanIssue, Semester, StudentPlan } from "./types";
 import type { TargetPathNode, TermPlacement } from "./target-path";
 import { targetPathSnapshot, termSlug } from "./target-path";
-import { getEligibility, validatePlan } from "./validation";
+import { validatePlan } from "./requirements-v2";
+import { getEligibility } from "./validation";
 import { type CourseCodeGrammar, catalogCodeGrammar } from "./course-code";
 
 export const STORAGE_KEY = "neu-mscs-planner-plan-v1";

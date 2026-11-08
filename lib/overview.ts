@@ -1,5 +1,5 @@
 import { recordedCourseCodes } from "./plan";
-import type { Catalog, Course, DegreeProgress, PlanIssue, StudentPlan } from "./types";
+import type { Catalog, Course, DegreeProgressV2, PlanIssue, StudentPlan } from "./types";
 import { getEligibility } from "./validation";
 
 const PREREQ_KINDS = new Set<PlanIssue["kind"]>(["prerequisite", "corequisite"]);
@@ -33,13 +33,13 @@ export function nextUnlockCourse(
 export function overviewSnapshot(input: {
   catalog: Catalog;
   plan: StudentPlan;
-  progress: DegreeProgress;
+  progress: DegreeProgressV2;
   targetName: string | null;
 }) {
   const next = nextUnlockCourse(input.catalog, input.plan);
   const critical = criticalPrereqIssue(input.progress.issues);
   return {
-    credits: { current: input.progress.totalCredits, required: input.catalog.requirements.totalCredits },
+    credits: { current: input.progress.totalCredits, required: input.progress.requiredCredits },
     targetName: input.targetName,
     criticalPrereq: critical ? { courseCode: critical.courseCode, message: critical.message } : null,
     nextUnlock: next

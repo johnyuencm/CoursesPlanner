@@ -1,8 +1,10 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { readCatalog } from "./catalog";
+import { requirementsV2FromV1, requirementTier } from "./requirements-v2";
 import { findUniversity, readReadyRoadmap, readState } from "./roadmap-reader";
 import { SNAPSHOT_ASSET_DIR } from "./snapshot-assets";
+import type { SupportTier } from "./types";
 import { loadUniversityDirectory } from "./university-directory";
 
 /** The allowlist of published roadmaps: one catalog key (`<universityId>/<programId>`) per program. */
@@ -12,7 +14,7 @@ const CATALOG_FILE = "data/catalog.json";
 
 export type SnapshotManifest = {
   version: 1;
-  catalogs: { key: string; tier: "audit" | "map"; edition: string; file: string }[];
+  catalogs: { key: string; tier: SupportTier; edition: string; file: string }[];
   /** Every repo file that the Worker can read, as a repo-relative path. */
   files: string[];
 };
@@ -32,7 +34,9 @@ export async function buildSnapshotAssets(rootDir: string): Promise<Map<string, 
 
   const catalog = await readCatalog(path.join(rootDir, CATALOG_FILE));
   contents.set(CATALOG_FILE, catalog);
-  catalogs.push({ key: catalog.id ?? "default", tier: "audit", edition: catalog.lastUpdated, file: CATALOG_FILE });
+  // The tier comes from validation of the requirement model. A roadmap has no model, so it is Map.
+  const tier = requirementTier(requirementsV2FromV1(catalog.requirements), catalog.courses);
+  catalogs.push({ key: catalog.id ?? "default", tier, edition: catalog.lastUpdated, file: CATALOG_FILE });
 
   const keys: unknown = JSON.parse(await readFile(path.join(rootDir, PUBLISHED_FILE), "utf8"));
   if (!Array.isArray(keys)) throw new Error(`${PUBLISHED_FILE} must be a JSON array of catalog keys`);

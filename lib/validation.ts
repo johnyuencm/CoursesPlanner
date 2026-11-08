@@ -203,7 +203,7 @@ export interface CountedCourse {
   source: "earned" | "planned";
 }
 
-function categoryMatching(codes: string[], memberships: Map<string, string[]>): string[] {
+export function categoryMatching(codes: string[], memberships: Map<string, string[]>): string[] {
   const categoryToCourse = new Map<string, string>();
   const assign = (code: string, seen: Set<string>): boolean => {
     for (const category of memberships.get(code) ?? []) {

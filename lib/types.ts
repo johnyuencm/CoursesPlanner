@@ -58,13 +58,19 @@ interface RuleGroupBase {
   label: string;
   /** Catalog wording this group models; empty when the catalog gives none. */
   rawText: string;
-  /** The catalog allows double counting: courses used here stay available to later groups. */
+  /**
+   * The catalog allows double counting for this group (and its subtree). It is two-sided:
+   * the group may use any course, including courses that other groups use, and the courses
+   * it uses stay available to every other group.
+   */
   shareCourses?: boolean;
 }
 
 /**
- * Requirement model v2: a tree of rule groups, evaluated depth first in order.
+ * Requirement model v2: a tree of rule groups.
  * One course counts toward one group unless a group sets `shareCourses`.
+ * The audit searches for an allocation that meets every group. When no allocation
+ * can meet every group, earlier groups (depth first, in tree order) have priority.
  */
 export type RuleGroup =
   | (RuleGroupBase & { kind: "all"; children: RuleGroup[] })
@@ -98,13 +104,24 @@ export interface RuleGroupResult {
   credits: number;
   /** `choose-areas` only: areas matched one course each. */
   areas: string[];
+  /** Progress against the target, for example "8 of 12 credits". Empty for `all` and `unmodeled`. */
+  summary: string;
   children: RuleGroupResult[];
 }
 
+/**
+ * Audit: every top-level group is modeled and their credits add up to the program total.
+ * Map: anything less. A Map-tier program gets plan checks, but no degree audit.
+ */
+export type SupportTier = "audit" | "map";
+
 export interface DegreeProgressV2 {
+  tier: SupportTier;
   earnedCredits: number;
   plannedCredits: number;
   totalCredits: number;
+  /** The top-level `total-credits` target, or null when the tree has none. */
+  requiredCredits: number | null;
   root: RuleGroupResult;
   issues: PlanIssue[];
   satisfied: boolean;

@@ -64,6 +64,19 @@ test("the build fails when a published snapshot is missing or invalid", async ()
   }
 });
 
+test("the manifest tier comes from validation: credits that do not add up give the Map tier", async () => {
+  const root = await publishedCopy();
+  try {
+    const file = path.join(root, "data/catalog.json");
+    const catalog = JSON.parse(await readFile(file, "utf8"));
+    catalog.requirements.electiveCredits = 8; // 8 core + 12 breadth + 8 electives is not 32
+    await writeFile(file, JSON.stringify(catalog));
+    assert.equal(manifestOf(await buildSnapshotAssets(root)).catalogs[0].tier, "map");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("removing a program from the allowlist removes it from the shipped site", async () => {
   const root = await publishedCopy();
   try {
