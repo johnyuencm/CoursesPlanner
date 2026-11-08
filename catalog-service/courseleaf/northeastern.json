@@ -1,0 +1,28 @@
+{
+  "id": "northeastern",
+  "aliases": ["northeastern-acalog"],
+  "codeGrammar": "northeastern",
+  "creditUnit": "semester-hours",
+  "programRoots": ["/undergraduate/", "/graduate/", "/professional-studies/"],
+  "nonProgramPaths": [
+    "academic-policies-procedures",
+    "admission",
+    "admissions",
+    "course-descriptions",
+    "faculty",
+    "general-information",
+    "student-resources"
+  ],
+  "courseDescriptionUrl": "https://catalog.northeastern.edu/course-descriptions/{subject}/",
+  "selectors": {
+    "programIndexLinks": "#azindex a[href], .azindex a[href], .programs a[href], [data-program][href]",
+    "programRequirements": "#programrequirementstextcontainer",
+    "programName": "h1",
+    "codeLink": "a.code",
+    "credits": "td.hourscol",
+    "courseBlock": "div.courseblock",
+    "courseTitle": "p.courseblocktitle",
+    "courseDescription": "p.cb_desc",
+    "courseExtra": "p.courseblockextra"
+  }
+}

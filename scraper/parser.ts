@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { northeasternCodeGrammar } from "../lib/course-code";
+import { courseLeafConfig, courseLeafLayout, type CourseLeafLayout } from "../catalog-service/courseleaf";
 import { programCourseCodes, requirementView } from "../lib/requirements-v2";
 import type {
   BreadthCategory,
@@ -14,21 +14,16 @@ export const PROGRAM_URL =
 const normalize = (value: string) => value.replace(/ /g, " ").replace(/\s+/g, " ").trim();
 const normalizeCode = (value: string) => normalize(value).toUpperCase();
 
-// ponytail: this parser reads Northeastern CourseLeaf HTML only, so it uses that grammar directly.
-// Upgrade path: the generic CourseLeaf adapter (#60) passes its college's grammar in.
-const grammar = northeasternCodeGrammar;
-const CODE_AT_START = new RegExp(`^(?:${grammar.textPattern.source})`, grammar.textPattern.flags);
-const TITLE_LINE = new RegExp(
-  `^(${grammar.textPattern.source})\\.\\s+(.+)\\.\\s+\\(([^()]*(?:Hour|Hours))\\)$`,
-  grammar.textPattern.flags,
-);
+// The parser reads CourseLeaf HTML. Each function takes a college layout (catalog-service/courseleaf.ts).
+// The default is Northeastern, the college of the tests and of the committed snapshots.
+const NORTHEASTERN = courseLeafLayout(courseLeafConfig("northeastern"));
 
 interface Token {
   type: "course" | "unknown" | "and" | "or" | "lparen" | "rparen";
   expression?: RequirementExpression;
 }
 
-function tokenizeRequirement(input: string): Token[] {
+function tokenizeRequirement(input: string, { grammar, codeAtStart }: CourseLeafLayout): Token[] {
   const tokens: Token[] = [];
   let index = 0;
 
@@ -61,7 +56,7 @@ function tokenizeRequirement(input: string): Token[] {
       continue;
     }
 
-    const courseMatch = rest.match(CODE_AT_START);
+    const courseMatch = rest.match(codeAtStart);
     const code = courseMatch && grammar.normalize(courseMatch[0]);
     if (courseMatch && code) {
       index += courseMatch[0].length;
@@ -125,11 +120,11 @@ function tokenizeRequirement(input: string): Token[] {
 const startsExpression = (token: Token | undefined) =>
   token?.type === "course" || token?.type === "unknown" || token?.type === "lparen";
 
-export function parseRequirement(text: string): RequirementExpression {
+export function parseRequirement(text: string, layout: CourseLeafLayout = NORTHEASTERN): RequirementExpression {
   const original = normalize(text.replace(/^(?:pre|co)requisite\(s\):\s*/i, ""));
   if (!original || /^(?:none|n\/a)$/i.test(original)) return { type: "none" };
 
-  const tokens = tokenizeRequirement(original);
+  const tokens = tokenizeRequirement(original, layout);
   let position = 0;
 
   const combine = (
@@ -227,26 +222,28 @@ function parseCredits(value: string): { credits: number; maxCredits?: number } {
   return maxCredits === credits ? { credits } : { credits, maxCredits };
 }
 
-export function parseCourses(html: string, officialUrl: string): Course[] {
+export function parseCourses(html: string, officialUrl: string, layout: CourseLeafLayout = NORTHEASTERN): Course[] {
+  const { grammar, titleLine: titleLinePattern } = layout;
+  const selectors = layout.config.selectors;
   const $ = cheerio.load(html);
-  const blocks = $("div.courseblock");
+  const blocks = $(selectors.courseBlock);
   if (!blocks.length) throw new Error(`No course blocks found in ${officialUrl}`);
 
   const courses: Course[] = [];
   blocks.each((_index, element) => {
     const block = $(element);
-    const titleLine = normalize(block.find("p.courseblocktitle").first().text());
-    const match = titleLine.match(TITLE_LINE);
+    const titleLine = normalize(block.find(selectors.courseTitle).first().text());
+    const match = titleLine.match(titleLinePattern);
     const code = match && grammar.normalize(match[1]);
     if (!match || !code) throw new Error(`Unrecognized course title line in ${officialUrl}: ${titleLine}`);
 
     const title = normalize(match[2]);
     const creditRange = parseCredits(match[3]);
-    const description = normalize(block.find("p.cb_desc").first().text());
+    const description = normalize(block.find(selectors.courseDescription).first().text());
     let prerequisiteText = "";
     let corequisiteText = "";
 
-    block.find("p.courseblockextra").each((_extraIndex, extraElement) => {
+    block.find(selectors.courseExtra).each((_extraIndex, extraElement) => {
       const extra = $(extraElement);
       const label = normalize(extra.find("strong").first().text());
       const fullText = normalize(extra.text());
@@ -255,8 +252,8 @@ export function parseCourses(html: string, officialUrl: string): Course[] {
       if (/^Corequisite\(s\):?$/i.test(label)) corequisiteText = value;
     });
 
-    const prerequisites = parseRequirement(prerequisiteText);
-    const corequisites = parseRequirement(corequisiteText);
+    const prerequisites = parseRequirement(prerequisiteText, layout);
+    const corequisites = parseRequirement(corequisiteText, layout);
     const uncertainties = [
       ...unknownTexts(prerequisites).map(
         (unknown) => `Prerequisite clause not fully understood: ${unknown}`,
@@ -329,9 +326,11 @@ export function parseProgramRequirements(
   html: string,
   officialUrl = PROGRAM_URL,
   lastUpdated = new Date().toISOString(),
+  layout: CourseLeafLayout = NORTHEASTERN,
 ): DegreeRequirementV2 {
+  const selectors = layout.config.selectors;
   const $ = cheerio.load(html);
-  const root = $("#programrequirementstextcontainer");
+  const root = $(selectors.programRequirements);
   if (!root.length) throw new Error("Program requirements container not found");
 
   const findHeading = (pattern: RegExp) =>
@@ -345,7 +344,8 @@ export function parseProgramRequirements(
   };
   const codesIn = (scope: ReturnType<typeof findTable>) =>
     scope
-      .find("td.codecol a.code")
+      .find("td.codecol")
+      .find(selectors.codeLink)
       .map((_index, element) => normalizeCode($(element).text()))
       .get()
       .filter(Boolean);
@@ -367,7 +367,7 @@ export function parseProgramRequirements(
   if (!breadthMatch) throw new Error(`Unrecognized breadth rule: ${breadthRule || "missing"}`);
   const coursesRequired = parseCount(breadthMatch[1], "breadth course");
   const minCategories = parseCount(breadthMatch[2], "breadth category");
-  const breadthCredits = Number(normalize(breadthRuleRow.find("td.hourscol").text()));
+  const breadthCredits = Number(normalize(breadthRuleRow.find(selectors.credits).text()));
   if (!Number.isFinite(breadthCredits) || breadthCredits <= 0) {
     throw new Error(`Unrecognized breadth credit requirement: ${breadthRuleRow.text()}`);
   }
@@ -420,13 +420,14 @@ export function parseProgramRequirements(
   const totalCredits = Number(totalMatch[1]);
   const minimumGpa = Number(gpaMatch[1]);
 
-  const title = normalize($("h1").first().text());
+  const title = normalize($(selectors.programName).first().text());
   const editionText = normalize($("h2.edition").first().text() || $("header .dec h2").first().text());
   const edition = editionText.match(/20\d{2}\s*[-–]\s*20\d{2}/)?.[0]?.replace(/\s+/g, "");
   if (!title || !edition) throw new Error("Program name or catalog edition not found");
 
   const coreCredits = coreTable
-    .find("tbody tr td.hourscol")
+    .find("tbody tr")
+    .find(selectors.credits)
     .map((_index, element) => Number(normalize($(element).text())))
     .get()
     .filter(Number.isFinite)
@@ -489,11 +490,7 @@ export function parseProgramRequirements(
   };
 }
 
-function catalogOrigin(officialUrl: string): string {
-  return new URL(officialUrl).origin;
-}
-
-function externalPlaceholder(code: string, origin: string): Course {
+function externalPlaceholder(code: string, placeholderUrl: string): Course {
   const unavailable = `Course details for ${code} are unavailable in the cached department sources.`;
   return {
     code,
@@ -511,7 +508,7 @@ function externalPlaceholder(code: string, origin: string): Course {
     requirementType: "external",
     electiveEligible: false,
     topics: [],
-    officialUrl: `${origin}/course-descriptions/`,
+    officialUrl: placeholderUrl,
     uncertainties: [unavailable, "Credits are unknown; zero is a placeholder and must not be counted."],
   };
 }
@@ -519,7 +516,7 @@ function externalPlaceholder(code: string, origin: string): Course {
 function buildScopedCourseGraph(
   courses: Course[],
   listedCodes: Iterable<string>,
-  origin: string,
+  placeholderUrl: string,
   classification: (
     code: string,
   ) => Pick<Course, "breadthCategories" | "requirementType" | "electiveEligible">,
@@ -549,7 +546,7 @@ function buildScopedCourseGraph(
   const byCode = new Map<string, Course>();
   for (const code of keep) {
     const course = parsed.get(code);
-    byCode.set(code, course ? { ...course, unlocks: [] } : externalPlaceholder(code, origin));
+    byCode.set(code, course ? { ...course, unlocks: [] } : externalPlaceholder(code, placeholderUrl));
   }
 
   const unlocks = new Map<string, Set<string>>();
@@ -569,7 +566,11 @@ function buildScopedCourseGraph(
     .sort((left, right) => left.code.localeCompare(right.code, undefined, { numeric: true }));
 }
 
-export function buildCourseGraph(courses: Course[], requirements: DegreeRequirementV2): Course[] {
+export function buildCourseGraph(
+  courses: Course[],
+  requirements: DegreeRequirementV2,
+  layout: CourseLeafLayout = NORTHEASTERN,
+): Course[] {
   const view = requirementView(requirements);
   const coreCodes = new Set(view.core);
   const electiveCodes = new Set(view.electiveCourses);
@@ -582,7 +583,7 @@ export function buildCourseGraph(courses: Course[], requirements: DegreeRequirem
   return buildScopedCourseGraph(
     courses,
     programCourseCodes(requirements),
-    catalogOrigin(requirements.officialUrl),
+    layout.placeholderUrl,
     (code) => {
       const breadthCategories = categoryIdsByCourse.get(code) ?? [];
       return {
@@ -603,10 +604,10 @@ export function buildCourseGraph(courses: Course[], requirements: DegreeRequirem
 export function buildRoadmapCourseGraph(
   courses: Course[],
   programCourseCodes: Iterable<string>,
-  origin: string,
+  layout: CourseLeafLayout = NORTHEASTERN,
 ): Course[] {
   const programCodes = new Set(programCourseCodes);
-  return buildScopedCourseGraph(courses, programCodes, new URL(origin).origin, (code) => ({
+  return buildScopedCourseGraph(courses, programCodes, layout.placeholderUrl, (code) => ({
     breadthCategories: [],
     requirementType: programCodes.has(code) ? "program" : "external",
     electiveEligible: false,

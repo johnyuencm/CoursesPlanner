@@ -47,11 +47,22 @@ export const northeasternCodeGrammar: CourseCodeGrammar = {
 };
 
 /**
+ * Keyed by grammar id (`codeGrammar` in a CourseLeaf config, catalog-service/courseleaf/*.json).
+ * Patterns must not have the `g` or `y` flag: callers reuse them, and those flags keep `lastIndex`.
+ */
+export const CODE_GRAMMARS: Readonly<Record<string, CourseCodeGrammar>> = {
+  northeastern: northeasternCodeGrammar,
+};
+
+/**
  * Keyed by adapter id (`Catalog.adapter`, `CatalogAdapter.id`). This is the one list of adapter ids:
  * `KNOWN_ADAPTER_IDS` comes from it, and a test checks it against catalog-service/adapters.ts.
+ * A CourseLeaf college has the id `courseleaf-<config id>` plus the aliases in its config.
  */
 const grammars: Record<string, CourseCodeGrammar> = {
+  // Alias of courseleaf-northeastern. Snapshots and source files keep this id.
   "northeastern-acalog": northeasternCodeGrammar,
+  "courseleaf-northeastern": northeasternCodeGrammar,
 };
 
 export const KNOWN_ADAPTER_IDS: readonly string[] = Object.keys(grammars);

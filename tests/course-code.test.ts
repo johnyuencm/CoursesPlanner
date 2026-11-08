@@ -5,8 +5,10 @@ import test from "node:test";
 
 import roadmap from "../data/catalogs/northeastern/roadmaps/computer-science-mscs-sea-8b0d00dbda.json";
 import { getAdapter, registeredAdapters } from "../catalog-service/adapters";
+import { COURSELEAF_CONFIGS, courseLeafLayout } from "../catalog-service/courseleaf";
 import { readCatalog, validateCatalog } from "../lib/catalog";
 import {
+  CODE_GRAMMARS,
   type CourseCodeGrammar,
   KNOWN_ADAPTER_IDS,
   catalogCodeGrammar,
@@ -70,6 +72,22 @@ test("each adapter declares the grammar that the lookup returns", async () => {
   for (const id of registeredAdapters()) assert.equal(getAdapter(id).codeGrammar, courseCodeGrammar(id), id);
   assert.equal(courseCodeGrammar((await readCatalog()).adapter!), northeasternCodeGrammar);
   assert.throws(() => courseCodeGrammar("no-such-adapter"), /no-such-adapter/);
+});
+
+test("no registered grammar pattern has the g or y flag", () => {
+  // Grammars are reused across calls; g and y keep lastIndex, so test() and exec() would skip matches.
+  const registered = [...Object.entries(CODE_GRAMMARS), ...KNOWN_ADAPTER_IDS.map((id) => [id, courseCodeGrammar(id)] as const)];
+  for (const [id, entry] of registered) {
+    for (const key of ["pattern", "textPattern", "subjectPattern"] as const) {
+      assert.doesNotMatch(entry[key].flags, /[gy]/, `${id}.${key}`);
+    }
+  }
+  for (const config of COURSELEAF_CONFIGS) {
+    const layout = courseLeafLayout(config);
+    for (const key of ["codeAtStart", "titleLine", "nonProgramPath"] as const) {
+      assert.doesNotMatch(layout[key].flags, /[gy]/, `${config.id}.${key}`);
+    }
+  }
 });
 
 // Test-only grammars for code shapes that other colleges use.
