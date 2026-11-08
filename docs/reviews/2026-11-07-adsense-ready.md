@@ -22,7 +22,7 @@ flowchart LR
 | Review #2 | Readers use the bundle only on `ENOENT`. `wrangler dev` (workerd) served `/api/roadmaps` and `/api/catalog` with 200, so workerd gives `ENOENT` for a missing file. |
 | Review #5 | README POST text now names the Worker and `npm start` (`wrangler dev`). |
 | `AGENTS.md` | Tells agents to verify with `npm run dev:vinext`, or `npm run build` then `npm start`. |
-| Unknown course 404 | `proxy.ts` (matcher `/courses/:slug`) rewrites an unknown slug to a route miss. `app/global-not-found.tsx` renders it without the root layout: 6,012 bytes, before 18,208 bytes. |
+| Unknown course 404 | Tried `proxy.ts` (matcher `/courses/:slug`) in PR #58. Removed in a follow-up PR: it made every real course page slower. See the CPU section. |
 
 Open: review #3 (static JSON imports in CLI) and #4 (`fflate` audit item). Neither has a trivial fix.
 
@@ -41,6 +41,8 @@ Open: review #3 (static JSON imports in CLI) and #4 (`fflate` audit item). Neith
 
 The small drops on `/courses` and course pages are the removed loading and shell text.
 
+Live on https://coursesplanner.johnyc.com (version `11fcae7b`, Googlebot UA): the same counts. `/sitemap.xml` 200 with 124 URLs.
+
 ## Checks
 
 | Check | Result |
@@ -48,5 +50,18 @@ The small drops on `/courses` and course pages are the removed loading and shell
 | `npm run typecheck` | Pass |
 | `npm test` | 262/262 pass |
 | `npm run build` | Pass. 126 prerendered routes |
-| `npm start` | Prerendered pages answer `X-Vinext-Cache: HIT`, also with `proxy.ts`. `/sitemap.xml` 200. Unknown course 404 |
+| `npm start` | Prerendered pages answer `X-Vinext-Cache: HIT`. `/sitemap.xml` 200. Unknown course 404 |
 | Browser (`npm start`) | `/`, `/explore`, `/pathways`, `/planner`, `/courses` hydrate. No console errors |
+
+## CPU check of `proxy.ts` (live, version `11fcae7b`)
+
+`wrangler tail --format json`, field `cpuTime`, 60 warm sequential requests per route from one PC.
+
+| Route | p50 | p90 | Over 10 ms |
+|---|---|---|---|
+| `/explore` (no proxy) | 4 ms | 6 ms | 1 of 84 |
+| `/courses/cs-5800` (proxy, known slug) | 5 ms | 9 ms | 4 of 60 |
+| `/courses/zz-*` (proxy, unknown slug) | 7 ms | 13 ms | 11 of 60 |
+| `/nothing-*` (route miss) | 6 ms | 12 ms | 10 of 60 |
+
+The proxy cut the unknown-course 404 from p50 10 ms to 7 ms. It added about 1 ms (p50) and 3 ms (p90) to every real course page. Real course pages get most crawler traffic. Unknown slugs come only from typos and bots. Decision: remove `proxy.ts` and keep the known ceiling.
