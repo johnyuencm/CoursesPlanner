@@ -101,9 +101,9 @@ test("an unknown clause is never treated as met (B3, #67)", () => {
   const orUnknown = { type: "any" as const, items: [one("A"), unknown] };
   assert.deepEqual(unmetRequirements(orUnknown, new Set(["A"])), []);
   assert.deepEqual(unmetRequirements(orUnknown, new Set()), [["A", needsReview("Graduate")]]);
-  // Real data: CS 5400 is "CS 5010 or CS 5004 or (CS 5010 and Graduate)".
-  const cs5400 = readCatalog().courses.find((item) => item.code === "CS 5400")!;
-  assert.deepEqual(unmetRequirements(cs5400.prerequisites, new Set()), [["CS 5010", "CS 5004"]]);
+  // Real data: CS 5330 is "MATH 2331 or graduate program admission".
+  const cs5330 = readCatalog().courses.find((item) => item.code === "CS 5330")!;
+  assert.deepEqual(unmetRequirements(cs5330.prerequisites, new Set()), [["MATH 2331", needsReview("graduate program admission")]]);
 });
 
 test("course page shows the and/or structure of prerequisites (B2, #66)", async () => {
@@ -111,6 +111,10 @@ test("course page shows the and/or structure of prerequisites (B2, #66)", async 
     .replace(/<[^>]+>/g, "");
   // CS 6510 needs (CS 5004 or CS 5010) and CS 5500.
   assert.match(await pageText("cs-6510"), /Take all of these:One of: CS 5004 [^,]+, CS 5010 [^,]+CS 5500 /);
-  // CS 5400: an "or" with an unclear clause. The clause shows as needing review.
-  assert.match(await pageText("cs-5400"), /One of: CS 5010 [^,]+, CS 5004 [^,]+, \(CS 5010 [^)]+ and Needs review — Graduate\)/);
+  // CS 5400: "(Graduate)" is the level of a grade floor, not a clause, so nothing needs review.
+  const cs5400 = await pageText("cs-5400");
+  assert.match(cs5400, /One of: CS 5010 [^,]+, CS 5004 [^<]+?Catalog description/);
+  assert.doesNotMatch(cs5400, /Needs review/);
+  // CS 5330: "MATH 2331 or graduate program admission". The unclear option shows as needing review.
+  assert.match(await pageText("cs-5330"), /One of: MATH 2331[^,]*, Needs review — graduate program admission/);
 });
