@@ -1,6 +1,6 @@
 # #74 verification: 4 more Northeastern programs at Map tier
 
-Date: 2026-11-08. Branch: `feat/74-more-neu-programs`. Not deployed.
+Date: 2026-11-08. Branch: `feat/74-more-neu-programs`, merged with master `e257fff` (#118). Not deployed.
 
 ## Programs
 
@@ -37,7 +37,8 @@ GET /                                                           200  X-Vinext-Ca
 GET /<program>/courses/zz-9999, /northeastern/no-such-program   404  6,729 bytes (cheap 404)
 GET /nothing                                                    404  6,694 bytes
 GET /courses/cs-5800                                            308  -> /northeastern/computer-science-mscs-sea-8b0d00dbda/courses/cs-5800
-GET /sitemap.xml                                                381 URLs (all 5 programs)
+GET /sitemap.xml                                                357 URLs (all 5 programs; path pages of the default program only)
+GET /<Map program>/pathways, /pathways/<id>                     200  <meta name="robots" content="noindex, follow">
 GET /api/catalog?key=northeastern/nope                          404
 ```
 
@@ -55,11 +56,15 @@ Browser (own tab, 127.0.0.1:3211 only):
 |---|---|---|
 | Prerendered routes | 127 | 387 |
 | Static asset files | 315 | 839 |
-| Worker upload (gzip) | 611 KiB | 918 KiB |
+| Worker upload (gzip) | 611 KiB | 922 KiB |
 
 Limits on Workers Free: 3 MB gzip, 20,000 asset files. The prerendered HTML also ships in the Worker bundle, so each Map-tier program adds about 77 KiB gzip.
 
 ## Open
 
 - Live check after `npm run deploy` is not done. Deploy needs the owner.
-- Pathway pages of the new programs show the shared personas of `config/pathways.json`. Courses that a program does not have show as bare codes. Issue #73 keys pathways by program.
+- Pathway pages of the new programs show the shared personas of `config/pathways.json`. Courses that a program does not have show as bare codes. Until #73 keys pathways by program, these pages stay out of the sitemap and get `noindex` (`pathwaysFitCatalog` in `lib/course-pages.ts`).
+
+## worker.ts
+
+After the merge with #118, `worker.ts` is the #118 version. `programPageIndex()` in `lib/snapshot-manifest.ts` lists the pages of each program from its own catalog (`readProgramCatalog`). The test that forbids `readCatalog` and `await` in `worker.ts` passes.

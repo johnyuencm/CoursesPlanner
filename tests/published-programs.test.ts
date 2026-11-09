@@ -6,8 +6,8 @@ import test from "node:test";
 
 import { roadmapReport } from "../catalog-service/roadmaps";
 import { validateCatalog, validateProgramRoadmap } from "../lib/catalog";
-import { CATALOGS } from "../lib/catalog-key";
-import { isUnknownProgramPath, programPagePaths, publicCourses, shortestPrerequisiteChain } from "../lib/course-pages";
+import { CATALOGS, DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
+import { isUnknownProgramPath, pathwaysFitCatalog, programPagePaths, publicCourses, shortestPrerequisiteChain } from "../lib/course-pages";
 import { programMapCodes } from "../lib/graph";
 import { readProgramCatalog } from "../lib/program-catalog";
 import { emptyPlan } from "../lib/plan";
@@ -50,6 +50,21 @@ for (const expected of PROGRAMS) {
     assert.equal(isUnknownProgramPath(`${program}/courses/zz-9999`, pages), true);
   });
 
+  test(`${expected.program} path pages stay out of the sitemap and get noindex until #73`, async () => {
+    const { default: sitemap } = await import("../app/sitemap");
+    const { generateMetadata: pathsMetadata } = await import("../app/[universityId]/[programId]/pathways/page");
+    const { generateMetadata: pathMetadata } = await import("../app/[universityId]/[programId]/pathways/[id]/page");
+    const [universityId = "", programId = ""] = expected.key.split("/");
+    assert.equal(pathwaysFitCatalog(await readProgramCatalog(expected.key)), false);
+    const program = `https://coursesplanner.johnyc.com/${expected.key}`;
+    const urls = (await sitemap()).map((entry) => entry.url);
+    assert.ok(urls.includes(`${program}/courses/${expected.page}`));
+    assert.ok(!urls.some((url) => url.startsWith(`${program}/pathways`)), "no path page in the sitemap");
+    const noindex = { index: false, follow: true };
+    assert.deepEqual((await pathsMetadata({ params: Promise.resolve({ universityId, programId }) })).robots, noindex);
+    assert.deepEqual((await pathMetadata({ params: Promise.resolve({ universityId, programId, id: "systems" }) })).robots, noindex);
+  });
+
   test(`${expected.program} has a parse report that matches its snapshot (#74)`, async () => {
     const id = expected.key.split("/")[1];
     const roadmap: unknown = JSON.parse(await readFile(`data/catalogs/northeastern/roadmaps/${id}.json`, "utf8"));
@@ -60,3 +75,13 @@ for (const expected of PROGRAMS) {
     assert.equal(report.courses, expected.courses);
   });
 }
+
+test("the default program keeps its path pages in the sitemap, with no noindex", async () => {
+  const { default: sitemap } = await import("../app/sitemap");
+  const { generateMetadata } = await import("../app/[universityId]/[programId]/pathways/[id]/page");
+  assert.equal(pathwaysFitCatalog(await readProgramCatalog(DEFAULT_CATALOG_KEY)), true);
+  const urls = (await sitemap()).map((entry) => entry.url);
+  assert.ok(urls.includes(`https://coursesplanner.johnyc.com/${DEFAULT_CATALOG_KEY}/pathways/systems`));
+  const params = Promise.resolve({ universityId: "northeastern", programId: "computer-science-mscs-sea-8b0d00dbda", id: "systems" });
+  assert.equal((await generateMetadata({ params })).robots, undefined);
+});

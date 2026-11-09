@@ -33,6 +33,21 @@ export function programPagePaths(catalogKey: string, catalog: Catalog): string[]
   ];
 }
 
+/**
+ * True when every course of every path has a course page in this catalog.
+ * The paths in config/pathways.json were made for one program. Elsewhere a path page shows bare codes (thin content),
+ * so it stays out of the sitemap and gets `noindex`. ponytail: until T9 (#73) keys pathways by program.
+ */
+export function pathwaysFitCatalog(catalog: Catalog): boolean {
+  const pageCodes = new Set(publicCourses(catalog).map((course) => course.code));
+  return (pathwayConfig as Pathway[]).every((pathway) => pathway.groups.every((group) => group.courses.every((code) => pageCodes.has(code))));
+}
+
+/** Robots metadata of a path page: `noindex` when the paths do not fit the catalog. */
+export function pathwayRobots(catalog: Catalog): { robots?: { index: false; follow: true } } {
+  return pathwaysFitCatalog(catalog) ? {} : { robots: { index: false, follow: true } };
+}
+
 // First path segments that are not a university id: API routes and the old top-level pages (they redirect).
 const STATIC_SEGMENTS = new Set(["api", ...legacyRedirects.map((redirect) => redirect.source.split("/")[1])]);
 

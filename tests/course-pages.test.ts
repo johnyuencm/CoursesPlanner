@@ -8,6 +8,7 @@ import CoursePage from "../app/[universityId]/[programId]/courses/[code]/page";
 import pathwayConfig from "../config/pathways.json";
 import { readCatalog } from "../lib/catalog";
 import { CATALOGS, DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
+import { readProgramCatalog } from "../lib/program-catalog";
 import { programPageIndex } from "../lib/snapshot-manifest";
 import {
   courseBySlug,
@@ -43,10 +44,12 @@ test("course slugs are URL-safe and round-trip through the packaged catalog", as
 
 test("worker.ts decides 404 from the small build-time page index, not the catalog (#110)", async () => {
   const index = await programPageIndex(process.cwd());
-  // Same pages as the prerender; a few KB in the bundle, against about 150 KB of catalog JSON.
-  const published = await readCatalog(path.join(process.cwd(), "data", "catalog.json"));
-  assert.deepEqual(index, Object.keys(CATALOGS).flatMap((key) => programPagePaths(key, published)));
-  assert.ok(JSON.stringify(index).length < 16_000, `${JSON.stringify(index).length} bytes`);
+  // Same pages as the prerender, each program from its own catalog (#74); a few KB per program in the bundle,
+  // against about 150 KB of catalog JSON per program.
+  const expected = [];
+  for (const key of Object.keys(CATALOGS)) expected.push(...programPagePaths(key, await readProgramCatalog(key)));
+  assert.deepEqual(index, expected);
+  assert.ok(JSON.stringify(index).length < 16_000 * Object.keys(CATALOGS).length, `${JSON.stringify(index).length} bytes`);
   const worker = await readFile(path.join(process.cwd(), "worker.ts"), "utf8");
   assert.match(worker, /from "virtual:program-pages"/);
   assert.doesNotMatch(worker, /readCatalog|lib\/catalog"|await /, "a request must not read the catalog or wait for it");
