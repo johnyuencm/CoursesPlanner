@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, Bookmark, Check, CircleHelp, ListChecks, RefreshCw, Search, Share2, ShieldCheck, TriangleAlert, X, type LucideIcon } from "lucide-react";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import pathwayConfig from "@/config/pathways.json";
 import { primaryNav } from "@/lib/routes";
 import { PERSONA_PROMPT } from "@/lib/pathway-overlay";
@@ -11,7 +12,7 @@ import type { Pathway } from "@/lib/types";
 import { useApp, useRoutes, type Notice } from "./app-provider";
 import { CourseDetail, CoursePicker } from "./course-dialogs";
 import { CourseTargetControl } from "./target-path";
-import { OfficialLink, dateLabel } from "./ui";
+import { ConfirmButton, OfficialLink, dateLabel } from "./ui";
 
 const navIcons: Record<ReturnType<typeof primaryNav>[number]["label"], LucideIcon> = {
   Explore: Share2,
@@ -30,6 +31,8 @@ export function AppShell({ university, program, children }: { university: string
   const routes = useRoutes();
   const [query, setQuery] = useState("");
   const menuRef = useRef<HTMLDetailsElement>(null);
+  const { announce } = app;
+  const dismissNotice = useCallback(() => announce(""), [announce]);
   // The plan menu closes on an outside click, like every other menu.
   useEffect(() => {
     const close = (event: PointerEvent) => { if (menuRef.current?.open && !menuRef.current.contains(event.target as Node)) menuRef.current.open = false; };
@@ -86,12 +89,12 @@ export function AppShell({ university, program, children }: { university: string
             </label>
             <Link href={routes.paths}>{selectedTarget ? "View" : "Paths"}</Link>
           </div>
-          <details className="profile-menu" ref={menuRef} onKeyDown={(event) => { if (event.key === "Escape" && menuRef.current?.open) { menuRef.current.open = false; menuRef.current.querySelector("summary")?.focus(); } }} onClick={(event) => { if ((event.target as HTMLElement).closest(".profile-dropdown a, .profile-dropdown button") && menuRef.current) menuRef.current.open = false; }}>
+          <details className="profile-menu" ref={menuRef} onKeyDown={(event) => { if (event.key === "Escape" && menuRef.current?.open) { menuRef.current.open = false; menuRef.current.querySelector("summary")?.focus(); } }} onClick={(event) => { if ((event.target as HTMLElement).closest(".profile-dropdown a, .profile-dropdown button:not([data-keep-open])") && menuRef.current) menuRef.current.open = false; }}>
             <summary aria-label="Local plan menu"><span className="avatar">LP</span><span>Local plan<small>This device</small></span></summary>
             <div className="profile-dropdown">
               {app.refreshAvailable && <button type="button" disabled={app.catalogBusy} onClick={() => void app.refreshCatalog()}><RefreshCw size={14} className={app.catalogBusy ? "spin" : ""} />{app.catalogBusy ? "Loading…" : "Refresh catalog"}</button>}
               <Link href="/">Change college or program</Link>
-              <button type="button" onClick={app.resetPlan}>Reset local plan</button>
+              <ConfirmButton className="" confirmLabel="Reset the plan" onConfirm={app.resetPlan}>Reset local plan</ConfirmButton>
               {app.catalog && <OfficialLink href={app.catalog.requirements.officialUrl} sources={app.catalog.sources}>Official catalog</OfficialLink>}
               {app.catalog && <span className="muted">{app.catalog.requirements.catalogYear} catalog, refreshed {dateLabel(app.catalog.lastUpdated)}</span>}
             </div>
@@ -100,32 +103,51 @@ export function AppShell({ university, program, children }: { university: string
       </header>
       {/* Without a catalog, the page shows the load error in place (CatalogState). The banner covers a failed refresh only. */}
       {((app.catalogError && app.catalog) || app.catalogMessage) && <div className={`global-banner ${app.catalogError ? "warning" : "success"}`} role={app.catalogError ? "alert" : "status"}>{app.catalogError ? <TriangleAlert size={16} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}<span>{app.catalogError ? `${app.catalogError} The last loaded catalog is still in use.` : app.catalogMessage}</span></div>}
-      {app.storageError && <div className="global-banner warning" role="alert"><TriangleAlert size={17} /><span><strong>Changes are not being saved.</strong> {app.storageError} {app.persistence === "blocked" ? "The saved data is kept as it is. Reset the plan to replace it and turn saving back on. You can undo the reset." : "Your current work remains in this tab. Retry saving before closing it."}</span>{app.persistence === "blocked" ? <button className="text-button" onClick={app.resetPlan}>Reset saved plan</button> : <button className="text-button" onClick={app.retrySave}>Retry save</button>}</div>}
+      {app.storageError && <div className="global-banner warning" role="alert"><TriangleAlert size={17} /><span><strong>Changes are not being saved.</strong> {app.storageError} {app.persistence === "blocked" ? "The saved data is kept as it is. Reset the plan to replace it and turn saving back on. You can undo the reset." : "Your current work remains in this tab. Retry saving before closing it."}</span>{app.persistence === "blocked" ? <ConfirmButton className="text-button" confirmLabel="Replace the saved data" onConfirm={app.resetPlan}>Reset saved plan</ConfirmButton> : <button className="text-button" onClick={app.retrySave}>Retry save</button>}</div>}
       <main id="main-content" className="main-content"><div key={pathname} className="route-view">{children}</div></main>
       <footer className="workspace-footer"><span><CircleHelp size={14} /> Understand what every course unlocks. A planning companion, not an official degree audit.</span><span>Saved only on this device.</span></footer>
     </div>
     {app.detailCode && <CourseDetail key={app.detailCode} code={app.detailCode} />}
     {app.picker && <CoursePicker />}
-    <Toast notice={app.notice} dismiss={() => app.announce("")} />
+    <Toast notice={app.notice} dismiss={dismissNotice} overlayOpen={Boolean(app.detailCode || app.picker)} />
   </div>;
 }
 
-/** The one toast. It replaces the previous toast, hides after 6 s (10 s with an action) and waits while hovered or focused. */
-function Toast({ notice, dismiss }: { notice: Notice | null; dismiss: () => void }) {
+/**
+ * The one toast. A new toast replaces the old one. A toast without an action hides after 6 s; a toast with
+ * Undo stays until it is dismissed or replaced, so nobody loses Undo to a timer (WCAG 2.2.1).
+ * While a modal dialog is open, everything outside it is inert, so the toast renders inside that dialog.
+ */
+function Toast({ notice, dismiss, overlayOpen }: { notice: Notice | null; dismiss: () => void; overlayOpen: boolean }) {
+  const [host, setHost] = useState<Element | null>(null);
   const [paused, setPaused] = useState(false);
+  const inside = useRef({ hover: false, focus: false });
+  const focusNext = useRef(false);
+  const dismissRef = useRef<HTMLButtonElement>(null);
+  // Modal effects run before this effect, so an open dialog is already in the top layer here.
+  useEffect(() => { setHost(overlayOpen ? document.querySelector("dialog.modal[open]") : null); }, [overlayOpen, notice]);
+  useEffect(() => { setPaused(inside.current.hover || inside.current.focus); }, [notice?.id]);
   useEffect(() => {
-    if (!notice || paused) return;
-    const timer = window.setTimeout(dismiss, notice.action ? 10_000 : 6_000);
+    if (!notice || notice.action || paused) return;
+    const timer = window.setTimeout(dismiss, 6_000);
     return () => window.clearTimeout(timer);
   }, [notice, paused, dismiss]);
-  useEffect(() => setPaused(false), [notice?.id]);
+  useEffect(() => {
+    // After Undo, the next toast confirms it; keep keyboard focus on that toast instead of losing it to <body>.
+    if (focusNext.current && notice) dismissRef.current?.focus();
+    focusNext.current = false;
+  }, [notice]);
+  const sync = () => setPaused(inside.current.hover || inside.current.focus);
   const warning = notice?.tone === "warning";
-  return <div className="announcement" role="status" aria-live="polite" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
+  const toast = <div className="announcement" role="status" aria-live="polite"
+    onMouseEnter={() => { inside.current.hover = true; sync(); }} onMouseLeave={() => { inside.current.hover = false; sync(); }}
+    onFocus={() => { inside.current.focus = true; sync(); }} onBlur={() => { inside.current.focus = false; sync(); }}>
     {notice && <div key={notice.id} className={warning ? "toast toast-warning" : "toast"}>
       {warning ? <TriangleAlert size={16} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}
       <span>{notice.message}</span>
-      {notice.action && <button type="button" className="toast-action" onClick={() => { notice.action?.run(); }}>{notice.action.label}</button>}
-      <button type="button" className="icon-button" aria-label="Dismiss notification" onClick={dismiss}><X size={15} /></button>
+      {notice.action && <button type="button" className="toast-action" onClick={() => { focusNext.current = true; notice.action?.run(); }}>{notice.action.label}</button>}
+      <button ref={dismissRef} type="button" className="icon-button" aria-label="Dismiss notification" onClick={dismiss}><X size={15} /></button>
     </div>}
   </div>;
+  return host?.isConnected ? createPortal(toast, host) : toast;
 }

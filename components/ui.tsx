@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ArrowUpRight, LoaderCircle, X } from "lucide-react";
 import type { Course } from "@/lib/types";
 
@@ -84,4 +84,25 @@ export function OfficialLink({ href, sources, children = "Official catalog" }: {
 export function dateLabel(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "Unknown" : new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(date);
+}
+
+/**
+ * A two-step button for an action that replaces the whole plan. The first press asks in place
+ * (no dialog); the second press runs it. Escape or Cancel steps back. The action still gives Undo.
+ */
+export function ConfirmButton({ children, confirmLabel, onConfirm, className = "text-button danger-text" }: { children: ReactNode; confirmLabel: string; onConfirm: () => void; className?: string }) {
+  const [armed, setArmed] = useState(false);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const armRef = useRef<HTMLButtonElement>(null);
+  const wasArmed = useRef(false);
+  useEffect(() => {
+    if (armed) confirmRef.current?.focus();
+    else if (wasArmed.current) armRef.current?.focus();
+    wasArmed.current = armed;
+  }, [armed]);
+  if (!armed) return <button ref={armRef} type="button" className={className} data-keep-open onClick={() => setArmed(true)}>{children}</button>;
+  return <span className="confirm-step" role="group" aria-label={confirmLabel} onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); setArmed(false); } }}>
+    <button ref={confirmRef} type="button" className="button button-primary button-small" onClick={() => { setArmed(false); onConfirm(); }}>{confirmLabel}</button>
+    <button type="button" className="button button-secondary button-small" data-keep-open onClick={() => setArmed(false)}>Cancel</button>
+  </span>;
 }

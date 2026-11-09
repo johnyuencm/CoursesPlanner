@@ -47,7 +47,7 @@ function validPathways(value: unknown, catalogKey: string): value is Pathway[] {
 }
 
 const defaults = pathwayConfig as Pathway[];
-const HEADING_COPY = "Pick a persona. core, recommended and dependency-critical ★ courses overlay the Explore map; everything else fades. These never change official degree rules.";
+const HEADING_COPY = "Pick a persona. Core, recommended and dependency-critical ★ courses overlay the Explore map; everything else fades. These never change official degree rules.";
 
 export function PathwaysWorkspace() {
   const { catalogKey, catalog, openCourse, openPicker, plan, announce, careerTargetId, setCareerTargetId, hydrated } = useApp();

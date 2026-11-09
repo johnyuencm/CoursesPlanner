@@ -67,6 +67,9 @@ export function RoadmapSelectorView({
   const readyPrograms = useMemo(() => orderedPrograms.filter(isProgramSelectable), [orderedPrograms]);
   const otherPrograms = useMemo(() => orderedPrograms.filter((program) => !isProgramSelectable(program)), [orderedPrograms]);
   const readyCount = readyPrograms.length;
+  // The person opens and closes the panel. It also opens by itself when a roadmap is chosen or a load fails.
+  const [open, setOpen] = useState(Boolean(universityId) || Boolean(error));
+  useEffect(() => { if (universityId || error) setOpen(true); }, [universityId, error]);
   // The selector is only useful when at least one university can be opened.
   // Production has no ready roadmaps (D1), so hide a control that leads nowhere.
   const hasSelectableUniversity = universities.some(isUniversitySelectable);
@@ -83,10 +86,10 @@ export function RoadmapSelectorView({
   return (
     // A closed disclosure by default: the map stays the first thing on the page, also on a phone.
     // It opens by itself when another roadmap is open or when loading failed, so the retry stays in view.
-    <details className="roadmap-selector" open={Boolean(universityId) || Boolean(error) || undefined} aria-label="University and program prerequisite roadmaps" aria-busy={loading || programsLoading || roadmapLoading}>
+    <details className="roadmap-selector" open={open} onToggle={(event) => setOpen(event.currentTarget.open)} aria-label="University and program prerequisite roadmaps" aria-busy={loading || programsLoading || roadmapLoading}>
       <summary className="roadmap-selector-heading">
         <span>
-          <span className="roadmap-selector-title"><BookOpen size={18} aria-hidden="true" /> Other university roadmaps</span>
+          <h2 className="roadmap-selector-title"><BookOpen size={18} aria-hidden="true" /> Other university roadmaps</h2>
           <span className="muted small-text">Look at a ready program from another university. Your plan does not change.</span>
         </span>
       </summary>

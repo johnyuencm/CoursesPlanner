@@ -973,3 +973,5 @@ textarea { resize: vertical; }
 .audit-panel .section-heading { flex-direction: column; align-items: stretch; }
 .audit-panel .next-controls { flex-direction: column; align-items: stretch; }
 .audit-panel .next-controls .search-field { width: 100%; }
+.confirm-step { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+h2.roadmap-selector-title { margin: 0; }
