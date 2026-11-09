@@ -1,4 +1,6 @@
 import { strict as assert } from "node:assert";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -6,6 +8,7 @@ import CoursePage from "../app/[universityId]/[programId]/courses/[code]/page";
 import pathwayConfig from "../config/pathways.json";
 import { readCatalog } from "../lib/catalog";
 import { CATALOGS, DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
+import { programPageIndex } from "../lib/snapshot-manifest";
 import {
   courseBySlug,
   courseSlug,
@@ -38,8 +41,19 @@ test("course slugs are URL-safe and round-trip through the packaged catalog", as
   assert.equal(courseBySlug(catalog, "../etc"), undefined);
 });
 
+test("worker.ts decides 404 from the small build-time page index, not the catalog (#110)", async () => {
+  const index = await programPageIndex(process.cwd());
+  // Same pages as the prerender; a few KB in the bundle, against about 150 KB of catalog JSON.
+  const published = await readCatalog(path.join(process.cwd(), "data", "catalog.json"));
+  assert.deepEqual(index, Object.keys(CATALOGS).flatMap((key) => programPagePaths(key, published)));
+  assert.ok(JSON.stringify(index).length < 16_000, `${JSON.stringify(index).length} bytes`);
+  const worker = await readFile(path.join(process.cwd(), "worker.ts"), "utf8");
+  assert.match(worker, /from "virtual:program-pages"/);
+  assert.doesNotMatch(worker, /readCatalog|lib\/catalog"|await /, "a request must not read the catalog or wait for it");
+});
+
 test("unknown programs and course slugs go to the 404 route miss; real pages do not", async () => {
-  const pages = new Set(programPagePaths(DEFAULT_CATALOG_KEY, await readCatalog()));
+  const pages = new Set(await programPageIndex(process.cwd()));
   const p = `/${DEFAULT_CATALOG_KEY}`;
   for (const real of [p, `${p}/explore`, `${p}/planner`, `${p}/courses`, `${p}/pathways`, `${p}/courses/cs-5800`, `${p}/courses/cs-5010`, `${p}/pathways/systems`]) {
     assert.equal(isUnknownProgramPath(real, pages), false, real);
