@@ -53,7 +53,7 @@ test("Machine Learning overlay keeps CORE, RECOMMENDED, and CS 5800 as critical 
   assert.ok(overlay.recommended.has("CS 6140"));
   assert.ok(overlay.critical.has("CS 5800"));
   assert.equal(overlayRoleFor("CS 5800", overlay), "critical");
-  assert.deepEqual(overlayNodeCopy("CS 5800", overlay), { role: "critical", label: "CRITICAL ★", starred: true });
+  assert.deepEqual(overlayNodeCopy("CS 5800", overlay), { role: "critical", label: "Critical ★", starred: true });
   assert.equal(overlayRoleFor("CS 5010", overlay), overlay.critical.has("CS 5010") ? "critical" : "core");
   assert.equal(overlayRoleFor("CS 6140", overlay), overlay.critical.has("CS 6140") ? "critical" : "recommended");
   assert.equal(overlayRoleFor("CS 5600", overlay), null);
