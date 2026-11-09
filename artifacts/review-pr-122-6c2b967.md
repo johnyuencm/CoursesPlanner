@@ -88,3 +88,52 @@ Evidence: vinext dev at `1a2cf21` on port 3017, Playwright, own browser context,
 | R4 | On a host change the hover and focus flags reset; on a new toast the focus flag is read from `document.activeElement`. | Walk: focus in toast, Escape closes the dialog, a plain toast still hides after 6 s. |
 | R5 | A confirmed reset moves focus to the toast's Undo (`focusAction`). | Walk: after confirm in the menu, `activeElement` is `toast-action`. |
 | R6 | `ConfirmButton` disarms on a pointer press outside the group, or on Tab out. A press inside (also in Safari) still confirms. | Walk: arm, outside click, reopen menu: not armed. |
+
+## Round 3
+
+Head: `65f41ba`. Fix diff: `1a2cf21..65f41ba`, without `artifacts/`. Reviewer: independent.
+
+**Verdict: PASS** (R1-R6 resolved. 2 new low findings. No high or medium finding.)
+
+Evidence: vinext dev on port 3101 (main checkout at `65f41ba`), Playwright, own browser context, 1280x800 and 400x800. `npm test` (335 pass) in the clean worktree.
+
+### Round 2 findings
+
+| id | status | note |
+|----|--------|------|
+| R1 | resolved | Browser: Mark completed in CS 5010, click the CS 5400 chip: 1 toast, in the CS 5400 dialog, Undo present. "Add to my plan" (detail to picker): 1 toast, in the "Add a course" dialog. Escape: the toast goes back to the page with Undo. No console error. Only one dialog can be open (`openPicker` clears `detailCode`), so the `overlay` key covers all swaps. |
+| R2 | resolved | 1280 px drawer: footer 665-729, toast 729-800. 400 px drawer: footer 582-710, toast 710-800. The modal body shrinks and scrolls. `elementFromPoint` hits every footer button and the Undo button. Picker modal: toast is below the footer, the dialog grows. |
+| R3 | resolved | Browser: reset, wait 7 s, Undo is still there and brings back all terms. Reset, then Add semester: Undo is removed, the message stays. Cross-tab: reset in tab A, Add semester in tab B: the storage event removes the Undo in tab A. Remove course and Mark completed on the board: Undo stays (no early withdrawal) and works. The Paths guard has a gap after a route change (N1). |
+| R4 | resolved | The host effect resets `inside`. The notice effect reads `document.activeElement`. |
+| R5 | resolved | Browser: confirm in the profile menu, `activeElement` is `toast-action`. |
+| R6 | resolved | Browser: arm, click outside, open the menu again: not armed. Keyboard: arm, Tab out: not armed. Escape and Cancel still return focus to the arm button. |
+
+### planVersion analysis
+
+- Each `setPlan` call site makes a new object, so every undoable action makes exactly 1 identity change. Two renders of the same plan do not count twice, because the ref compares identity. No undoable action has a no-op `setPlan` now.
+- StrictMode: the second render sees the same `plan`, so no double count. vinext app router dev does not use StrictMode, so this is code analysis only.
+- Concurrent renders: the count only goes up. A discarded render could only add a count if it saw a plan that never commits. No `setPlan` runs in a transition, so this cannot happen now. If it did, Undo would go early (safe side), not late.
+- Cross-tab and program change: both change `plan`, so Undo is withdrawn. This is correct (Undo must not overwrite the other tab or another program).
+- CR8: `liveNotice` is a `useMemo` on `[notice, stale]`. `tests/app-provider.test.ts` passes.
+
+### New findings
+
+| id | severity | file:line | issue | fix |
+|----|----------|-----------|-------|-----|
+| N1 | low | components/pathways-workspace.tsx:118 | The guard reads `pathwaysRef` of the instance that did the reset. The Undo toast stays across routes. After Paths, Plan, Paths, the old instance is unmounted, its ref still equals `defaults`, so Undo goes on. It writes the old suggestions to storage, but `setPathways` goes to the dead instance. Browser: the toast says "Your earlier suggestions are back.", the screen still shows the defaults, and only a reload shows "Custom Robotics". If the user edits the new screen without a save, Undo also says "back" while the screen shows the edits. No data is lost. | Track mount in a ref (`useEffect(() => () => { mounted.current = false }, [])`) and refuse Undo when unmounted. Or clear the notice in that cleanup when it is this reset notice. |
+| N2 | low | components/app-provider.tsx:513, components/app-shell.tsx:140 | After a confirmed reset, focus is on Undo (`focusAction`). A plan change from another tab removes the Undo button, and focus falls to `<body>`. Browser: `activeElement` is `BODY` after the tab B change. Same tab cannot hit this, because a click moves focus first. | When `stale` removes the action and focus was in the toast, focus the Dismiss button (the R5 `dismissRef` path). |
+
+### Checked and found correct
+
+- Toast in the drawer, 400 px and 1280 px: in flow, full width, `.modal-inner` does not overflow, no horizontal scroll from the toast. The drawer at 400 px starts 15 px off the left edge because `width: 100vw` includes the classic scrollbar. This comes from the drawer CSS, not from this diff.
+- Focus: the toast is inside the native modal `dialog`, so Tab reaches Undo. No custom focus trap to update.
+- `ConfirmButton`: a pointer press inside the group does not disarm. `onBlur` needs a `relatedTarget`, so the Safari null-blur on press does not drop the confirm.
+- A withdrawn Undo gives a plain toast, which hides after 6 s.
+
+## Round 3 fixes (author response)
+
+| id | Fix | Evidence |
+|---|---|---|
+| N1 | `announce` returns the toast id. Paths withdraws its reset toast when the page unmounts, so Undo never acts on a page that is gone. | Walk: reset on Paths, go to Plan: 0 toasts. |
+| N2 | When Undo is withdrawn while it has focus, focus moves to the toast's Dismiss button. | Code (needs two tabs to reproduce). |
+| Drawer | Drawer width uses `100%` of the viewport box, not `100vw`, so the scrollbar does not push it off the edge. | Walk at 400 px: drawer left 0, right 400. |
