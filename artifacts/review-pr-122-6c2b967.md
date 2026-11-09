@@ -36,3 +36,55 @@ Diff: `f8ad949..6c2b967`, without `artifacts/`. Reviewer: independent.
 | F5 | After Undo, focus moves to the confirming toast's Dismiss button. | Walk: `document.activeElement` is "Dismiss notification". |
 | F6 | The panel `open` is state with `onToggle`; it opens itself when a roadmap is chosen or a load fails. The title is an `h2` in `summary`. | Walk: summary click opens; one `h2`. |
 | F7 | "Core, recommended and ..." | Code. |
+
+## Round 2
+
+Head: `1a2cf21`. Fix diff: `6c2b967..1a2cf21`, without `artifacts/`. Full PR diff skimmed: `f8ad949..1a2cf21`. Reviewer: independent.
+
+**Verdict: FAIL** (3 medium findings: R1, R2, R3. All come from the round 1 toast changes.)
+
+Evidence: vinext dev at `1a2cf21` on port 3017, Playwright, own browser context, 1280x800 and 390x800. `npm test` (335 pass) and `npm run typecheck` pass in the worktree.
+
+### Round 1 findings
+
+| id | status | note |
+|----|--------|------|
+| F1 | resolved | In one open dialog, Undo is in the dialog, `elementFromPoint` hits Undo, and Undo works. A dialog swap loses the toast (R1). The toast can cover the drawer footer (R2). |
+| F2 | resolved | Both whole-plan resets need a second step. Action toasts stay until dismissed or replaced. A stale Undo is now a risk (R3). |
+| F3 | resolved | `dismissNotice` is a `useCallback` on the stable `announce`. |
+| F4 | resolved | A new toast under the pointer stays paused. One focus edge case remains (R4). |
+| F5 | resolved | After Undo, focus goes to the Dismiss button of the new toast. |
+| F6 | resolved | Browser: summary click and Enter toggle the panel. A user close stays closed after a roadmap is chosen. "Back to the current program" keeps the panel open. One `h2`. |
+| F7 | resolved | Copy fixed. |
+
+### New findings
+
+| id | severity | file:line | issue | fix |
+|----|----------|-----------|-------|-----|
+| R1 | medium | components/app-shell.tsx:128 | The host effect depends on `[overlayOpen, notice]`. A dialog swap keeps `overlayOpen` true, so the effect does not run again. The toast stays in the old dialog, which React then removes. Browser: open CS 5010, Mark completed, click the CS 5400 chip. The document has 0 `.announcement` nodes while CS 5400 is open. "Add to my plan" (detail to picker) gives the same result. The toast comes back only when the dialog closes. No React error. | Add the dialog identity to the deps, for example `app.detailCode` and `app.picker`. Or let `Modal` give its element to the toast through context or a callback ref. |
+| R2 | medium | components/app-shell.tsx:152, app/globals.css:413 | In the drawer at desktop width, the fixed toast is on top of the drawer footer. The center of "Add to my plan" hits the Undo button (`elementFromPoint`; Playwright reports "toast-action intercepts pointer events"). Action toasts now stay, so a click on "Add to my plan" runs Undo. At 390 px the footer is clear. | In a dialog, show the toast in flow above the footer, or move it up by the footer height. |
+| R3 | medium | components/app-provider.tsx:322, components/app-provider.tsx:384, components/planner-board.tsx:320 | Undo restores the full snapshot from the time of the action, and the toast no longer expires. Add term, rename term, term type, credits and term reorder do not announce, so the old Undo stays. Browser: reset the plan, add 2 semesters, wait 7 s, press Undo. Both new semesters are gone, and the message says only "Reset undone". | Remove the action when the plan changes after the toast. For example, store the plan of that moment in the notice and clear the action in an effect when `plan` is a different object. |
+| R4 | low | components/app-shell.tsx:144 | When the toast has focus and moves between hosts (Escape closes the dialog while focus is on Undo), React removes the focused node. No blur event comes, so `inside.current.focus` stays true. Later toasts without an action do not hide. Browser: "CS 5010 is no longer marked completed or waived." is still there after 6.5 s. The same flow without focus hides it. | Reset `inside.current` when the host changes. Or check `toastRef.current?.contains(document.activeElement)` in `sync` and before the timer starts. |
+| R5 | low | components/ui.tsx:105 | In the profile menu, "Reset the plan" closes the menu. The arm button is then hidden, so the focus return fails and focus goes to `<body>`. | After a confirm in the menu, focus the menu summary or the Undo button of the toast. |
+| R6 | low | components/ui.tsx:93 | The armed state stays when the menu closes by an outside click. When the menu opens again, "Reset the plan" shows at once. | Disarm when focus leaves the group (`onBlur` with a `relatedTarget` check), or when the parent `<details>` closes. |
+
+### Checked and found correct
+
+- ConfirmButton keyboard: Enter and Space arm it, and focus goes to the confirm button. Escape 1 disarms, keeps the menu open and puts focus on "Reset local plan". Escape 2 closes the menu and puts focus on the summary. `stopPropagation` keeps the menu open. Cancel keeps the menu open (`data-keep-open`).
+- Planner-board ConfirmButton: Space arms, Escape disarms, and focus goes back.
+- Dialog close while a toast shows: the toast goes back inline and stays. No console error in any swap or close flow.
+- Entrance animation: the toast moves about 20 px during the 220 ms `drawer-in` animation. It is not clipped. After the animation, its containing block is the viewport, so `overflow: hidden` does not clip it.
+- `RoadmapSelectorView`: the new `useState` and `useEffect` are before the early `return null`. The hook order is stable.
+- `tests/app-provider.test.ts` (CR8 handler identity) passes. No provider handler changed in round 1.
+- Restore backup: choosing a file is a deliberate step. The restore toast has Undo. R3 applies to it too.
+
+## Round 2 fixes (author response)
+
+| id | Fix | Evidence |
+|---|---|---|
+| R1 | The toast host follows the open dialog key (`detailCode` or picker), so a swap moves the toast into the new dialog. | Walk: detail, Undo toast, Add to my plan: 1 toast, inside the "Add a course" dialog. |
+| R2 | Inside a dialog the toast is in flow in `.modal-inner`, below the footer. It covers no dialog button. | Walk: toast top is below the footer bottom. `ux-review-2026-11-08/after-desktop-undo-in-dialog.png` |
+| R3 | The provider counts plan changes. A plan Undo (`undoesPlanChange`) is withdrawn as soon as a later plan change renders. Paths Undo checks that the defaults are still on screen. | Walk: reset, Add semester: Undo is gone, the message stays. |
+| R4 | On a host change the hover and focus flags reset; on a new toast the focus flag is read from `document.activeElement`. | Walk: focus in toast, Escape closes the dialog, a plain toast still hides after 6 s. |
+| R5 | A confirmed reset moves focus to the toast's Undo (`focusAction`). | Walk: after confirm in the menu, `activeElement` is `toast-action`. |
+| R6 | `ConfirmButton` disarms on a pointer press outside the group, or on Tab out. A press inside (also in Safari) still confirms. | Walk: arm, outside click, reopen menu: not armed. |
