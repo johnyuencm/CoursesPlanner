@@ -222,6 +222,7 @@ Send requests in a second terminal, then read `cpuTime` for each event.
 | --- | --- |
 | 100,000 requests per day | Each page view is 1 request, plus `/api/catalog` and `/api/roadmaps` on Explore and Planner. Static `/_next/static/*` files do not count, because they skip the Worker |
 | 10 ms CPU per request | See the table above |
-| 3 MB Worker size (gzip) | 583 KiB gzip (2026-11-08, after the snapshots moved to static assets) |
+| 3 MB Worker size (gzip) | 918 KiB gzip (2026-11-08, 5 programs, 387 prerendered routes). Master with 1 program: 611 KiB, 127 routes. Each Map-tier program adds about 77 KiB, because the prerendered HTML ships in the Worker too |
+| 20,000 static asset files | 839 files (5 programs). Each Map-tier program adds about 130 files (HTML and RSC per page) |
 
 Over the daily request limit, Cloudflare returns errors until the next day. It does not bill. Do not turn on Workers Paid, Cloudflare Images or other paid add-ons without the owner's explicit yes.

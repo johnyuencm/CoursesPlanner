@@ -55,7 +55,7 @@ The loader rejects the config when it has an unknown key, a URL that is not HTTP
 1. In `catalog-service/universities.json`, add a `crawl` block with `"adapter": "courseleaf-<id>"`, the discovery source, `robotsUrl`, `allowedOrigins` and `requestDelayMs` of 750 or more.
 2. Set `"support": "supported"` and `"enabled": true` only after the fixture test passes.
 3. Run a bounded crawl: `npm run catalog:refresh -- --crawl-roadmaps --limit=5 --university=<id>`.
-4. Read the roadmap files and their `warnings`. Then add the catalog key to `data/published.json` and `CATALOGS` in `lib/catalog-key.ts`.
+4. Read the roadmap files and the parse reports (`reports/<program-id>.json`). Then add the catalog key to `data/published.json` and `CATALOGS` in `lib/catalog-key.ts`. Allow the roadmap and report files in `.gitignore`.
 5. Run `npm run typecheck`, `npm test` and `npm run build`. Commit the output on a branch and open a PR.
 
 ## Limits
