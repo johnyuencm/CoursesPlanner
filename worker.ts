@@ -1,21 +1,27 @@
 import vinext from "vinext/server/app-router-entry";
-import { readCatalog } from "./lib/catalog";
 import { CATALOGS } from "./lib/catalog-key";
 import { isProgramPath, isUnknownProgramPath, programPagePaths } from "./lib/course-pages";
+import { readProgramCatalog } from "./lib/program-catalog";
 import { legacyDestination } from "./lib/routes";
 
 // An unknown program or course page renders notFound() inside the layouts: p50 15 ms CPU, over the
 // Workers Free 10 ms limit. A route miss renders app/global-not-found.tsx without the layouts.
 // This check runs before vinext, so real pages still get the prerendered HTML directly.
 // A proxy.ts did the same job, but vinext middleware made every course page slower (docs/deploy.md).
-// The page paths come from the published catalog (static assets), once per isolate.
-let pages: Promise<Set<string>> | undefined;
+// The page paths of a program come from its published catalog (static assets), once per isolate.
+// An unknown program needs no catalog read.
+const pages = new Map<string, Promise<Set<string>>>();
+const NO_PAGES: ReadonlySet<string> = new Set();
 
-function programPages(): Promise<Set<string>> {
-  // ponytail: every catalog key serves the default catalog today (lib/catalog-key.ts CATALOGS).
-  pages ??= readCatalog().then((catalog) => new Set(Object.keys(CATALOGS).flatMap((key) => programPagePaths(key, catalog))));
-  pages.catch(() => { pages = undefined; }); // try again on the next request
-  return pages;
+function programPages(key: string): Promise<ReadonlySet<string>> {
+  if (!Object.hasOwn(CATALOGS, key)) return Promise.resolve(NO_PAGES);
+  let known = pages.get(key);
+  if (!known) {
+    known = readProgramCatalog(key).then((catalog) => new Set(programPagePaths(key, catalog)));
+    known.catch(() => pages.delete(key)); // try again on the next request
+    pages.set(key, known);
+  }
+  return known;
 }
 
 export default {
@@ -26,7 +32,7 @@ export default {
     if (legacy) return new Response(null, { status: 308, headers: { Location: legacy + url.search } });
     if (isProgramPath(url.pathname)) {
       // Without the catalog, vinext renders the page and answers as before.
-      const known = await programPages().catch(() => undefined);
+      const known = await programPages(url.pathname.split("/", 3).slice(1).join("/")).catch(() => undefined);
       if (known && isUnknownProgramPath(url.pathname, known)) request = new Request(new URL("/__unknown-page", url), request);
     }
     return vinext.fetch(request, env, ctx);

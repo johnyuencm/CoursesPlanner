@@ -14,11 +14,13 @@ const ROOT = process.cwd();
 const KEY = "northeastern/computer-science-mscs-sea-8b0d00dbda";
 const ROADMAP = "data/catalogs/northeastern/roadmaps/computer-science-mscs-sea-8b0d00dbda.json";
 const PROGRAMS = "data/catalogs/northeastern/programs.json";
+const PUBLISHED: string[] = JSON.parse(await readFile(path.join(ROOT, "data/published.json"), "utf8"));
+const roadmapFile = (key: string) => `data/catalogs/${key.split("/")[0]}/roadmaps/${key.split("/")[1]}.json`;
 
 /** A copy of the published repo files, so a test can break one without touching the repo. */
 async function publishedCopy(): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "snapshots-"));
-  for (const file of ["catalog-service/universities.json", "data/catalog.json", "data/published.json", PROGRAMS, ROADMAP]) {
+  for (const file of ["catalog-service/universities.json", "data/catalog.json", "data/published.json", PROGRAMS, ...PUBLISHED.map(roadmapFile)]) {
     await cp(path.join(ROOT, file), path.join(root, file));
   }
   return root;
@@ -32,8 +34,9 @@ test("the build manifest lists every published snapshot, and each listed file sh
   const manifest = manifestOf(assets);
   assert.deepEqual(manifest.catalogs.map(({ key, tier, file }) => ({ key, tier, file })), [
     { key: "northeastern/computer-science-mscs-sea-8b0d00dbda", tier: "audit", file: "data/catalog.json" },
-    { key: KEY, tier: "map", file: ROADMAP },
+    ...PUBLISHED.map((key) => ({ key, tier: "map", file: roadmapFile(key) })),
   ]);
+  assert.equal(PUBLISHED[0], KEY);
   assert.equal(manifest.catalogs[1].edition, "2026-09-12T01:09:37.140Z");
   assert.deepEqual(
     [...assets.keys()].sort(),

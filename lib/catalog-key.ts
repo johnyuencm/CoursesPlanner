@@ -10,12 +10,17 @@ export const DEFAULT_CATALOG_KEY = "northeastern/computer-science-mscs-sea-8b0d0
  * Full catalogs (`Catalog`) that `/api/catalog` serves, by catalog key.
  * `id`: the old catalog id (`Catalog.id`, catalog-service source id). It stays a valid alias.
  * `adapter`: gives the course-code grammar before the catalog loads.
+ * The default key reads `data/catalog.json` (Audit tier). Every other key reads its roadmap (Map tier, lib/program-catalog.ts).
  *
- * ponytail: one hand-written entry, because only one full catalog is published.
- * Read the keys from the snapshot manifest when a second full catalog ships.
+ * ponytail: a hand-written list that a test keeps equal to data/published.json.
+ * Read the keys from the snapshot manifest when the list gets long.
  */
 export const CATALOGS: Readonly<Record<string, { id: string; adapter: string }>> = {
   [DEFAULT_CATALOG_KEY]: { id: "neu-mscs-seattle", adapter: "northeastern-acalog" },
+  "northeastern/computer-science-mscs-976b977119": { id: "computer-science-mscs-976b977119", adapter: "northeastern-acalog" },
+  "northeastern/computer-science-mscs-align-a4f8db6b17": { id: "computer-science-mscs-align-a4f8db6b17", adapter: "northeastern-acalog" },
+  "northeastern/cybersecurity-ms-429a5fa183": { id: "cybersecurity-ms-429a5fa183", adapter: "northeastern-acalog" },
+  "northeastern/data-science-ms-ptl-0da0db71be": { id: "data-science-ms-ptl-0da0db71be", adapter: "northeastern-acalog" },
 };
 
 /** The canonical key for a catalog key or an old catalog id, or null when no catalog has it. */

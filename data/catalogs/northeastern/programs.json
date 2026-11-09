@@ -7,6 +7,16 @@
   "discoveredAt": "2026-09-12T01:09:37.140Z",
   "programs": [
     {
+      "id": "computer-science-mscs-align-a4f8db6b17",
+      "universityId": "northeastern",
+      "university": "Northeastern",
+      "kind": "degree",
+      "officialUrl": "https://catalog.northeastern.edu/graduate/computer-information-science/computer-science/computer-science-mscs-align/",
+      "status": "ready",
+      "statusUpdatedAt": "2026-11-08T22:40:28.403Z",
+      "name": "Computer Science, MSCS—Align (Boston)"
+    },
+    {
       "id": "computer-science-mscs-sea-8b0d00dbda",
       "universityId": "northeastern",
       "university": "Northeastern",
@@ -15,6 +25,36 @@
       "officialUrl": "https://catalog.northeastern.edu/graduate/computer-information-science/computer-science/computer-science-mscs-sea/",
       "status": "ready",
       "statusUpdatedAt": "2026-09-12T01:09:37.140Z"
+    },
+    {
+      "id": "computer-science-mscs-976b977119",
+      "universityId": "northeastern",
+      "university": "Northeastern",
+      "kind": "degree",
+      "officialUrl": "https://catalog.northeastern.edu/graduate/computer-information-science/computer-science/computer-science-mscs/",
+      "status": "ready",
+      "statusUpdatedAt": "2026-11-08T22:40:28.521Z",
+      "name": "Computer Science, MSCS (Boston)"
+    },
+    {
+      "id": "cybersecurity-ms-429a5fa183",
+      "universityId": "northeastern",
+      "university": "Northeastern",
+      "kind": "degree",
+      "officialUrl": "https://catalog.northeastern.edu/graduate/computer-information-science/cybersecurity/cybersecurity-ms/",
+      "status": "ready",
+      "statusUpdatedAt": "2026-11-08T22:40:28.672Z",
+      "name": "Cybersecurity, MS (Boston)"
+    },
+    {
+      "id": "data-science-ms-ptl-0da0db71be",
+      "universityId": "northeastern",
+      "university": "Northeastern",
+      "kind": "degree",
+      "officialUrl": "https://catalog.northeastern.edu/graduate/university-interdisciplinary-programs/data-science-ms-ptl/",
+      "status": "ready",
+      "statusUpdatedAt": "2026-11-08T22:40:28.806Z",
+      "name": "Data Science, MS (Portland)"
     }
   ]
 }

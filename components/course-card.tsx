@@ -22,6 +22,7 @@ export function requirementBadge(type: Course["requirementType"]) {
   if (type === "core") return { label: "Core", className: "badge badge-core" };
   if (type === "breadth") return { label: "Breadth", className: "badge badge-breadth" };
   if (type === "elective") return { label: "Elective", className: "badge badge-elective" };
+  if (type === "program") return { label: "Program", className: "badge badge-elective" };
   return { label: "External", className: "badge" };
 }
 

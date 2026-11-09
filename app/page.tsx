@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ProgramPicker, type PickerCollege, type PickerProgram } from "@/components/program-picker";
-import { readCatalog } from "@/lib/catalog";
 import { CATALOGS } from "@/lib/catalog-key";
+import { readProgramCatalog } from "@/lib/program-catalog";
 import { requirementTier } from "@/lib/requirements-v2";
 import { programRoutes } from "@/lib/routes";
 import { loadUniversityDirectory } from "@/lib/university-directory";
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 async function pickerData(): Promise<{ programs: PickerProgram[]; colleges: PickerCollege[] }> {
   const directory = await loadUniversityDirectory();
   const programs = await Promise.all(Object.keys(CATALOGS).map(async (key): Promise<PickerProgram> => {
-    const catalog = await readCatalog(); // ponytail: every catalog key serves the default catalog today
+    const catalog = await readProgramCatalog(key);
     const universityId = key.split("/")[0]!;
     return {
       key,

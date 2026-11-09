@@ -215,7 +215,7 @@ export function validateCatalog(value: unknown, grammar?: CourseCodeGrammar): as
   const courses = validateCourses(value.courses, {
     validCode: (code): code is string => typeof code === "string" && codePattern.test(code),
     isOfficial: (url): url is string => isOfficialUrl(url, officialHosts),
-    requirementTypes: new Set(["core", "breadth", "elective", "external"]),
+    requirementTypes: new Set(["core", "breadth", "elective", "program", "external"]),
     recordLabel: "Catalog",
     emptyMessage: "Catalog contains no courses",
   });

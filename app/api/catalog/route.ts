@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { readCatalog, validateCatalog } from "@/lib/catalog";
 import { CATALOGS, DEFAULT_CATALOG_KEY, canonicalCatalogKey } from "@/lib/catalog-key";
+import { readProgramCatalog } from "@/lib/program-catalog";
 import type { Catalog } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -91,8 +92,8 @@ async function refreshCatalogSnapshot(): Promise<Catalog> {
 
 // Serializing the ~150 KB catalog costs several ms of CPU, and Workers Free allows
 // 10 ms per request. readCatalog() returns the same object until the file changes,
-// so build the body once per catalog object.
-let catalogBody: { catalog: Catalog; key: string; refreshAvailable: boolean; body: string } | null = null;
+// so build the body once per catalog object and key.
+const catalogBodies = new Map<string, { catalog: Catalog; refreshAvailable: boolean; body: string }>();
 
 /**
  * `?key=<universityId>/<programId>` (or an old catalog id) selects the catalog. An unknown key gives 404.
@@ -103,15 +104,17 @@ export async function GET(request?: NextRequest) {
   const key = requested === null ? DEFAULT_CATALOG_KEY : canonicalCatalogKey(requested);
   if (key === null) return errorResponse(new Error(`No catalog has the key "${String(requested).slice(0, 120)}".`), 404);
   try {
-    // ponytail: every known key is the default catalog today (see CATALOGS). Map the key to its snapshot file when a second one ships.
     // refreshAvailable tells the UI whether POST refresh can ever succeed, so the
     // client can hide a control that would otherwise always answer 401 (CR3).
-    const catalog = await readCatalog();
-    const refreshAvailable = isRefreshAuthorized();
-    if (catalogBody?.catalog !== catalog || catalogBody.key !== key || catalogBody.refreshAvailable !== refreshAvailable) {
-      catalogBody = { catalog, key, refreshAvailable, body: JSON.stringify({ ...catalog, key, refreshAvailable }) };
+    // Refresh updates only the default catalog; a Map-tier roadmap comes from an offline crawl.
+    const catalog = await readProgramCatalog(key);
+    const refreshAvailable = key === DEFAULT_CATALOG_KEY && isRefreshAuthorized();
+    let cached = catalogBodies.get(key);
+    if (cached?.catalog !== catalog || cached.refreshAvailable !== refreshAvailable) {
+      cached = { catalog, refreshAvailable, body: JSON.stringify({ ...catalog, key, refreshAvailable }) };
+      catalogBodies.set(key, cached);
     }
-    return new NextResponse(catalogBody.body, {
+    return new NextResponse(cached.body, {
       headers: { "Cache-Control": "no-store", "Content-Type": "application/json" },
     });
   } catch (error) {

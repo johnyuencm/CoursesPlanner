@@ -160,7 +160,8 @@ test("the sitemap and canonical URLs use the program paths (#71)", async () => {
   }
   assert.ok(!urls.includes(`${p}/planner`), "Plan has no catalog text of its own");
   assert.equal(urls[0], "https://coursesplanner.johnyc.com/", "the program picker is in the sitemap (#72)");
-  assert.ok(urls.slice(1).every((url) => url.startsWith(p)), "an old top-level URL is in the sitemap");
+  const programs = Object.keys(CATALOGS).map((key) => `https://coursesplanner.johnyc.com/${key}`);
+  assert.ok(urls.slice(1).every((url) => programs.some((program) => url === program || url.startsWith(`${program}/`))), "an old top-level URL is in the sitemap");
   const params = Promise.resolve({ universityId: "northeastern", programId: "computer-science-mscs-sea-8b0d00dbda", code: "cs-5800" });
   assert.equal((await generateMetadata({ params })).alternates?.canonical, `/${DEFAULT_CATALOG_KEY}/courses/cs-5800`);
 });
