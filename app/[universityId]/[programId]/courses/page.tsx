@@ -27,7 +27,7 @@ export default async function CoursesPage({ params }: Props) {
       <ul className="static-list">
         {courses.map((course) => <li key={course.code}>
           <Link href={routes.course(courseSlug(course.code, catalog))}><strong>{course.code}</strong> {course.title}</Link>
-          <small>{creditsLabel(course)} · {requirementLabel(course, catalog)}</small>
+          <small>{creditsLabel(course)}, {requirementLabel(course, catalog)}</small>
         </li>)}
       </ul>
     </section>

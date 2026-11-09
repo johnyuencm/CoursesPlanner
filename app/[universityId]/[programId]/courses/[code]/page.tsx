@@ -128,6 +128,6 @@ export default async function CoursePage({ params }: Props) {
         Semester offerings are not in the catalog, so check section times with the university.</p>
     </section>
 
-    <p className="muted">This planner is an advising aid, not an official degree audit. <Link href={routes.courses}>All courses</Link> · <Link href={routes.plan}>Plan your semesters</Link></p>
+    <p className="muted">This planner is an advising aid, not an official degree audit. <Link href={routes.courses}>See all courses</Link> or <Link href={routes.plan}>plan your semesters</Link>.</p>
   </article>;
 }

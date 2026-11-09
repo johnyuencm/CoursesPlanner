@@ -60,7 +60,7 @@ export function CourseTargetControl() {
       </label>
       <datalist id="course-target-options">
         {options.map((course) => (
-          <option key={course.code} value={course.code} label={`${course.code} · ${course.title}`} />
+          <option key={course.code} value={course.code} label={`${course.code}: ${course.title}`} />
         ))}
       </datalist>
       <Link href={courseTargetCode ? routes.explore : routes.paths}>{courseTargetCode ? "Path" : "Paths"}</Link>
@@ -134,7 +134,7 @@ export function PrerequisiteChainView({
             <li key={load.termName} className={load.overload ? "overload" : undefined}>
               <strong>{load.termName}</strong>
               <span>{load.addedCodes.join(", ")}</span>
-              <span className="muted">{load.totalCredits} cr{load.created ? " · new term" : ""}{load.overload ? " · overload" : ""}</span>
+              <span className="muted">{load.totalCredits} cr{load.created ? ", new term" : ""}{load.overload ? ", overload" : ""}</span>
             </li>
           ))}
         </ul>
@@ -194,7 +194,7 @@ export function CriticalPathView({
     <>
       <p className="target-path-summary">
         Bottleneck to {analysis.controllingTarget}
-        {analysis.earliestTermName ? ` · earliest ${analysis.earliestTermName}` : ""}
+        {analysis.earliestTermName ? `, earliest ${analysis.earliestTermName}` : ""}
       </p>
       <ol className={`target-path-chain ${compact ? "compact" : ""}`} aria-label="Bottleneck chain">
         {analysis.nodes.map((node) => (
@@ -247,7 +247,7 @@ export function CriticalPathCard({ compact = false }: { compact?: boolean }) {
       <div className="target-path-heading">
         <span className="status-kicker">
           <Route size={15} /> Critical path
-          {analysis.label ? ` · ${analysis.label}` : ""}
+          {analysis.label ? `: ${analysis.label}` : ""}
         </span>
       </div>
       <CriticalPathView analysis={analysis} compact={compact} onSelectCode={openCourse} />
@@ -334,7 +334,7 @@ export function WhyBlockedCard({
       <PrerequisiteChainView
         preview={preview}
         compact={compact}
-        kicker={<><Lock size={15} /> Blocked · {code}</>}
+        kicker={<><Lock size={15} /> {code} is blocked</>}
         onSelectCode={openCourse}
         onApply={() => addPrerequisiteChain(code)}
         applyEnabled={hydrated}

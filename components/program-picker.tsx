@@ -49,7 +49,7 @@ export function ProgramPicker({ programs, colleges }: { programs: PickerProgram[
   return <>
     {remembered && <section className="picker-remembered" aria-labelledby="picker-remembered-title">
       <h2 id="picker-remembered-title">Continue with your last program</h2>
-      <p><Link className="button button-primary" href={remembered.href}>{remembered.program} · {remembered.college}</Link></p>
+      <p><Link className="button button-primary" href={remembered.href}>{remembered.program}, {remembered.college}</Link></p>
     </section>}
     <form className="picker-search" role="search" onSubmit={(event) => event.preventDefault()}>
       <label htmlFor="picker-query">Search colleges and programs</label>
