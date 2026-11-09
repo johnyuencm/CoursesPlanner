@@ -50,7 +50,12 @@ const defaults = pathwayConfig as Pathway[];
 const HEADING_COPY = "Pick a persona. Core, recommended and dependency-critical ★ courses overlay the Explore map; everything else fades. These never change official degree rules.";
 
 export function PathwaysWorkspace() {
-  const { catalogKey, catalog, openCourse, openPicker, plan, announce, careerTargetId, setCareerTargetId, hydrated } = useApp();
+  const { catalogKey, catalog, openCourse, openPicker, plan, announce, notice, careerTargetId, setCareerTargetId, hydrated } = useApp();
+  // The reset Undo belongs to this page: leaving Paths withdraws it, so it can never act on a page that is gone.
+  const resetNotice = useRef<number | null>(null);
+  const noticeRef = useRef(notice);
+  noticeRef.current = notice;
+  useEffect(() => () => { if (resetNotice.current !== null && noticeRef.current?.id === resetNotice.current) announce(""); }, [announce]);
   const routes = useRoutes();
   const [pathways, setPathways] = useState<Pathway[]>(defaults);
   const [selectedId, setSelectedId] = useState(careerTargetId && defaults.some((pathway) => pathway.id === careerTargetId) ? careerTargetId : defaults[0].id);
@@ -114,7 +119,7 @@ export function PathwaysWorkspace() {
     try {
       writeCatalogValue(window.localStorage, "pathways", catalogKey, null);
       setLoadError(null);
-      announce("Default suggestions restored. Your degree plan did not change.", { action: { label: "Undo", run: () => {
+      resetNotice.current = announce("Default suggestions restored. Your degree plan did not change.", { action: { label: "Undo", run: () => {
         if (pathwaysRef.current !== defaults) {
           announce("The suggestions changed after the reset, so Undo is off.", { tone: "warning" });
           return;

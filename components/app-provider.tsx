@@ -77,7 +77,8 @@ interface AppContextValue {
   setWorkspaceSelection: (next: WorkspaceSelection) => void;
   /** The one toast. A new notice replaces the old one; an empty message clears it. */
   notice: Notice | null;
-  announce: (message: string, options?: NoticeOptions) => void;
+  /** Shows the toast and returns its id. */
+  announce: (message: string, options?: NoticeOptions) => number;
 }
 
 export type NoticeOptions = {
@@ -176,7 +177,9 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
   if (planVersion.current.plan !== plan) planVersion.current = { plan, version: planVersion.current.version + 1 };
   const announce = useCallback((message: string, options: NoticeOptions = {}) => {
     // The plan change of the action itself has not rendered yet: it becomes version + 1.
-    setNotice(message ? { ...options, id: ++noticeId, message, planVersion: options.undoesPlanChange ? planVersion.current.version + 1 : undefined } : null);
+    const id = ++noticeId;
+    setNotice(message ? { ...options, id, message, planVersion: options.undoesPlanChange ? planVersion.current.version + 1 : undefined } : null);
+    return id;
   }, []);
   const [careerTargetId, setCareerTargetIdState] = useState<string | null>(null);
   const [courseTargetCode, setCourseTargetCodeState] = useState<string | null>(null);

@@ -149,6 +149,11 @@ function Toast({ notice, dismiss, overlay }: { notice: Notice | null; dismiss: (
     if (focusNext.current && notice) dismissRef.current?.focus();
     focusNext.current = false;
   }, [notice]);
+  // When an Undo is withdrawn (a later plan change) while it has focus, keep focus in the toast.
+  const hasAction = Boolean(notice?.action);
+  useEffect(() => {
+    if (!hasAction && inside.current.focus && (document.activeElement === document.body || !document.activeElement)) dismissRef.current?.focus();
+  }, [hasAction]);
   const sync = () => setPaused(inside.current.hover || inside.current.focus);
   const warning = notice?.tone === "warning";
   const toast = <div ref={rootRef} className="announcement" role="status" aria-live="polite"
