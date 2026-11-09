@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { readCatalog } from "./catalog";
-import { DEFAULT_CATALOG_KEY } from "./catalog-key";
+import { CATALOGS, DEFAULT_CATALOG_KEY } from "./catalog-key";
+import { programPagePaths } from "./course-pages";
 import { requirementTier } from "./requirements-v2";
 import { findUniversity, readReadyRoadmap, readState } from "./roadmap-reader";
 import { SNAPSHOT_ASSET_DIR } from "./snapshot-assets";
@@ -19,6 +20,16 @@ export type SnapshotManifest = {
   /** Every repo file that the Worker can read, as a repo-relative path. */
   files: string[];
 };
+
+/**
+ * Every page path of every program, for `worker.ts` (#110). The build puts it in the Worker as a
+ * small module (`virtual:program-pages`), so a request never reads or parses the full catalog.
+ * ponytail: every catalog key serves the default catalog today (lib/catalog-key.ts CATALOGS).
+ */
+export async function programPageIndex(rootDir: string): Promise<string[]> {
+  const catalog = await readCatalog(path.join(rootDir, CATALOG_FILE));
+  return Object.keys(CATALOGS).flatMap((key) => programPagePaths(key, catalog));
+}
 
 /**
  * Validate every published snapshot and give the static asset files that the

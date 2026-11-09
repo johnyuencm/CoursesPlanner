@@ -40,7 +40,7 @@ const STATIC_SEGMENTS = new Set(["api", ...legacyRedirects.map((redirect) => red
  * True for a `/<universityId>/<programId>/...` path: the program routes answer it.
  * A trailing slash, `/_next/...`, `/api/...` and the old top-level pages stay with vinext.
  */
-export function isProgramPath(pathname: string): boolean {
+function isProgramPath(pathname: string): boolean {
   const first = /^\/([^/]+)\/[^/]/.exec(pathname)?.[1];
   return first !== undefined && !first.startsWith("_") && !STATIC_SEGMENTS.has(first) && !pathname.endsWith("/");
 }
