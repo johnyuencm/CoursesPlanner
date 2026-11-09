@@ -150,9 +150,13 @@ function Toast({ notice, dismiss, overlay }: { notice: Notice | null; dismiss: (
     focusNext.current = false;
   }, [notice]);
   // When an Undo is withdrawn (a later plan change) while it has focus, keep focus in the toast.
+  // Read focus during render, before the commit removes the button: Chromium fires blur on removal.
   const hasAction = Boolean(notice?.action);
+  const actionHadFocus = useRef(false);
+  if (!hasAction && typeof document !== "undefined" && actionRef.current && document.activeElement === actionRef.current) actionHadFocus.current = true;
   useEffect(() => {
-    if (!hasAction && inside.current.focus && (document.activeElement === document.body || !document.activeElement)) dismissRef.current?.focus();
+    if (!hasAction && actionHadFocus.current) dismissRef.current?.focus();
+    actionHadFocus.current = false;
   }, [hasAction]);
   const sync = () => setPaused(inside.current.hover || inside.current.focus);
   const warning = notice?.tone === "warning";
