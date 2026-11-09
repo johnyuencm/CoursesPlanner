@@ -137,3 +137,35 @@ Evidence: vinext dev on port 3101 (main checkout at `65f41ba`), Playwright, own 
 | N1 | `announce` returns the toast id. Paths withdraws its reset toast when the page unmounts, so Undo never acts on a page that is gone. | Walk: reset on Paths, go to Plan: 0 toasts. |
 | N2 | When Undo is withdrawn while it has focus, focus moves to the toast's Dismiss button. | Code (needs two tabs to reproduce). |
 | Drawer | Drawer width uses `100%` of the viewport box, not `100vw`, so the scrollbar does not push it off the edge. | Walk at 400 px: drawer left 0, right 400. |
+
+## Final confirmation
+
+Head: `f99fb0b`. Fix diff: `65f41ba..f99fb0b`, without `artifacts/`. Reviewer: independent.
+
+**Verdict: FAIL** (N1 and the drawer note are resolved. The N2 fix does not work in Chromium. No other new defect.)
+
+Evidence: vinext dev on port 3101, Playwright, own browser context, 1280x800 and 400x800. No console error and no page error in any walk.
+
+| id | status | note |
+|----|--------|------|
+| N1 | resolved | Browser: Paths, Edit suggestions, Restore all defaults: 1 toast with Undo. Client nav to Plan: 0 toasts. Unrelated toast: plan reset on Plan, then Plan, Paths, Plan: the toast and its Undo stay. The cleanup clears only when `notice.id` is the reset id. `liveNotice` keeps `id`, so a withdrawn reset toast still matches. StrictMode: the first simulated cleanup runs before any reset, so `resetNotice.current` is `null` and nothing clears. `announce` is a stable `useCallback`, so the `[announce]` deps never rerun the effect. The return type change (`void` to `number`) breaks no caller: `npm run typecheck` passes, and `dismissNotice` drops the value. |
+| N2 | **not resolved** | Browser, two tabs: tab A confirms the plan reset, `activeElement` is `toast-action`. Tab B adds a semester. Tab A: Undo is removed, `activeElement` is `BODY` (10 polls over 5 s). Cause: Chromium fires `blur` and `focusout` on the Undo button while React removes it (event log: `blur:toast-action`, `focusout:toast-action connected=true`). React 19.3 dispatches it to the root `onBlur`, which sets `inside.current.focus = false`. The new `[hasAction]` effect then sees `false` and does not focus Dismiss. The author evidence was "Code" only. |
+| Drawer | resolved | 400 px, course Details drawer: left 0, right 384.8, `clientWidth` 385, `scrollWidth` 385 (no horizontal scroll). 1280 px after the animation: left 654.8, right 1264.8, `clientWidth` 1265. `100%` on a top-layer `dialog` resolves to the viewport without the scrollbar. |
+
+### New finding
+
+| id | severity | file:line | issue | fix |
+|----|----------|-----------|-------|-----|
+| F1 (N2 reopened) | low | components/app-shell.tsx:152-156 | The `[hasAction]` effect depends on `inside.current.focus`. The removal blur already cleared it, so focus stays on `<body>` after a cross-tab change withdraws a focused Undo. | Record the focus before the commit removes the button. For example, in render: `if (!hasAction && actionRef.current && document.activeElement === actionRef.current) actionHadFocus.current = true;`. Then in the effect: if `actionHadFocus.current`, reset it and focus `dismissRef`. Check it with the two-tab walk above, not by code reading. |
+
+### Checked and found correct
+
+- The `[hasAction]` effect cannot steal focus: it needs `inside.current.focus` and `activeElement` on `<body>`. On mount and on a new toast it is a no-op.
+- After a click on Undo, the `[notice?.id]` effect sets `inside.current.focus` to `false` first, so only the `focusNext` path moves focus. No double focus.
+- Observation outside this diff: in one fresh-context walk (Paths reset, nav to Plan, plan reset, tab B adds a semester), tab A kept Undo after 800 ms. A second walk from a plan with a semester withdrew it in 500 ms. Round 3 also saw the withdrawal. Not reproduced, so not a finding.
+
+## Final confirmation fix (author response)
+
+| id | Fix | Evidence |
+|---|---|---|
+| F1 (N2) | The toast reads during render, before the commit, whether Undo has focus. The effect then moves focus to Dismiss. It no longer depends on blur, which Chromium fires when the button is removed. | Two-tab walk: tab A reset (focus on Undo), tab B Add semester. Tab A: Undo gone, focus on "Dismiss notification". |
