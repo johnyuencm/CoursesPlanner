@@ -169,3 +169,26 @@ Evidence: vinext dev on port 3101, Playwright, own browser context, 1280x800 and
 | id | Fix | Evidence |
 |---|---|---|
 | F1 (N2) | The toast reads during render, before the commit, whether Undo has focus. The effect then moves focus to Dismiss. It no longer depends on blur, which Chromium fires when the button is removed. | Two-tab walk: tab A reset (focus on Undo), tab B Add semester. Tab A: Undo gone, focus on "Dismiss notification". |
+
+## Final confirmation 2
+
+Head: `edd5a75`. Fix diff: `f99fb0b..edd5a75`, without `artifacts/` (only `components/app-shell.tsx`, 4 lines). Reviewer: independent.
+
+**Verdict: PASS** (F1 / N2 is resolved. No new defect.)
+
+Evidence: vinext dev on port 3101 (the served `app-shell.tsx` contains `actionHadFocus`), Playwright, own browser context, 1280x800, two pages that share `localStorage`. No console error and no page error.
+
+| walk | result |
+|------|--------|
+| 1. Tab A confirms the plan reset. Tab B adds a semester. | Tab A before: `activeElement` is `toast-action` (Undo). After: Undo is removed and `activeElement` is "Dismiss notification" on the first poll (300 ms). N2 is fixed. |
+| 2. Tab A confirms the plan reset, then moves focus to "Add semester". Tab B adds a semester. | Undo is removed. Focus stays on "Add semester". The fix does not steal focus. |
+| 3. Tab A confirms the plan reset, then clicks Undo. Then clicks "Add semester". | After Undo: focus is on Dismiss of "Reset undone. Your plan is back." (the `focusNext` path). After "Add semester": focus stays on that button. The flag does not stick. |
+
+### Checked and found correct
+
+- SSR: the render read has a `typeof document` guard, and `actionRef.current` is `null` on the server. No hydration risk, because the read writes only a ref and changes no output.
+- StrictMode and discarded renders: the render write is idempotent (it only sets `true`). The `[hasAction]` effect always resets the flag to `false`, also on mount and when `hasAction` becomes `true` again. A render that React discards cannot leave a stale `true` that later moves focus, because the flag needs `hasAction` to go from `true` to `false` with Undo focused, and the next `[hasAction]` effect run clears it.
+- The flag can be `true` only in the one render where `hasAction` is `false` and the Undo button is still mounted with focus. After the commit, React sets `actionRef.current` to `null`.
+- Stale path (`liveNotice` in `components/app-provider.tsx:517`) keeps `notice.id`, so the toast `key` is the same and the Dismiss button stays mounted. `dismissRef` is valid when the effect runs.
+- Notice set to `null` while Undo has focus: the effect runs, `dismissRef.current` is `null`, so nothing happens, and the flag resets.
+- Note (not a finding): a ref read and write during render is outside the React rule "do not read refs during render". The project has no ESLint config and no React Compiler, so no tool flags it. The behavior is correct for the reasons above.
