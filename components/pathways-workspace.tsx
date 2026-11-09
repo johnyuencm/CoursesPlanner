@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Check,
@@ -55,6 +55,9 @@ export function PathwaysWorkspace() {
   const [pathways, setPathways] = useState<Pathway[]>(defaults);
   const [selectedId, setSelectedId] = useState(careerTargetId && defaults.some((pathway) => pathway.id === careerTargetId) ? careerTargetId : defaults[0].id);
   const [editing, setEditing] = useState(false);
+  // Undo of a reset is valid only while the defaults are still on screen.
+  const pathwaysRef = useRef(pathways);
+  pathwaysRef.current = pathways;
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -112,6 +115,10 @@ export function PathwaysWorkspace() {
       writeCatalogValue(window.localStorage, "pathways", catalogKey, null);
       setLoadError(null);
       announce("Default suggestions restored. Your degree plan did not change.", { action: { label: "Undo", run: () => {
+        if (pathwaysRef.current !== defaults) {
+          announce("The suggestions changed after the reset, so Undo is off.", { tone: "warning" });
+          return;
+        }
         setPathways(before.pathways);
         setSelectedId(before.selectedId);
         setEditing(before.editing);

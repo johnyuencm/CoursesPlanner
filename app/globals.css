@@ -975,3 +975,7 @@ textarea { resize: vertical; }
 .audit-panel .next-controls .search-field { width: 100%; }
 .confirm-step { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 h2.roadmap-selector-title { margin: 0; }
+/* Inside a dialog the toast is in flow below the footer (the page is inert behind a modal dialog). */
+.modal-inner > .announcement { position: static; max-width: none; padding: 0; }
+.modal-inner > .announcement:has(.toast) { padding: 0 1rem 1rem; background: var(--surface-soft); }
+.modal-inner > .announcement .toast { box-shadow: none; }

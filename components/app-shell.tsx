@@ -109,7 +109,7 @@ export function AppShell({ university, program, children }: { university: string
     </div>
     {app.detailCode && <CourseDetail key={app.detailCode} code={app.detailCode} />}
     {app.picker && <CoursePicker />}
-    <Toast notice={app.notice} dismiss={dismissNotice} overlayOpen={Boolean(app.detailCode || app.picker)} />
+    <Toast notice={app.notice} dismiss={dismissNotice} overlay={app.detailCode ?? (app.picker ? "picker" : null)} />
   </div>;
 }
 
@@ -118,15 +118,27 @@ export function AppShell({ university, program, children }: { university: string
  * Undo stays until it is dismissed or replaced, so nobody loses Undo to a timer (WCAG 2.2.1).
  * While a modal dialog is open, everything outside it is inert, so the toast renders inside that dialog.
  */
-function Toast({ notice, dismiss, overlayOpen }: { notice: Notice | null; dismiss: () => void; overlayOpen: boolean }) {
+function Toast({ notice, dismiss, overlay }: { notice: Notice | null; dismiss: () => void; overlay: string | null }) {
   const [host, setHost] = useState<Element | null>(null);
   const [paused, setPaused] = useState(false);
   const inside = useRef({ hover: false, focus: false });
   const focusNext = useRef(false);
   const dismissRef = useRef<HTMLButtonElement>(null);
-  // Modal effects run before this effect, so an open dialog is already in the top layer here.
-  useEffect(() => { setHost(overlayOpen ? document.querySelector("dialog.modal[open]") : null); }, [overlayOpen, notice]);
-  useEffect(() => { setPaused(inside.current.hover || inside.current.focus); }, [notice?.id]);
+  const actionRef = useRef<HTMLButtonElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  // Modal effects run before this effect, so the open dialog (also a dialog that replaced another) is in the top layer here.
+  // Inside a dialog the toast sits in flow under the footer, so it never covers a dialog button.
+  useEffect(() => {
+    setHost(overlay ? document.querySelector("dialog.modal[open] .modal-inner") : null);
+    // A move between page and dialog fires no blur or mouseleave; start from what is true now.
+    inside.current = { hover: false, focus: false };
+    setPaused(false);
+  }, [overlay]);
+  useEffect(() => {
+    inside.current.focus = Boolean(rootRef.current?.contains(document.activeElement));
+    setPaused(inside.current.hover || inside.current.focus);
+    if (notice?.focusAction) actionRef.current?.focus();
+  }, [notice?.id, notice?.focusAction]);
   useEffect(() => {
     if (!notice || notice.action || paused) return;
     const timer = window.setTimeout(dismiss, 6_000);
@@ -139,13 +151,13 @@ function Toast({ notice, dismiss, overlayOpen }: { notice: Notice | null; dismis
   }, [notice]);
   const sync = () => setPaused(inside.current.hover || inside.current.focus);
   const warning = notice?.tone === "warning";
-  const toast = <div className="announcement" role="status" aria-live="polite"
+  const toast = <div ref={rootRef} className="announcement" role="status" aria-live="polite"
     onMouseEnter={() => { inside.current.hover = true; sync(); }} onMouseLeave={() => { inside.current.hover = false; sync(); }}
     onFocus={() => { inside.current.focus = true; sync(); }} onBlur={() => { inside.current.focus = false; sync(); }}>
     {notice && <div key={notice.id} className={warning ? "toast toast-warning" : "toast"}>
       {warning ? <TriangleAlert size={16} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}
       <span>{notice.message}</span>
-      {notice.action && <button type="button" className="toast-action" onClick={() => { focusNext.current = true; notice.action?.run(); }}>{notice.action.label}</button>}
+      {notice.action && <button ref={actionRef} type="button" className="toast-action" onClick={() => { focusNext.current = true; notice.action?.run(); }}>{notice.action.label}</button>}
       <button ref={dismissRef} type="button" className="icon-button" aria-label="Dismiss notification" onClick={dismiss}><X size={15} /></button>
     </div>}
   </div>;

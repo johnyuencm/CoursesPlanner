@@ -80,8 +80,15 @@ interface AppContextValue {
   announce: (message: string, options?: NoticeOptions) => void;
 }
 
-export type NoticeOptions = { tone?: "success" | "warning"; action?: { label: string; run: () => void } };
-export type Notice = NoticeOptions & { id: number; message: string };
+export type NoticeOptions = {
+  tone?: "success" | "warning";
+  action?: { label: string; run: () => void };
+  /** The action undoes the plan change that came just before this notice. Any later plan change removes the action. */
+  undoesPlanChange?: boolean;
+  /** Move keyboard focus to the action (used after an in-place confirm step). */
+  focusAction?: boolean;
+};
+export type Notice = NoticeOptions & { id: number; message: string; planVersion?: number };
 const WARNING: NoticeOptions = { tone: "warning" };
 let noticeId = 0;
 
@@ -164,8 +171,12 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
   const [detailCode, openCourse] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  // Count plan changes during render, so an Undo for an old plan state can be withdrawn (StrictMode-safe: a second render sees the same plan).
+  const planVersion = useRef({ plan, version: 0 });
+  if (planVersion.current.plan !== plan) planVersion.current = { plan, version: planVersion.current.version + 1 };
   const announce = useCallback((message: string, options: NoticeOptions = {}) => {
-    setNotice(message ? { ...options, id: ++noticeId, message } : null);
+    // The plan change of the action itself has not rendered yet: it becomes version + 1.
+    setNotice(message ? { ...options, id: ++noticeId, message, planVersion: options.undoesPlanChange ? planVersion.current.version + 1 : undefined } : null);
   }, []);
   const [careerTargetId, setCareerTargetIdState] = useState<string | null>(null);
   const [courseTargetCode, setCourseTargetCodeState] = useState<string | null>(null);
@@ -326,7 +337,7 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
     setBlockedRawStorage(null);
     setPersistence("saved");
     setStorageError(null);
-    announce("Plan reset. No courses are planned, completed or waived.", { action: { label: "Undo", run: () => restoreSnapshot(before, "Reset undone. Your plan is back.") } });
+    announce("Plan reset. No courses are planned, completed or waived.", { undoesPlanChange: true, focusAction: true, action: { label: "Undo", run: () => restoreSnapshot(before, "Reset undone. Your plan is back.") } });
   }, [announce, restoreSnapshot]);
   const exportPlanBackup = useCallback(
     () => createPlanBackupDownload({
@@ -346,7 +357,7 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
       setBlockedRawStorage(null);
       setPersistence("saved");
       setStorageError(null);
-      announce("Backup restored and saved on this device.", { action: { label: "Undo", run: () => restoreSnapshot(before, "Restore undone. Your earlier plan is back.") } });
+      announce("Backup restored and saved on this device.", { undoesPlanChange: true, action: { label: "Undo", run: () => restoreSnapshot(before, "Restore undone. Your earlier plan is back.") } });
       return true;
     } catch (error) {
       setPersistence("error");
@@ -381,7 +392,7 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
       };
     });
     if (status === "none") announce(`${code} is no longer marked completed or waived.`);
-    else announce(`${code} marked ${status}. ${status === "waived" ? "Waivers do not earn credits." : "Removed from planned semesters to avoid double counting."}`, { action: { label: "Undo", run: () => restoreSnapshot({ ...before, blocked: false }, `${code} is back to its earlier status.`) } });
+    else announce(`${code} marked ${status}. ${status === "waived" ? "Waivers do not earn credits." : "Removed from planned semesters to avoid double counting."}`, { undoesPlanChange: true, action: { label: "Undo", run: () => restoreSnapshot({ ...before, blocked: false }, `${code} is back to its earlier status.`) } });
   }, [catalog, announce, restoreSnapshot]);
   const addCourse = useCallback((code: string, semesterId: string, credits: number, includeCorequisite = false) => {
     const selectedCourse = catalog?.courses.find((course) => course.code === code);
@@ -498,18 +509,21 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
     setPicker({ semesterId, courseCode });
   }, []);
   const closePicker = useCallback(() => setPicker(null), []);
+  // An Undo that would roll back later edits is withdrawn; the message stays.
+  const stale = notice?.action && notice.planVersion !== undefined && planVersion.current.version > notice.planVersion;
+  const liveNotice = useMemo(() => stale && notice ? { ...notice, action: undefined, focusAction: false } : notice, [notice, stale]);
   const contextValue = useMemo<AppContextValue>(() => ({
     catalogKey, catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog, reloadCatalog, plan, setPlan, progress,
     hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode,
     openCourse, picker, openPicker, closePicker, setCourseStatus, addCourse, addCourses, careerTargetId,
     setCareerTargetId, courseTargetCode, setCourseTargetCode, addTargetChain, addPrerequisiteChain,
-    workspaceSelection, setWorkspaceSelection, notice, announce,
+    workspaceSelection, setWorkspaceSelection, notice: liveNotice, announce,
   }), [
     catalogKey, catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog, reloadCatalog, plan, progress, hydrated,
     persistence, storageError, save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker,
     openPicker, closePicker, setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId,
     courseTargetCode, setCourseTargetCode, addTargetChain, addPrerequisiteChain, workspaceSelection,
-    setWorkspaceSelection, notice, announce,
+    setWorkspaceSelection, liveNotice, announce,
   ]);
 
   return contextValue;

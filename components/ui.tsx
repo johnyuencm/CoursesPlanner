@@ -94,15 +94,28 @@ export function ConfirmButton({ children, confirmLabel, onConfirm, className = "
   const [armed, setArmed] = useState(false);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const armRef = useRef<HTMLButtonElement>(null);
-  const wasArmed = useRef(false);
+  const refocus = useRef(false);
   useEffect(() => {
     if (armed) confirmRef.current?.focus();
-    else if (wasArmed.current) armRef.current?.focus();
-    wasArmed.current = armed;
+    else if (refocus.current) armRef.current?.focus();
+    refocus.current = false;
   }, [armed]);
+  // Escape and Cancel return focus to the first button. A press or Tab outside the group only disarms.
+  // (Pointer, not blur: Safari does not focus a pressed button, so a blur check would drop the confirm press.)
+  const groupRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!armed) return;
+    const outside = (event: PointerEvent) => { if (!groupRef.current?.contains(event.target as Node)) setArmed(false); };
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, [armed]);
+  const stepBack = () => { refocus.current = true; setArmed(false); };
   if (!armed) return <button ref={armRef} type="button" className={className} data-keep-open onClick={() => setArmed(true)}>{children}</button>;
-  return <span className="confirm-step" role="group" aria-label={confirmLabel} onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); setArmed(false); } }}>
+  return <span ref={groupRef} className="confirm-step" role="group" aria-label={confirmLabel}
+    onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); stepBack(); } }}
+    onBlur={(event) => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) setArmed(false); }}>
+    {/* The action's toast takes focus (focusAction), so focus is not lost when a menu closes. */}
     <button ref={confirmRef} type="button" className="button button-primary button-small" onClick={() => { setArmed(false); onConfirm(); }}>{confirmLabel}</button>
-    <button type="button" className="button button-secondary button-small" data-keep-open onClick={() => setArmed(false)}>Cancel</button>
+    <button type="button" className="button button-secondary button-small" data-keep-open onClick={stepBack}>Cancel</button>
   </span>;
 }
