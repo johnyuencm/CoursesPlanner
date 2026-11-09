@@ -143,7 +143,7 @@ flowchart LR
   M --> G[global-not-found 404, no layout]
 ```
 
-- The check is one `URL` parse and one `Set` lookup. The `Set` holds every program page path (`programPagePaths()` in `lib/course-pages.ts`). It comes from the published `data/catalog.json` (static assets, through `readCatalog()`), once for each isolate. The first program-path request of an isolate reads and parses that file. If the read fails, the request goes to vinext unchanged.
+- The check is one `URL` parse and one `Set` lookup. The `Set` holds every program page path (`programPagePaths()` in `lib/course-pages.ts`). Since #110 the build makes this list (`virtual:program-pages`). Before #110 the first program-path request of each isolate read and parsed `data/catalog.json` to make it.
 - Since #71 the check covers every `/<universityId>/<programId>/...` path, not only `/courses/<slug>`. An unknown program (`/zz/yy`) also gets the small 404.
 - vinext middleware does not run, so real course pages do not pay for the check. The old `proxy.ts` used vinext middleware.
 - `tests/course-pages.test.ts` pins the rule: unknown slugs and placeholder courses go to the 404, real course pages do not.
@@ -193,6 +193,105 @@ Round 2, a few minutes later, 40 requests per route:
 | New unknown course 404 | 9 ms | 16 ms | 20 ms | 14 of 40 |
 
 The unknown-course 404 is slower again: p50 9 ms, against 6 ms after #61. Course pages are about 1 to 2 ms slower. Issue #110 tracks the fix.
+
+### Page index at build time, 2026-11-08 (issue #110)
+
+Cause. Before the fix, `worker.ts` made the page `Set` at request time:
+
+```text
+first program request of an isolate
+  -> ASSETS fetch _snapshots/manifest.json + data/catalog.json (150 KB)
+  -> JSON.parse, publicCourses() (localeCompare numeric sort), slug for each course
+  -> Set of 125 paths
+every program request: await that promise, then vinext
+```
+
+- In Node, the first `Set` build takes 12 ms. Later builds take 1 ms. The first build pays for lazy compile and the ICU collator.
+- Workers Free starts many isolates. Each new isolate pays this cost on its first program request, a course page or a 404.
+- Every program path waited for the promise, also after it resolved (PR #108 review, finding 4).
+
+Fix. The build makes the page list. `worker.ts` reads it with no I/O and no `await`:
+
+```text
+vite build: programPageIndex() (lib/snapshot-manifest.ts)
+  -> virtual:program-pages: JSON array of page paths (125 paths, about 8 KB)
+worker.ts at isolate start: new Set(pagePaths)
+request: isUnknownProgramPath(pathname, pages) -> /__unknown-page or vinext
+```
+
+- The list has every page of every catalog key in `CATALOGS`. More published programs only make the list longer.
+- Real pages still come from the prerender cache (`X-Vinext-Cache: HIT`).
+- `tests/course-pages.test.ts` pins the rule. `worker.ts` must import `virtual:program-pages`. It must not use `readCatalog`, `lib/catalog` or `await`.
+
+Local evidence: `npm run build`, then `wrangler dev` on `127.0.0.1:3221` with `--inspector-port`. A script attached the V8 sampling profiler (50 µs) through the inspector. The profiler and other local processes make all numbers larger than live `cpuTime`. Compare them only with each other.
+
+| First unknown-course 404 of a new isolate | Busy CPU samples | Samples in the `course-pages` chunk (page `Set` build) |
+| --- | --- | --- |
+| Before (`master` 8332b37) | 117 ms | 13.4 ms |
+| After | 50 ms | 0 ms |
+
+Warm requests (40 in a row) had too much local noise. `/nothing` does not use the check, and it changed from 14 to 19 ms between two runs. So the warm numbers are not evidence. Live `wrangler tail` must give them.
+
+Status and size checks on the built Worker (after the fix):
+
+| Request | Result |
+| --- | --- |
+| `<program>`, `/explore`, `/planner`, `/courses`, `/courses/cs-5800`, `/courses/cs-5010`, `/pathways`, `/pathways/systems` | 200, `X-Vinext-Cache: HIT` |
+| `<program>/courses/zz-9999`, `/courses/cis-200m`, `/pathways/zz-9999`, `/zz/yy`, `/northeastern/no-such-program` | 404, 6,729 bytes (`global-not-found`) |
+| `/nothing` | 404, 6,694 bytes |
+| `/courses/cs-5800`, `/courses/` | 308 to the program path |
+| `/` | 200, `X-Vinext-Cache: HIT` (picker) |
+
+#### Live measurement after the deploy
+
+Do these steps after the deploy of this fix. Do not change the Worker during the run.
+
+1. Wait 5 minutes after the deploy, so that most isolates are warm.
+2. In terminal 1, start the tail:
+
+   ```bash
+   npx wrangler tail coursesplanner --format json > tail-110.json
+   ```
+
+3. In terminal 2, send 40 rounds. Each round sends a course page, an unknown course and a route miss:
+
+   ```bash
+   SITE=https://coursesplanner.johnyc.com
+   P=$SITE/northeastern/computer-science-mscs-sea-8b0d00dbda
+   UA=cp-110-measure
+   for i in $(seq 101 140); do
+     curl -s -o /dev/null -A "$UA" "$P/courses/cs-5800"
+     curl -s -o /dev/null -A "$UA" "$P/courses/zz-9$i"
+     curl -s -o /dev/null -A "$UA" "$SITE/nothing-$i"
+   done
+   ```
+
+4. Wait 30 seconds. Stop the tail with Ctrl+C.
+5. Get p50, p90, max and the count over 10 ms for each route:
+
+   ```bash
+   node -e '
+   const text = require("fs").readFileSync("tail-110.json", "utf8").trim();
+   const events = JSON.parse("[" + text.replace(/}\s*{/g, "},{") + "]");
+   const groups = {};
+   for (const e of events) {
+     const req = e.event?.request;
+     if (req?.headers?.["user-agent"] !== "cp-110-measure") continue;
+     const path = new URL(req.url).pathname;
+     const key = path.includes("/zz-") ? "unknown course 404" : path.startsWith("/nothing") ? "route miss 404" : "course page";
+     (groups[key] ??= []).push(e.cpuTime);
+   }
+   for (const [key, t] of Object.entries(groups)) {
+     t.sort((a, b) => a - b);
+     const q = (p) => t[Math.min(t.length - 1, Math.floor(p * t.length))];
+     console.log(key, "n", t.length, "p50", q(0.5), "p90", q(0.9), "max", t.at(-1), "over 10 ms", t.filter((x) => x > 10).length);
+   }'
+   ```
+
+6. Add the numbers to a table below this section, with the Worker version (`npx wrangler deployments list`).
+
+Pass: unknown-course 404 p50 6 ms or lower, with at least 40 events. Course page p50 4 ms or lower.
+If the unknown-course 404 and `/nothing` have the same CPU, the rest of the cost is the vinext `global-not-found` render, not `worker.ts`.
 
 ### Program paths, 2026-11-08 (issue #71)
 
