@@ -8,9 +8,36 @@ export function PageHeading({ eyebrow, title, description, actions }: { eyebrow?
   return <header className="page-heading"><div>{eyebrow && <p className="eyebrow"><span />{eyebrow}</p>}<h1>{title}</h1><p className="page-description">{description}</p></div>{actions && <div className="heading-actions">{actions}</div>}</header>;
 }
 
+const OVERLAY_KEY = "courseMapOverlay";
+const overlayToken = () => (typeof window === "undefined" ? undefined : (window.history.state as Record<string, unknown> | null)?.[OVERLAY_KEY]);
+
+/**
+ * Back closes an open dialog before it leaves the page. The dialog adds one history entry.
+ * A dialog that replaces another dialog (course detail -> add course) reuses that entry,
+ * so Back never walks through closed dialogs. Closing with Escape, the X or the backdrop removes the entry.
+ */
+function useBackCloses(onClose: () => void) {
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const token = `${Date.now()}-${Math.random()}`;
+    const state = { ...(window.history.state as Record<string, unknown> | null), [OVERLAY_KEY]: token };
+    if (overlayToken()) window.history.replaceState(state, "");
+    else window.history.pushState(state, "");
+    const onPop = () => { if (overlayToken() !== token) close.current(); };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      // Wait one task: a dialog that opens in the same commit takes over the entry instead.
+      window.setTimeout(() => { if (overlayToken() === token) window.history.back(); }, 0);
+    };
+  }, []);
+}
+
 export function Modal({ title, eyebrow, children, onClose, drawer = false }: { title: string; eyebrow?: string; children: ReactNode; onClose: () => void; drawer?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  useBackCloses(onClose);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const dialog = ref.current;
@@ -26,7 +53,7 @@ export function Meter({ value, max, label, detail }: { value: number; max: numbe
 }
 
 export function LoadingState() {
-  return <div className="empty-state loading-state" role="status"><LoaderCircle className="spin" size={28} /><h2>Finding your direction</h2><p>Loading the official catalog and your local plan.</p></div>;
+  return <div className="empty-state loading-state" role="status"><LoaderCircle className="spin" size={28} aria-hidden="true" /><h2>Loading the course map</h2><p>Reading the official catalog and the plan saved in this browser.</p></div>;
 }
 
 export function EmptyState({ icon, title, children, action }: { icon?: ReactNode; title: string; children: ReactNode; action?: ReactNode }) {

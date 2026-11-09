@@ -72,7 +72,7 @@ export function RoadmapSelectorView({
   const hasSelectableUniversity = universities.some(isUniversitySelectable);
   const renderProgram = (program: DiscoveredProgram) => (
     <option key={program.id} value={program.id} disabled={!isProgramSelectable(program)}>
-      {programDisplayName(program)} · {programStatusText(program)}
+      {programDisplayName(program)} ({programStatusText(program)})
     </option>
   );
 
@@ -81,14 +81,16 @@ export function RoadmapSelectorView({
   if (!loading && !error && !hasSelectableUniversity) return null;
 
   return (
-    <section className="roadmap-selector" aria-label="University and program prerequisite roadmaps" aria-busy={loading || programsLoading || roadmapLoading}>
-      <div className="roadmap-selector-heading">
-        <div>
-          <h2><BookOpen size={18} /> Prerequisite roadmaps</h2>
-          <p className="muted small-text">Explore a ready university program without leaving the current plan. The current program stays the default.</p>
-        </div>
-        {universityId && <button type="button" className="button button-secondary button-small" onClick={onReset}><RotateCcw size={14} /> Back to the current program</button>}
-      </div>
+    // A closed disclosure by default: the map stays the first thing on the page, also on a phone.
+    // It opens by itself when another roadmap is open or when loading failed, so the retry stays in view.
+    <details className="roadmap-selector" open={Boolean(universityId) || Boolean(error) || undefined} aria-label="University and program prerequisite roadmaps" aria-busy={loading || programsLoading || roadmapLoading}>
+      <summary className="roadmap-selector-heading">
+        <span>
+          <span className="roadmap-selector-title"><BookOpen size={18} aria-hidden="true" /> Other university roadmaps</span>
+          <span className="muted small-text">Look at a ready program from another university. Your plan does not change.</span>
+        </span>
+      </summary>
+      {universityId && <p><button type="button" className="button button-secondary button-small" onClick={onReset}><RotateCcw size={14} aria-hidden="true" /> Back to the current program</button></p>}
       <p id="roadmap-selector-guide" className="roadmap-selector-guide">Ready programs appear first. Other discovered programs stay visible with their status but cannot open until ready.</p>
       <div className="roadmap-status-guide" role="note" aria-label="Roadmap status guide">
         <strong>Status guide</strong>
@@ -105,14 +107,14 @@ export function RoadmapSelectorView({
             <optgroup label="United States">
               {us.map((entry) => (
                 <option key={entry.id} value={entry.id} disabled={!isUniversitySelectable(entry)}>
-                  {entry.university} · {universityStatusText(entry)}
+                  {entry.university} ({universityStatusText(entry)})
                 </option>
               ))}
             </optgroup>
             <optgroup label="World">
               {world.map((entry) => (
                 <option key={entry.id} value={entry.id} disabled={!isUniversitySelectable(entry)}>
-                  {entry.university} · {universityStatusText(entry)}
+                  {entry.university} ({universityStatusText(entry)})
                 </option>
               ))}
             </optgroup>
@@ -138,9 +140,9 @@ export function RoadmapSelectorView({
           : roadmapLoading ? <span>Loading roadmap…</span>
           : roadmapError ? <span className="roadmap-selector-error">Unable to load roadmap: {roadmapError} <button type="button" className="text-button" onClick={onRetryRoadmap}>Retry loading roadmap</button></span>
           : programId ? <span>Showing the selected roadmap.</span>
-          : <span className="muted">{readyCount} ready program{readyCount === 1 ? "" : "s"} · other programs are still being crawled.</span>}
+          : <span className="muted">{readyCount} ready program{readyCount === 1 ? "" : "s"}. Other programs are still being crawled.</span>}
       </div>
-    </section>
+    </details>
   );
 }
 

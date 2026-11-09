@@ -47,7 +47,7 @@ function validPathways(value: unknown, catalogKey: string): value is Pathway[] {
 }
 
 const defaults = pathwayConfig as Pathway[];
-const HEADING_COPY = "Pick a persona. CORE, RECOMMENDED, and dependency-critical ★ courses overlay the Explore map; everything else fades. These never change official degree rules.";
+const HEADING_COPY = "Pick a persona. core, recommended and dependency-critical ★ courses overlay the Explore map; everything else fades. These never change official degree rules.";
 
 export function PathwaysWorkspace() {
   const { catalogKey, catalog, openCourse, openPicker, plan, announce, careerTargetId, setCareerTargetId, hydrated } = useApp();
@@ -55,7 +55,6 @@ export function PathwaysWorkspace() {
   const [pathways, setPathways] = useState<Pathway[]>(defaults);
   const [selectedId, setSelectedId] = useState(careerTargetId && defaults.some((pathway) => pathway.id === careerTargetId) ? careerTargetId : defaults[0].id);
   const [editing, setEditing] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -96,27 +95,30 @@ export function PathwaysWorkspace() {
     try {
       if (!validPathways(pathways, catalogKey)) throw new Error("recommendations contain an invalid course code or empty group");
       writeCatalogValue(window.localStorage, "pathways", catalogKey, JSON.stringify(pathways));
-      setMessage("Custom recommendations saved on this device.");
       setLoadError(null);
       setEditing(false);
-      announce("Suggested pathway recommendations saved. Degree requirements were not changed.");
+      announce("Suggestions saved on this device. Degree requirements did not change.");
     } catch (error) {
-      setMessage(null);
-      setLoadError(`Recommendations were not saved: ${error instanceof Error ? error.message : "browser storage is unavailable"}.`);
+      setLoadError(`Suggestions were not saved: ${error instanceof Error ? error.message : "browser storage is unavailable"}.`);
     }
   };
   const reset = () => {
-    if (!window.confirm("Reset every suggested pathway to the project defaults on this device? Your degree plan will not change.")) return;
+    // Undo replaces the confirm dialog: keep what is on screen and what is saved, then restore both on Undo.
+    const before = { pathways, selectedId, editing, saved: (() => { try { return readCatalogValue(window.localStorage, "pathways", catalogKey); } catch { return null; } })() };
     setPathways(defaults);
     setSelectedId(defaults[0].id);
     setEditing(false);
     try {
       writeCatalogValue(window.localStorage, "pathways", catalogKey, null);
       setLoadError(null);
-      setMessage("Default recommendations restored. Your degree plan was not changed.");
-      announce("Default pathway recommendations restored.");
+      announce("Default suggestions restored. Your degree plan did not change.", { action: { label: "Undo", run: () => {
+        setPathways(before.pathways);
+        setSelectedId(before.selectedId);
+        setEditing(before.editing);
+        try { writeCatalogValue(window.localStorage, "pathways", catalogKey, before.saved); } catch { /* The tab still shows the earlier suggestions. */ }
+        announce("Your earlier suggestions are back.");
+      } } });
     } catch (error) {
-      setMessage(null);
       setLoadError(`Defaults are restored in this tab, but browser storage could not be updated: ${error instanceof Error ? error.message : "browser storage is unavailable"}.`);
     }
   };
@@ -127,13 +129,13 @@ export function PathwaysWorkspace() {
   return <>
     <PageHeading title={PERSONA_PROMPT} description={HEADING_COPY} actions={<div className="heading-actions"><Link className="button button-primary" href={routes.explore}>Show on map</Link><button className="button button-secondary" onClick={() => setEditing((value) => !value)}><Edit3 size={15} /> {editing ? "Stop editing" : "Edit suggestions"}</button>{editing && <button className="button button-primary" onClick={save}><Save size={15} /> Save on this device</button>}</div>} />
     <div className="recommendation-banner"><Info size={18} /><div><strong>Suggested persona — not a degree requirement.</strong><p>Recommendations never change your official core, breadth, elective, or credit audit. Confirm course fit and availability with your advisor.</p></div></div>
-    {(loadError || message) && <div className={`global-banner ${loadError ? "warning" : "success"}`} role={loadError ? "alert" : "status"}>{loadError ? <TriangleAlert size={16} /> : <Check size={16} />}<span>{loadError ?? message}</span></div>}
+    {loadError && <div className="global-banner warning inline-banner" role="alert"><TriangleAlert size={16} aria-hidden="true" /><span>{loadError}</span></div>}
     <section className="persona-picker" aria-label={PERSONA_PROMPT}>{pathways.map((pathway) => <button key={pathway.id} type="button" className={selected.id === pathway.id ? "selected" : ""} aria-pressed={selected.id === pathway.id} onClick={() => { setSelectedId(pathway.id); setCareerTargetId(pathway.id); }}><strong>{pathway.name}</strong><span>{pathway.description}</span>{careerTargetId === pathway.id ? <small>On the map</small> : null}</button>)}</section>
     <div className="pathway-layout">
       <section className="pathway-detail">
         <header>{editing ? <div>{<><label className="field-label" htmlFor="pathway-name">Pathway name</label><input id="pathway-name" value={selected.name} maxLength={100} onChange={(event) => replaceSelected((pathway) => ({ ...pathway, name: event.target.value }))} /><label className="field-label" htmlFor="pathway-description">Description</label><textarea id="pathway-description" value={selected.description} maxLength={300} rows={3} onChange={(event) => replaceSelected((pathway) => ({ ...pathway, description: event.target.value }))} /></>}</div> : <div><p>{selected.description}</p></div>}</header>
-        <div className="pathway-groups">{selected.groups.map((group, groupIndex) => <section key={`${selected.id}-${groupIndex}`} className="pathway-group"><div className="pathway-group-heading">{editing ? <input aria-label={`Group ${groupIndex + 1} label`} value={group.label} maxLength={100} onChange={(event) => replaceSelected((pathway) => ({ ...pathway, groups: pathway.groups.map((item, index) => index === groupIndex ? { ...item, label: event.target.value } : item) }))} /> : <><span>{String(groupIndex + 1).padStart(2, "0")}</span><h3>{group.label}</h3></>}<span>{group.courses.length} courses</span></div>
-          {editing ? <label className="pathway-code-editor"><span>Course codes · comma separated</span><textarea rows={3} value={group.courses.join(", ")} onChange={(event) => { const courses = [...new Set(event.target.value.toUpperCase().split(",").map((code) => code.trim()).filter(Boolean))]; replaceSelected((pathway) => ({ ...pathway, groups: pathway.groups.map((item, index) => index === groupIndex ? { ...item, courses } : item) })); }} /></label> : <div className="pathway-course-list">{group.courses.map((code) => {
+        <div className="pathway-groups">{selected.groups.map((group, groupIndex) => <section key={`${selected.id}-${groupIndex}`} className="pathway-group"><div className="pathway-group-heading">{editing ? <input aria-label={`Group ${groupIndex + 1} label`} value={group.label} maxLength={100} onChange={(event) => replaceSelected((pathway) => ({ ...pathway, groups: pathway.groups.map((item, index) => index === groupIndex ? { ...item, label: event.target.value } : item) }))} /> : <h3>{group.label}</h3>}<span>{group.courses.length} courses</span></div>
+          {editing ? <label className="pathway-code-editor"><span>Course codes, separated by commas</span><textarea rows={3} value={group.courses.join(", ")} onChange={(event) => { const courses = [...new Set(event.target.value.toUpperCase().split(",").map((code) => code.trim()).filter(Boolean))]; replaceSelected((pathway) => ({ ...pathway, groups: pathway.groups.map((item, index) => index === groupIndex ? { ...item, courses } : item) })); }} /></label> : <div className="pathway-course-list">{group.courses.map((code) => {
             const course = courseMap.get(code);
             const badge = course ? requirementBadge(course.requirementType) : null;
             const overlayMark = overlayNodeCopy(code, overlay);
@@ -149,7 +151,7 @@ export function PathwaysWorkspace() {
         </section>
         <section className="rail-card">
           <h3>Map overlay</h3>
-          <p>Explore keeps CORE, RECOMMENDED, and dependency-critical ★ courses for {selected.name} readable and fades the rest. Plan is unchanged.</p>
+          <p>Explore keeps core, recommended and dependency-critical ★ courses for {selected.name} readable and fades the rest. Plan is unchanged.</p>
         </section>
         <section className="rail-card">
           <h3>Validation</h3>
