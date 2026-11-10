@@ -155,7 +155,7 @@ Never run an unbounded crawl: `--crawl-roadmaps` requires `--limit=<1..100>`. `-
 
 ## Catalog cache and refresh behavior
 
-Page loads never scrape remote catalogs. `GET /api/catalog` reads `data/catalogs/<id>/catalog.json` when present, otherwise `data/catalog.json`, and returns `503` if no valid normalized cache exists.
+Page loads never scrape remote catalogs. `GET /api/catalog` reads `data/catalog.json` (or `CATALOG_DATA_PATH`), and returns `503` if no valid normalized cache exists. A refresh also writes a git-ignored copy to `data/catalogs/<id>/`. The app never reads that copy, so a stale copy cannot hide the tracked snapshot.
 
 ### Catalog key
 
