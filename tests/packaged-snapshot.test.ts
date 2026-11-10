@@ -1,11 +1,12 @@
 import { strict as assert } from "node:assert";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { NextRequest } from "next/server";
 
 import { handleRoadmapsRequest } from "../app/api/roadmaps/route";
-import { validateProgramRoadmap } from "../lib/catalog";
+import { defaultCatalogFilePath, validateProgramRoadmap } from "../lib/catalog";
 import { findUniversity, readProgramDirectory, readReadyRoadmap } from "../lib/roadmap-reader";
 import { isUniversitySelectable } from "../lib/roadmaps";
 import { loadUniversityDirectory } from "../lib/university-directory";
@@ -84,4 +85,21 @@ test("the committed program is published to the Worker, and the route has no cra
   assert.ok(published.includes(`${UNIVERSITY_ID}/${PROGRAM_ID}`));
   const route = readFileSync(path.join(ROOT, "app/api/roadmaps/route.ts"), "utf8");
   assert.doesNotMatch(route, /cheerio|catalog-service\/(adapters|crawler|refresh|roadmaps)/);
+});
+
+test("the default catalog is the tracked data/catalog.json, never an ignored local refresh copy (#123)", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "catalog-path-"));
+  const saved = process.env.CATALOG_DATA_PATH;
+  delete process.env.CATALOG_DATA_PATH;
+  try {
+    // A catalog-service refresh leaves this ignored mirror; a stale one must not shadow the snapshot.
+    mkdirSync(path.join(root, "data", "catalogs", "neu-mscs-seattle"), { recursive: true });
+    writeFileSync(path.join(root, "data", "catalogs", "neu-mscs-seattle", "catalog.json"), "{}");
+    process.chdir(root);
+    assert.equal(path.relative(process.cwd(), defaultCatalogFilePath()), path.join("data", "catalog.json"));
+  } finally {
+    process.chdir(ROOT);
+    if (saved !== undefined) process.env.CATALOG_DATA_PATH = saved;
+    rmSync(root, { recursive: true, force: true });
+  }
 });
