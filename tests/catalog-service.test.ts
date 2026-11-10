@@ -23,6 +23,7 @@ import { KNOWN_ADAPTER_IDS, type CatalogSourceDefinition } from "../lib/source-t
 import { registeredAdapters } from "../catalog-service/adapters";
 import { readCatalog } from "../lib/catalog";
 import { requirementView } from "../lib/requirements-v2";
+import { publishedCopy } from "./published-copy";
 
 const fixture = (name: string) => readFileSync(path.join(process.cwd(), "data", "raw", name), "utf8");
 
@@ -557,14 +558,17 @@ test("two registered sources refresh independently from the same fixtures", { ti
   }
 });
 
-test("catalog service HTTP handlers list sources and universities without changing refresh behavior", async () => {
+test("catalog service HTTP handlers list sources and universities without changing refresh behavior", async (t) => {
   const sources = await loadRegistry();
   const universities = await loadUniversityDirectory();
   const catalog = await readCatalog();
+  // University status reads data/catalogs/; use a tracked copy so ignored crawl output cannot leak in (#123).
+  const rootDir = await publishedCopy();
+  t.after(() => rm(rootDir, { recursive: true, force: true }));
   const context = {
     sources,
     universities,
-    rootDir: process.cwd(),
+    rootDir,
     refresh: async () => ({ catalog, changed: false }),
     statuses: () => ({}),
   };
