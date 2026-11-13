@@ -138,7 +138,8 @@ h4 { font-size: var(--fs-sm); letter-spacing: 0; }
 .top-search { display: flex; align-items: center; gap: 0.5rem; min-height: 42px; max-width: 720px; width: 100%; padding: 0 1rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-soft); color: var(--muted); }
 .top-search:focus-within, .search-field:focus-within, .target-control:focus-within { border-color: var(--focus); background: white; box-shadow: 0 0 0 1px var(--focus); }
 .top-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); }
-.topbar-program { display: none; grid-column: 1 / -1; margin: 0; color: var(--ink-soft); font-size: var(--fs-sm); font-weight: 600; line-height: 1.3; }
+.topbar-program { display: none; grid-column: 1 / -1; margin: 0; overflow: hidden; color: var(--ink-soft); font-size: var(--fs-sm); font-weight: 600; line-height: 1.3; white-space: nowrap; text-overflow: ellipsis; }
+.topbar-program-short { display: none; }
 .top-utilities { display: flex; align-items: center; gap: 0.75rem; }
 .target-control { display: flex; align-items: center; gap: 0.5rem; min-height: 42px; padding: 0.25rem 0.5rem 0.25rem 0.5rem; border: 1px solid var(--line); border-radius: 999px; background: white; }
 .target-control svg { color: var(--red); }
@@ -856,6 +857,8 @@ textarea { resize: vertical; }
 @media (max-width: 620px) {
   .main-content { padding-left: 0.75rem; padding-right: 0.75rem; }
   .topbar, .global-banner, .workspace-footer { padding-left: 0.75rem; padding-right: 0.75rem; }
+  .topbar-program-full { display: none; }
+  .topbar-program-short { display: inline; }
   .profile-menu > summary > span:last-of-type { display: none; }
   .page-heading h1 { font-size: var(--fs-2xl); }
   .requirement-stats { grid-template-columns: 1fr; gap: 0.75rem; }

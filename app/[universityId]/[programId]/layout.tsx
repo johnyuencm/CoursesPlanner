@@ -22,9 +22,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProgramLayout({ children, params }: Props & { children: React.ReactNode }) {
-  const { key, catalog } = await readProgram(params);
+  const { key, catalog, shortName } = await readProgram(params);
   // The URL selects the catalog. `key` gives each program its own provider state.
   return <AppProvider key={key} catalogKey={key}>
-    <AppShell university={catalog.university ?? ""} program={catalog.program ?? catalog.requirements.name}>{children}</AppShell>
+    <AppShell university={catalog.university ?? ""} program={catalog.program ?? catalog.requirements.name} shortName={shortName}>{children}</AppShell>
   </AppProvider>;
 }

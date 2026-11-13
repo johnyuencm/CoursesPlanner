@@ -23,8 +23,8 @@ const navIcons: Record<ReturnType<typeof primaryNav>[number]["label"], LucideIco
 
 const pathways = pathwayConfig as Pathway[];
 
-/** `university` and `program` come from the snapshot (server layout), so the first HTML names them. */
-export function AppShell({ university, program, children }: { university: string; program: string; children: React.ReactNode }) {
+/** `university`, `program` and `shortName` come from the snapshot (server layout), so the first HTML names them. */
+export function AppShell({ university, program, shortName, children }: { university: string; program: string; shortName: string; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const app = useApp();
@@ -74,8 +74,8 @@ export function AppShell({ university, program, children }: { university: string
     </aside>
     <div className="workspace">
       <header className="topbar">
-        {/* The sidebar hides the names on narrow screens (1180 px or less); this line shows them there (#117). */}
-        <p className="topbar-program">{[university, program].filter(Boolean).join(" · ")}</p>
+        {/* The sidebar hides the names at 1180 px or less; this line shows them there. Phones get the short name, so it stays one line (#117). */}
+        <p className="topbar-program"><span className="topbar-program-full">{[university, program].filter(Boolean).join(" · ")}</span><span className="topbar-program-short">{shortName}</span></p>
         <form className="top-search" onSubmit={submitSearch} role="search">
           <Search size={16} />
           <input aria-label="Search courses, topics, or keywords" type="search" placeholder="Search courses, topics, or keywords…" value={query} onChange={(event) => setQuery(event.target.value)} />

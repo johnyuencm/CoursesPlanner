@@ -66,6 +66,11 @@ test("clip stops after a whole word and drops a dangling separator or joining wo
   assert.equal(clip("CS 2100 Program Design and Implementation 1", 41), "CS 2100 Program Design…");
   assert.equal(clip("CY 5001 Cyberlaw: Privacy, Ethics, and Digital Rights", 30), "CY 5001 Cyberlaw: Privacy…");
   assert.equal(clip("Supercalifragilistic", 10), "Supercali…", "one long word is cut inside the word");
+  // A description cut in its last sentence drops the dangling words and the stranded period (#117, review round 2).
+  assert.equal(clip("Outside the degree requirements (a prerequisite for other courses here). It unlocks 3 courses.", 75), "Outside the degree requirements (a prerequisite for other courses here)…");
+  assert.equal(clip("Breadth course: systems. It unlocks no other course in this catalog.", 61), "Breadth course: systems. It unlocks no other course…");
+  assert.equal(clip("MISM 6200 Managing IT Projects", 22), "MISM 6200 Managing IT…", "the acronym IT is not the word it");
+  assert.equal(clip("It unlocks no other course in this catalog.", 22), "It unlocks no…", "a negation stays");
   assert.equal(clip("CS 5800", 1), "…");
   assert.equal(clip("CS 5800", 0), "");
   assert.equal(clip("CS 5800", -16), "", "a negative limit gives an empty text, not a cut from the end");
@@ -94,4 +99,6 @@ test("course page descriptions fit in 160 characters, and every description is u
   assert.ok(coursePages.length > 300, `only ${coursePages.length} course pages`);
   const long = coursePages.filter((page) => page.description.length > 160).map((page) => `${page.description.length} ${page.pathname}`);
   assert.deepEqual(long, [], `${long.length} of ${coursePages.length} course descriptions are longer than 160 characters`);
+  const dangling = coursePages.filter((page) => /(?:\bIt|\.)…$/.test(page.description)).map((page) => page.description);
+  assert.deepEqual(dangling, [], "a clipped description ends in \"It…\" or \".…\"");
 });

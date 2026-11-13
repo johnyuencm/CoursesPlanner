@@ -36,7 +36,7 @@ The product name is **Course Map**. The college and program names come from the 
 | Course page title | `<code> <course title> · <short name>`, 60 characters or less. A long course title stops after a whole word and ends with "…". |
 | Course page description | 160 characters or less, clipped the same way |
 | Sidebar | `Course Map`, the university, the program |
-| Header, 1180 px or less | `<university> · <program>` above the search box. The sidebar hides the names at these widths. |
+| Header, 1180 px or less | One line above the search box: `<university> · <program>`, and the short name at 620 px or less. The sidebar hides the names at these widths. |
 | Icons | `public/icon.svg`, `public/favicon.ico` |
 
 - `data/catalog.json` gets the short name from `catalog-service/sources/neu-mscs-seattle.json` at each refresh. A Map-tier roadmap gets it from `crawl.shortNames` in `catalog-service/universities.json` (key: program id): the crawl writes it into the roadmap. Do not edit the short name in a roadmap file. `tests/published-programs.test.ts` fails when the two differ.
