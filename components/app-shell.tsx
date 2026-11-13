@@ -74,6 +74,8 @@ export function AppShell({ university, program, children }: { university: string
     </aside>
     <div className="workspace">
       <header className="topbar">
+        {/* The sidebar hides the names on narrow screens (1180 px or less); this line shows them there (#117). */}
+        <p className="topbar-program">{[university, program].filter(Boolean).join(" · ")}</p>
         <form className="top-search" onSubmit={submitSearch} role="search">
           <Search size={16} />
           <input aria-label="Search courses, topics, or keywords" type="search" placeholder="Search courses, topics, or keywords…" value={query} onChange={(event) => setQuery(event.target.value)} />
