@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Background, BackgroundVariant, Controls, Handle, MarkerType, MiniMap, Position, ReactFlow, ReactFlowProvider, useReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
 import { ArrowRight, ChevronDown, ChevronUp, Crosshair, Info, List, Maximize2, Network, Plus, Search } from "lucide-react";
-import { catalogRelations, findCourses, PROGRAM_COL, PROGRAM_ROW, programFlowPositions, programMapCodes, selectedChainRelations, shouldAutoLocateFind, visibleGraphDistances, wrapFindIndex, type GraphRelation } from "@/lib/graph";
-import { dependencyClosure, expressionLabel } from "@/lib/validation";
+import { findCourses, PROGRAM_COL, PROGRAM_ROW, programMapCodes, shouldAutoLocateFind, wrapFindIndex } from "@/lib/graph";
+import { buildGraphProjection, type GraphScope } from "@/lib/graph-projection";
+import { expressionLabel } from "@/lib/validation";
 import { useApp } from "./app-provider";
 import { CodeLinks, requirementBadge } from "./course-card";
 import { CatalogState } from "./catalog-state";
 import { PageHeading, creditLabel } from "./ui";
 
-type GraphScope = "program" | "1" | "2" | "full";
 type GraphData = {
   code: string; title: string; kind: string; nodeClass: string; credits: string; prerequisites: string; corequisites: string;
   relation: string; emphasized: boolean; focused: boolean; compact: boolean; hasIncoming: boolean; hasOutgoing: boolean;
@@ -69,14 +69,6 @@ function nodeClassFor(kind: string, completed: boolean) {
   return "graph-external";
 }
 
-function typeOrder(code: string, courseMap: Map<string, { requirementType: string }>) {
-  const course = courseMap.get(code);
-  if (!course || course.requirementType === "external") return 3;
-  if (course.requirementType === "core") return 0;
-  if (course.requirementType === "breadth") return 1;
-  return 2;
-}
-
 function nodeRequirementCopy(course: { requirementType: string; unlocks: string[]; prerequisites: Parameters<typeof expressionLabel>[0]; corequisites: Parameters<typeof expressionLabel>[0] } | undefined, kind: "prerequisites" | "corequisites") {
   if (!course) return "Unknown";
   if (course.requirementType === "external") {
@@ -103,54 +95,28 @@ function GraphWorkspace() {
   const courseMap = useMemo(() => new Map(catalog?.courses.map((course) => [course.code, course]) ?? []), [catalog]);
   const history = useMemo(() => new Set([...plan.completedCourses, ...plan.waivedCourses]), [plan.completedCourses, plan.waivedCourses]);
   const recorded = useMemo(() => new Set([...history, ...plan.semesters.flatMap((semester) => semester.courses.map((course) => course.code))]), [history, plan.semesters]);
-  const relations = useMemo(() => catalogRelations(catalog?.courses ?? []), [catalog]);
-  const upstream = useMemo(() => dependencyClosure(selectedCode, catalog?.courses ?? [], "upstream"), [catalog, selectedCode]);
-  const downstream = useMemo(() => dependencyClosure(selectedCode, catalog?.courses ?? [], "downstream"), [catalog, selectedCode]);
-  const visible = useMemo(() => {
-    if (!catalog) return new Map<string, number>();
-    return visibleGraphDistances(depth, focusCode, catalog.courses, catalog.requirements, relations);
-  }, [catalog, depth, focusCode, relations]);
+  const projection = useMemo(
+    () => catalog ? buildGraphProjection({ courses: catalog.courses, requirements: catalog.requirements, scope: depth, focusCode, selectedCode }) : null,
+    [catalog, depth, focusCode, selectedCode],
+  );
   const graph = useMemo(() => {
-    const highlighted = new Set([selectedCode, ...upstream, ...downstream]);
-    const scoped = relations.filter((edge: GraphRelation) => visible.has(edge.source) && visible.has(edge.target));
-    const drawn = depth === "program" ? selectedChainRelations(scoped, highlighted) : scoped;
-    const incoming = new Set(drawn.map((edge) => edge.target));
-    const outgoing = new Set(drawn.map((edge) => edge.source));
+    if (!projection) return { nodes: [], edges: [] };
+    const incoming = new Set(projection.relations.map((edge) => edge.target));
+    const outgoing = new Set(projection.relations.map((edge) => edge.source));
+    const highlighted = new Set([selectedCode, ...projection.upstream, ...projection.downstream]);
     const makeNode = (code: string, x: number, y: number): GraphNode => {
       const course = courseMap.get(code);
-      const relation = code === selectedCode ? "Selected course" : upstream.has(code) ? "Upstream prerequisite" : downstream.has(code) ? "Downstream connection" : "";
+      const relation = code === selectedCode ? "Selected course" : projection.upstream.has(code) ? "Upstream prerequisite" : projection.downstream.has(code) ? "Downstream connection" : "";
       const kind = !course || course.requirementType === "external" ? "Locked / external" : course.requirementType === "core" ? "Required" : course.requirementType === "breadth" ? "Breadth" : "Elective";
       return { id: code, type: "course", position: { x, y }, data: { code, title: course?.title ?? "Metadata not in this catalog", kind, nodeClass: nodeClassFor(kind === "Locked / external" ? "external" : kind, history.has(code)), credits: course ? `${creditLabel(course)} cr` : "Unknown credits", prerequisites: nodeRequirementCopy(course, "prerequisites"), corequisites: nodeRequirementCopy(course, "corequisites"), relation, emphasized: !!relation, focused: code === selectedCode, compact: depth === "program", hasIncoming: incoming.has(code), hasOutgoing: outgoing.has(code), selectCourse: setSelectedCode, openCourse }, ariaLabel: `${code}: ${course?.title ?? "External reference"}` };
     };
-    const nodes: GraphNode[] = [];
-    if (depth === "program") {
-      const compare = (left: string, right: string) => typeOrder(left, courseMap) - typeOrder(right, courseMap) || left.localeCompare(right, undefined, { numeric: true });
-      for (const [code, point] of programFlowPositions(visible.keys(), relations, compare)) {
-        nodes.push(makeNode(code, point.x, point.y));
-      }
-    } else {
-      const focusUpstream = dependencyClosure(focusCode, catalog?.courses ?? [], "upstream");
-      const columns = new Map<number, string[]>();
-      for (const [code, distance] of visible) {
-        const rank = code === focusCode ? 0 : focusUpstream.has(code) ? -distance : distance;
-        const group = columns.get(rank) ?? [];
-        group.push(code); columns.set(rank, group);
-      }
-      const wrap = 4;
-      let columnX = 0;
-      for (const rank of Array.from(columns.keys()).sort((a, b) => a - b)) {
-        const codes = columns.get(rank)!.sort((left, right) => typeOrder(left, courseMap) - typeOrder(right, courseMap) || left.localeCompare(right, undefined, { numeric: true }));
-        const width = Math.ceil(codes.length / wrap);
-        codes.forEach((code, index) => nodes.push(makeNode(code, (columnX + Math.floor(index / wrap)) * 230, (index % wrap) * 148 + (codes.length === 1 ? 148 : 0))));
-        columnX += width;
-      }
-    }
-    const edges: Edge[] = drawn.map((edge, index) => {
+    const nodes = projection.nodes.map(({ code, position }) => makeNode(code, position.x, position.y));
+    const edges: Edge[] = projection.relations.map((edge, index) => {
       const active = highlighted.has(edge.source) && highlighted.has(edge.target);
       return { id: `${edge.source}-${edge.target}-${index}`, source: edge.source, target: edge.target, type: "smoothstep", markerEnd: edge.corequisite ? undefined : { type: MarkerType.ArrowClosed, width: 18, height: 18, color: active ? "#64748b" : "#98a2b3" }, style: { stroke: active ? "#64748b" : "#98a2b3", strokeWidth: active ? 1.8 : 1.2, strokeDasharray: edge.corequisite ? "5 4" : undefined }, ariaLabel: `${edge.source} ${edge.corequisite ? "is a corequisite of" : "is a prerequisite of"} ${edge.target}`, focusable: false };
     });
     return { nodes, edges };
-  }, [visible, depth, focusCode, selectedCode, upstream, downstream, catalog, courseMap, relations, openCourse, history]);
+  }, [projection, depth, selectedCode, courseMap, openCourse, history]);
   const programCodes = useMemo(
     () => (catalog ? programMapCodes(catalog.courses, catalog.requirements) : new Set<string>()),
     [catalog],
@@ -203,7 +169,7 @@ function GraphWorkspace() {
     if (laid) void setCenter(laid.position.x + (PROGRAM_COL - 12) / 2, laid.position.y + (PROGRAM_ROW - 8) / 2, { zoom: READABLE_ZOOM, duration: 180 });
   };
   const locate = (code: string, keepFind = false) => {
-    const onMap = visible.has(code);
+    const onMap = projection?.visible.has(code) ?? false;
     setFocusCode(code);
     setSelectedCode(code);
     if (!onMap) {
@@ -290,7 +256,7 @@ function GraphWorkspace() {
               onClick={() => { setFindIndex(index); locate(course.code, true); }}
             >
               <strong>{course.code}</strong>
-              <span>{course.title}{visible.has(course.code) ? "" : " · not on this view — opens neighborhood"}</span>
+              <span>{course.title}{projection?.visible.has(course.code) ? "" : " · not on this view — opens neighborhood"}</span>
               <Crosshair size={14} />
             </button>
           )) : <p>No matching courses. Try another code or title.</p>}
@@ -378,7 +344,7 @@ function GraphWorkspace() {
             <p>{selected ? expressionLabel(selected.prerequisites) : "Unknown"}</p>
             {selected?.prerequisiteCodes.length ? <div className="detail-code-links"><CodeLinks codes={selected.prerequisiteCodes} limit={1000} onSelect={focus} /></div> : <span className="muted small-text">No parsed prerequisites.</span>}
           </>}
-          <h3>Unlocks <span>{selected?.unlocks.length ?? downstream.size}</span></h3>
+          <h3>Unlocks <span>{selected?.unlocks.length ?? projection?.downstream.size ?? 0}</span></h3>
           {selected?.unlocks.length ? <div className="detail-code-links"><CodeLinks codes={selected.unlocks} limit={1000} onSelect={focus} /></div> : <span className="muted small-text">No linked downstream courses in this catalog.</span>}
         </div>
         <div className="inspector-actions">

@@ -106,6 +106,37 @@ test("selected-chain arrows omit relationships that do not touch the selected co
   assert.deepEqual(shown, [{ source: "PHYS 5116", target: "CS 7332", corequisite: false }]);
 });
 
+test("shared prerequisites align with one sole-prerequisite dependent without overlapping nodes", () => {
+  const { courses, requirements } = seattleGraph();
+  const positions = programFlowPositions(programMapCodes(courses, requirements), catalogRelations(courses));
+  const relations = catalogRelations(courses).filter((edge) =>
+    !edge.corequisite && positions.has(edge.source) && positions.has(edge.target),
+  );
+  const eligible = new Map<string, string[]>();
+  for (const edge of relations) {
+    if (relations.filter((other) => other.target === edge.target).length !== 1) continue;
+    if (positions.get(edge.target)!.x - positions.get(edge.source)!.x !== 188) continue;
+    eligible.set(edge.source, [...(eligible.get(edge.source) ?? []), edge.target]);
+  }
+  assert.ok(eligible.has("CS 5100"));
+  for (const [parent, children] of eligible) {
+    assert.ok(children.some((child) => positions.get(child)!.y === positions.get(parent)!.y),
+      `${parent} must align with one eligible dependent: ${children.join(", ")}`);
+  }
+  const cells = [...positions.values()].map(({ x, y }) => `${x},${y}`);
+  assert.equal(new Set(cells).size, cells.length);
+});
+
+test("a shared prerequisite keeps one node and aligns with just one of two dependents", () => {
+  const positions = programFlowPositions(["A", "B", "C"], [
+    { source: "A", target: "B", corequisite: false },
+    { source: "A", target: "C", corequisite: false },
+  ]);
+  assert.equal(positions.size, 3);
+  assert.equal(["B", "C"].filter((code) => positions.get(code)!.y === positions.get("A")!.y).length, 1);
+  assert.notDeepEqual(positions.get("B"), positions.get("C"));
+});
+
 test("findCourses matches compacted codes and titles and prefers courses on the map", () => {
   const courses = [
     { code: "CS 1800", title: "Discrete Structures" },

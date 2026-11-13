@@ -202,15 +202,20 @@ export function programFlowPositions(
       .map((code) => {
         const children = (outgoing.get(code) ?? []).filter((child) => positions.has(child));
         if (!children.length) return null;
+        const soleDependents = children.filter((child) =>
+          incoming.get(child)?.length === 1 && positions.get(child)!.x === x + nodeWidth,
+        ).sort((left, right) => positions.get(left)!.y - positions.get(right)!.y || compare(left, right));
         const ys = children.map((child) => positions.get(child)!.y).sort((left, right) => left - right);
-        return { code, y: ys[Math.floor((ys.length - 1) / 2)]! };
+        return {
+          code,
+          y: soleDependents.length ? positions.get(soleDependents[0]!)!.y : ys[Math.floor((ys.length - 1) / 2)]!,
+          priority: soleDependents.length ? 0 : children.length === 1 ? 1 : 2,
+        };
       })
-      .filter((item): item is { code: string; y: number } => item !== null)
-      .sort((left, right) => left.y - right.y || compare(left.code, right.code));
-    const childCount = (code: string) => (outgoing.get(code) ?? []).filter((child) => positions.has(child)).length;
-    const exclusive = aligned.filter((item) => childCount(item.code) === 1);
-    const multi = aligned.filter((item) => childCount(item.code) !== 1);
-    for (const item of [...exclusive, ...multi]) {
+      .filter((item): item is { code: string; y: number; priority: number } => item !== null)
+      .sort((left, right) => left.priority - right.priority || left.y - right.y || compare(left.code, right.code));
+    // Reserve one sole-dependent row per prerequisite before placing other nodes.
+    for (const item of aligned) {
       let y = item.y;
       while (used.has(y)) y += nodeHeight;
       used.add(y);
