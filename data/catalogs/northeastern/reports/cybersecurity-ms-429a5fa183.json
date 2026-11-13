@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "catalogKey": "northeastern/cybersecurity-ms-429a5fa183",
+  "program": "Cybersecurity, MS (Boston)",
+  "officialUrl": "https://catalog.northeastern.edu/graduate/computer-information-science/cybersecurity/cybersecurity-ms/",
+  "crawledAt": "2026-11-08T22:40:28.643Z",
+  "tier": "map",
+  "courses": 50,
+  "programCourses": 30,
+  "coursePages": 43,
+  "placeholderCourses": 7,
+  "unknownClauses": [
+    {
+      "course": "CY 5200",
+      "field": "prerequisites",
+      "text": "graduate program admission"
+    },
+    {
+      "course": "CY 5210",
+      "field": "prerequisites",
+      "text": "graduate program admission"
+    },
+    {
+      "course": "CY 5240",
+      "field": "prerequisites",
+      "text": "graduate program admission"
+    }
+  ],
+  "warnings": [
+    "10 courses have unavailable details or conservatively parsed prerequisite/corequisite clauses; inspect course uncertainties."
+  ]
+}

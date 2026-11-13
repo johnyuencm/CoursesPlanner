@@ -1,9 +1,14 @@
+import { readFileSync } from "node:fs";
 import { cp, mkdtemp } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
 export const ROADMAP = "data/catalogs/northeastern/roadmaps/computer-science-mscs-sea-8b0d00dbda.json";
 export const PROGRAMS = "data/catalogs/northeastern/programs.json";
+/** The tracked allowlist of published catalog keys. */
+export const PUBLISHED: string[] = JSON.parse(readFileSync(path.join(process.cwd(), "data", "published.json"), "utf8"));
+/** The committed roadmap snapshot of a catalog key. */
+export const roadmapFile = (key: string) => `data/catalogs/${key.split("/")[0]}/roadmaps/${key.split("/")[1]}.json`;
 
 /**
  * A temp copy of the tracked published files. Read the committed snapshot through it, so
@@ -12,7 +17,7 @@ export const PROGRAMS = "data/catalogs/northeastern/programs.json";
  */
 export async function publishedCopy(): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "snapshots-"));
-  for (const file of ["catalog-service/universities.json", "data/catalog.json", "data/published.json", PROGRAMS, ROADMAP]) {
+  for (const file of ["catalog-service/universities.json", "data/catalog.json", "data/published.json", PROGRAMS, ...PUBLISHED.map(roadmapFile)]) {
     await cp(path.join(process.cwd(), file), path.join(root, file));
   }
   return root;

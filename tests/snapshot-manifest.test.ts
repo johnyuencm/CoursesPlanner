@@ -8,7 +8,7 @@ import { handleRoadmapsRequest } from "../app/api/roadmaps/route";
 import { runCatalogCli } from "../catalog-service/cli";
 import { readCatalog } from "../lib/catalog";
 import { buildSnapshotAssets, type SnapshotManifest } from "../lib/snapshot-manifest";
-import { PROGRAMS, ROADMAP, publishedCopy } from "./published-copy";
+import { PROGRAMS, PUBLISHED, ROADMAP, publishedCopy, roadmapFile } from "./published-copy";
 
 const ROOT = process.cwd();
 const KEY = "northeastern/computer-science-mscs-sea-8b0d00dbda";
@@ -22,8 +22,9 @@ test("the build manifest lists every published snapshot, and each listed file sh
   const manifest = manifestOf(assets);
   assert.deepEqual(manifest.catalogs.map(({ key, tier, file }) => ({ key, tier, file })), [
     { key: "northeastern/computer-science-mscs-sea-8b0d00dbda", tier: "audit", file: "data/catalog.json" },
-    { key: KEY, tier: "map", file: ROADMAP },
+    ...PUBLISHED.map((key) => ({ key, tier: "map", file: roadmapFile(key) })),
   ]);
+  assert.equal(PUBLISHED[0], KEY);
   assert.equal(manifest.catalogs[1].edition, "2026-09-12T01:09:37.140Z");
   assert.deepEqual(
     [...assets.keys()].sort(),

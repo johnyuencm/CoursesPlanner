@@ -1,0 +1,1785 @@
+{
+  "universityId": "northeastern",
+  "university": "Northeastern",
+  "programId": "cybersecurity-ms-429a5fa183",
+  "program": "Cybersecurity, MS (Boston)",
+  "adapter": "northeastern-acalog",
+  "officialUrl": "https://catalog.northeastern.edu/graduate/computer-information-science/cybersecurity/cybersecurity-ms/",
+  "programCourseCodes": [
+    "CRIM 6200",
+    "CRIM 6202",
+    "CRIM 6262",
+    "CS 5200",
+    "CS 5500",
+    "CS 5600",
+    "CS 5610",
+    "CS 5700",
+    "CS 5800",
+    "CS 7580",
+    "CS 7805",
+    "CY 5001",
+    "CY 5010",
+    "CY 5065",
+    "CY 5120",
+    "CY 5130",
+    "CY 5150",
+    "CY 5200",
+    "CY 5210",
+    "CY 5240",
+    "CY 5250",
+    "CY 5770",
+    "CY 6120",
+    "CY 6200",
+    "CY 6740",
+    "CY 6760",
+    "CY 7790",
+    "CY 7900",
+    "POLS 7341",
+    "PPUA 6503"
+  ],
+  "courses": [
+    {
+      "code": "CIS 200M",
+      "title": "External course (CIS 200M)",
+      "credits": 0,
+      "description": "Course details for CIS 200M are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for CIS 200M are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for CIS 200M are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for CIS 200M are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for CIS 200M are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 2100"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for CIS 200M are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "CIS 201M",
+      "title": "External course (CIS 201M)",
+      "credits": 0,
+      "description": "Course details for CIS 201M are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for CIS 201M are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for CIS 201M are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for CIS 201M are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for CIS 201M are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CY 2550"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for CIS 201M are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "CRIM 6200",
+      "title": "Criminology",
+      "credits": 4,
+      "description": "Offers an overview of the current understanding of the causes of crime from an interdisciplinary perspective. Focuses on the historical and contemporary theories of crime and causation. Examines the connections between systemic racism, inequalities, and crime and the role of bias in the development of the field and criminological theories. Emphasizes integrating criminological theory and research, assessing the implications of this knowledge base for policies relating to crime control and prevention. Presents and discusses the most current data regarding the nature and extent of crime in the United States.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/crim/",
+      "uncertainties": []
+    },
+    {
+      "code": "CRIM 6202",
+      "title": "The Criminal Justice Process",
+      "credits": 4,
+      "description": "Offers an overview of the criminal justice process and the important issues confronting the administration of justice, grounding these challenges in empirical research. Focuses on theories that explain the functioning of the justice system and predict its outcomes. Identifies changes in institutional responses to crime and justice issues over time and across cultural contexts. Traces the role of systemic racism and intersecting dimensions of oppression in the historical development of and current policies and practices in the criminal justice system.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/crim/",
+      "uncertainties": []
+    },
+    {
+      "code": "CRIM 6262",
+      "title": "Evidence-Based Crime Policy",
+      "credits": 4,
+      "description": "Introduces students to the evidence-based paradigm in crime policy. Presents the theory and methods of the evidence-based paradigm, which places systematic research at the center of the policymaking process. Offers students an opportunity to further develop skills in critically assessing leading research findings and policy initiatives in the field of criminology and criminal justice.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/crim/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 2000",
+      "title": "Introduction to Program Design and Implementation",
+      "credits": 4,
+      "description": "Introduces computer science and data science to students with no prior programming experience. Starts by building programs with numbers, text, and images. Explores real, complex datasets both interactively and through coding by doing data analysis, constructing graphs, and computing interesting results. Offers students an opportunity to build a solid foundation and practice coding with a popular industrial coding language with a professional programmer’s interface to the code. Covers skills needed to identify and respond to ethical challenges that arise in the program design process.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "course",
+        "code": "CS 2001"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "CS 2001",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [
+        "CS 2001"
+      ],
+      "unlocks": [
+        "CS 2100"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "Software Engineering",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 2001",
+      "title": "Lab for CS 2000",
+      "credits": 1,
+      "description": "Accompanies CS 2000. Covers topics from the course through various experiments.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "course",
+        "code": "CS 2000"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "CS 2000",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [
+        "CS 2000"
+      ],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 2100",
+      "title": "Program Design and Implementation 1",
+      "credits": 4,
+      "description": "Builds on prior introductory programming experience (from inside or outside Northeastern University) to examine the fundamentals of program design and implementation. Studies design of data- and object-oriented programs including common patterns; use of data structures; and underlying principles such as abstraction, encapsulation, inheritance, and interfaces. Introduces common software engineering practices such as test-driven development, version control, development environments, and good programming habits. Students practice using these design principles by writing medium-sized applications and using data science libraries. Covers skills needed to identify and respond to ethical challenges that arise in the program design process.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "course",
+                "code": "CS 2000",
+                "minimumGrade": "D-"
+              },
+              {
+                "type": "course",
+                "code": "CIS 200M",
+                "minimumGrade": "D-"
+              }
+            ]
+          },
+          {
+            "type": "course",
+            "code": "CS 2500",
+            "minimumGrade": "D-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "course",
+        "code": "CS 2101"
+      },
+      "prerequisiteText": "CS 2000 with a minimum grade of D- or CIS 200M with a minimum grade of D- or CS 2500 with a minimum grade of D-",
+      "corequisiteText": "CS 2101",
+      "prerequisiteCodes": [
+        "CIS 200M",
+        "CS 2000",
+        "CS 2500"
+      ],
+      "corequisiteCodes": [
+        "CS 2101"
+      ],
+      "unlocks": [
+        "CY 2550"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "Software Engineering",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 2101",
+      "title": "Lab for CS 2100",
+      "credits": 1,
+      "description": "Accompanies CS 2100. Covers topics from the course through various experiments.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "course",
+        "code": "CS 2100"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "CS 2100",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [
+        "CS 2100"
+      ],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 2500",
+      "title": "External course (CS 2500)",
+      "credits": 0,
+      "description": "Course details for CS 2500 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for CS 2500 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for CS 2500 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for CS 2500 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for CS 2500 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 2100",
+        "CY 2550"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for CS 2500 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "CS 2550",
+      "title": "External course (CS 2550)",
+      "credits": 0,
+      "description": "Course details for CS 2550 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for CS 2550 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for CS 2550 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for CS 2550 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for CS 2550 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CY 5200",
+        "CY 5210",
+        "CY 5240"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for CS 2550 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "CS 5001",
+      "title": "Intensive Foundations of Computer Science",
+      "credits": 4,
+      "description": "Introduces systematic problem solving through programming. Offers students an opportunity to learn how to analyze a problem, how to divide and organize the problem into appropriate components, how to describe the problem in a computer language, how to analyze and understand the behavior of their programs, and how to test that their programs are working correctly. Additionally, introduces a method of program design called object-oriented programming and various ways to organize data, including a discussion of their advantages and disadvantages. To practice the course concepts, students undertake assignments ranging from small, highly specified programming tasks to larger open-ended problems where students design and code their own solutions.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "course",
+        "code": "CS 5003"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "CS 5003",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [
+        "CS 5003"
+      ],
+      "unlocks": [
+        "CS 5004"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "Software Engineering",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5002",
+      "title": "Discrete Structures",
+      "credits": 4,
+      "description": "Introduces the mathematical structures and methods that form the foundation of computer science. Studies structures such as sets, tuples, sequences, lists, trees, and graphs. Discusses functions, relations, ordering, and equivalence relations. Examines inductive and recursive definitions of structures and functions. Covers principles of proof such as truth tables, inductive proof, and basic logic and the counting techniques and arguments needed to estimate the size of sets, the growth of functions, and the space-time complexity of algorithms. Also, discusses data structures such as arrays, stacks, queues, lists, and the algorithms that manipulate them.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 5004"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5003",
+      "title": "Recitation for CS 5001",
+      "credits": 0,
+      "description": "Provides a small-group discussion format to cover material in CS 5001.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "course",
+        "code": "CS 5001"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "CS 5001",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [
+        "CS 5001"
+      ],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5004",
+      "title": "Object-Oriented Design",
+      "credits": 4,
+      "description": "Presents a comparative approach to object-oriented programming and design. Discusses the concepts of object, class, metaclass, message, method, inheritance, and genericity. Reviews forms of polymorphism in object-oriented languages. Contrasts the use of inheritance and composition as dual techniques for software reuse—forwarding vs. delegation and subclassing vs. subtyping. Offers students an opportunity to obtain a deeper understanding of the principles of object-oriented programming and design, including software components, object-oriented design patterns, and the use of graphical design notations such as UML (unified modeling language). Illustrates basic concepts in object-oriented design with case studies in application frameworks and by writing programs in Java.",
+      "prerequisites": {
+        "type": "all",
+        "items": [
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "course",
+                "code": "CS 5001",
+                "minimumGrade": "C-"
+              },
+              {
+                "type": "course",
+                "code": "CS 5001",
+                "minimumGrade": "C-"
+              }
+            ]
+          },
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "course",
+                "code": "CS 5002",
+                "minimumGrade": "C-"
+              },
+              {
+                "type": "course",
+                "code": "CS 5002",
+                "minimumGrade": "C-"
+              }
+            ]
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "course",
+        "code": "CS 5005"
+      },
+      "prerequisiteText": "(CS 5001 with a minimum grade of C- or CS 5001 with a minimum grade of C- ); (CS 5002 with a minimum grade of C- or CS 5002 with a minimum grade of C- )",
+      "corequisiteText": "CS 5005",
+      "prerequisiteCodes": [
+        "CS 5001",
+        "CS 5002"
+      ],
+      "corequisiteCodes": [
+        "CS 5005"
+      ],
+      "unlocks": [
+        "CS 5500"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5005",
+      "title": "Recitation for CS 5004",
+      "credits": 0,
+      "description": "Provides small-group discussion format to cover material in CS 5004.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "course",
+        "code": "CS 5004"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "CS 5004",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [
+        "CS 5004"
+      ],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5010",
+      "title": "Programming Design Paradigm",
+      "credits": 4,
+      "description": "Introduces modern program design paradigms. Starts with functional program design, introducing the notion of a design recipe. The latter consists of two parts: a task organization (ranging from the description of data to the creation of a test suite) and a data-oriented approach to the organization of programs (ranging from atomic data to self-referential data definitions and functions as data). The course then progresses to object-oriented design, explaining how it generalizes and contrasts with functional design. In addition to studying program design, students also have an opportunity to practice pair-programming and public code review techniques, as found in industry today.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "course",
+        "code": "CS 5011"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "CS 5011",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [
+        "CS 5011"
+      ],
+      "unlocks": [
+        "CS 5500"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "Software Engineering",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5011",
+      "title": "Recitation for CS 5010",
+      "credits": 0,
+      "description": "Provides small-group discussion format to cover material in CS 5010.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "course",
+        "code": "CS 5010"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "CS 5010",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [
+        "CS 5010"
+      ],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5200",
+      "title": "Database Management Systems",
+      "credits": 4,
+      "description": "Introduces relational database management systems as a class of software systems. Prepares students to be sophisticated users of database management systems. Covers design theory, query language, and performance/tuning issues. Topics include relational algebra, SQL, stored procedures, user-defined functions, cursors, embedded SQL programs, client-server interfaces, entity-relationship diagrams, normalization, B-trees, concurrency, transactions, database security, constraints, object-relational DBMSs, and specialized engines such as spatial, text, XML conversion, and time series. Includes exercises using a commercial relational or object-relational database management system.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5500",
+      "title": "Foundations of Software Engineering",
+      "credits": 4,
+      "description": "Covers the foundations of software engineering, including software development life cycle models (e.g., waterfall, spiral, agile); requirements analysis; user-centered design; software design principles and patterns; testing (functional testing, structural testing, testing strategies); code refactoring and debugging; software architecture and design; and integration and deployment. Includes a course project where some of the software engineering methods (from requirements analysis to testing) are applied in a team-based setting. Requires admission to MS program or completion of all transition courses.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "course",
+                "code": "CS 5010",
+                "minimumGrade": "D"
+              },
+              {
+                "type": "course",
+                "code": "CS 5004",
+                "minimumGrade": "C"
+              }
+            ]
+          },
+          {
+            "type": "course",
+            "code": "CS 5010",
+            "minimumGrade": "C"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CS 5010 with a minimum grade of D or CS 5004 with a minimum grade of C or CS 5010 with a minimum grade of C",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CS 5004",
+        "CS 5010"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Software Engineering"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5600",
+      "title": "Computer Systems",
+      "credits": 4,
+      "description": "Studies the structure, components, design, implementation, and internal operation of computer systems, focusing mainly on the operating system level. Reviews computer hardware and architecture including the arithmetic and logic unit, and the control unit. Covers current operating system components and construction techniques including the memory and memory controller, I/O device management, device drivers, memory management, file system structures, and the user interface. Introduces distributed operating systems. Discusses issues arising from concurrency and distribution, such as scheduling of concurrent processes, interprocess communication and synchronization, resource sharing and allocation, and deadlock management and resolution. Includes examples from real operating systems. Exposes students to the system concepts through programming exercises. Requires admission to MS program or completion of all transition courses.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Systems"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5610",
+      "title": "Web Development",
+      "credits": 4,
+      "description": "Discusses Web development for sites that are dynamic, data driven, and interactive. Focuses on the software development issues of integrating multiple languages, assorted data technologies, and Web interaction. Considers ASP.NET, C#, HTTP, HTML, CSS, XML, XSLT, JavaScript, AJAX, RSS/Atom, SQL, and Web services. Each student must deploy individually designed Web experiments that illustrate the Web technologies and at least one major integrative Web site project. Students may work in teams with the permission of the instructor. Each student or team must also create extensive documentation of their goals, plans, design decisions, accomplishments, and user guidelines. All source files must be open and be automatically served by a sources server.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Software Engineering",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5700",
+      "title": "Fundamentals of Computer Networking",
+      "credits": 4,
+      "description": "Studies network protocols, focusing on modeling and analysis, and architectures. Introduces modeling concepts, emphasizing queuing theory, including Little’s theorem, M/M/1, M/M/m, M/D/1, and M/G/1 queuing systems. Discusses performance evaluation of computer networks including performance metrics, evaluation tools and methodology, simulation techniques, and limitations. Presents the different harmonizing functions needed for communication and efficient operation of computer networks and discusses examples of Ethernet, FDDI, and wireless networks. Covers link layer protocols including HDLC, PPP, and SLIP; packet framing; spanning tree and learning bridges, error detection techniques, and automatic repeat request algorithms; sliding window and reliable/ordered services; and queuing disciplines including FQ and WFQ. Introduces flow control schemes, such as window flow control and leaky bucket rate control schemes, and discusses congestion control and fairness. Requires knowledge of probability theory.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CY 6740"
+      ],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5800",
+      "title": "Algorithms",
+      "credits": 4,
+      "description": "Presents the mathematical techniques used for the design and analysis of computer algorithms. Focuses on algorithmic design paradigms and techniques for analyzing the correctness, time, and space complexity of algorithms. Topics may include asymptotic notation, recurrences, loop invariants, Hoare triples, sorting and searching, advanced data structures, lower bounds, hashing, greedy algorithms, dynamic programming, graph algorithms, and NP-completeness.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 7580",
+      "title": "Special Topics in Software Engineering",
+      "credits": 4,
+      "description": "Offers various topics on software engineering. May be repeated up to two times.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Software Engineering"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 7800",
+      "title": "Advanced Algorithms",
+      "credits": 4,
+      "description": "Presents advanced mathematical techniques for designing and analyzing computer algorithms. Reviews some of the material covered in CS 5800 and then covers advanced topics. Emphasizes theoretical underpinnings of techniques used to solve problems arising in diverse domains. Topics include asymptotic analysis, advanced data structures, dynamic programming, greedy algorithms and matroid theory, amortized analysis, randomization, string matching, algebraic algorithms, and approximation algorithms. Introduces Turing machines, P and NP classes, polynomial-time reducibility, and NP completeness.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 7805"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 7805",
+      "title": "Complexity Theory",
+      "credits": 4,
+      "description": "Covers core topics in computational complexity, including NP-completeness, time and space complexity, polynomial hierarchy, circuit complexity, probabilistic computation, interactive proofs, and hardness of approximation. Moves to more advanced topics that may include lower bounds, pseudorandomness, cryptography, and communication complexity.",
+      "prerequisites": {
+        "type": "course",
+        "code": "CS 7800",
+        "minimumGrade": "C-"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CS 7800 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CS 7800"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 2550",
+      "title": "Foundations of Cybersecurity",
+      "credits": 4,
+      "description": "Presents an overview of basic principles and security concepts related to information systems, including workstation security, system security, and communications security. Discusses legal, ethical, and human factors and professional issues associated with cybersecurity, including the ability to differentiate between laws and ethics. Offers students an opportunity to use a substantial variety of existing software tools to probe both computer systems and networks in order to learn how these systems function, how data moves within these systems, and how these systems might be vulnerable. Covers security methods, controls, procedures, economics of cybercrime, criminal procedure, and forensics.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "any",
+                "items": [
+                  {
+                    "type": "any",
+                    "items": [
+                      {
+                        "type": "course",
+                        "code": "CS 2100",
+                        "minimumGrade": "D-"
+                      },
+                      {
+                        "type": "course",
+                        "code": "CIS 201M",
+                        "minimumGrade": "D-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "course",
+                    "code": "CS 2500",
+                    "minimumGrade": "D-"
+                  }
+                ]
+              },
+              {
+                "type": "course",
+                "code": "DS 2000",
+                "minimumGrade": "D-"
+              }
+            ]
+          },
+          {
+            "type": "course",
+            "code": "DS 2500",
+            "minimumGrade": "D-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CS 2100 with a minimum grade of D- or CIS 201M with a minimum grade of D- or CS 2500 with a minimum grade of D- or DS 2000 with a minimum grade of D- or DS 2500 with a minimum grade of D-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CIS 201M",
+        "CS 2100",
+        "CS 2500",
+        "DS 2000",
+        "DS 2500"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CY 5200",
+        "CY 5210",
+        "CY 5240"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "Systems",
+        "Data",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 5001",
+      "title": "Cybersecurity: Technologies, Threats, and Defenses",
+      "credits": 4,
+      "description": "Seeks to provide a systematic understanding of cyberspace technology and applications deployed in the global digital infrastructure. Covers topics in computer networks, server architectures, operating systems, and scripting. All the techniques and tools included in the course are oriented to serve as instruments of security administrators and cybersecurity professionals. Uses practical hands-on labs running on virtual machines and containers hosted in the cloud computing environment to train students. For that reason, a practical overview of virtualization technologies, containerization, and cloud computing models is provided.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CY 5120",
+        "CY 5130",
+        "CY 5150",
+        "CY 5770",
+        "CY 6740"
+      ],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Systems",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 5010",
+      "title": "Cybersecurity Principles and Practices",
+      "credits": 4,
+      "description": "Introduces information security via concepts of confidentiality, integrity, and availability. Discusses ethical, legal, and privacy ramifications while reviewing various laws, such as the Patriot Act, the Gramm-Leach-Bliley Act, and the General Data Protection Regulation. Covers security methods, controls, procedures, economics of cybercrime, criminal procedure, and forensics.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CY 5065",
+        "CY 5120",
+        "CY 5130",
+        "CY 5150",
+        "CY 5200",
+        "CY 5210",
+        "CY 5240",
+        "CY 5770",
+        "CY 6120",
+        "CY 6740"
+      ],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 5065",
+      "title": "Cloud Security Practices",
+      "credits": 4,
+      "description": "Introduces the fundamentals of cloud computing. Examines the strategies to implement security controls, perform risk assessments, and handle incident detection and response. Emphasizes maintenance of a business-minded security life cycle for cloud-based environments. Offers students an opportunity to obtain an understanding of various security challenges, threat models, and data privacy issues in regard to compliance and legal implications.",
+      "prerequisites": {
+        "type": "course",
+        "code": "CY 5010",
+        "minimumGrade": "C-"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CY 5010 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CY 5010"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Systems",
+        "Data",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 5120",
+      "title": "Applied Cryptography",
+      "credits": 4,
+      "description": "Surveys the principles and the practices of cryptography. Overviews the core cryptographic algorithms: symmetric encryption schemes (e.g., DES and AES); public key cryptosystems (e.g., RSA and discrete logarithm); and hash functions (e.g., the SHA family). Discusses core information assurance building blocks, such as authentication, digital signatures, key management, and digital certificates. Finally, applies these concepts to important security architectures, including the IP network stack (e.g., IPsec and SSL/TLS), the cellular system, and broadcast media.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "course",
+            "code": "CY 5001",
+            "minimumGrade": "C-"
+          },
+          {
+            "type": "course",
+            "code": "CY 5010",
+            "minimumGrade": "C-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CY 5001 with a minimum grade of C- or CY 5010 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CY 5001",
+        "CY 5010"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 5130",
+      "title": "Computer System Security",
+      "credits": 4,
+      "description": "Offers a practical overview of enterprise computer security, operating systems security, and related topics. Applies concepts such as authentication, access control, integrity, and audit to the modern operating system. Discusses and demonstrates system, process, memory, and file system-level defenses—and the attacks against them. Also discusses topics in data security and virtualization. Uses hands-on labs to reinforce skills and provide practical experience.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "course",
+            "code": "CY 5001",
+            "minimumGrade": "C-"
+          },
+          {
+            "type": "course",
+            "code": "CY 5010",
+            "minimumGrade": "C-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CY 5001 with a minimum grade of C- or CY 5010 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CY 5001",
+        "CY 5010"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Systems",
+        "Data",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 5150",
+      "title": "Network Security Practices",
+      "credits": 4,
+      "description": "Explores issues involved in the security of computer networks. Topics include firewalls, viruses, virtual private networks, Internet security, and wireless security. Includes case studies and laboratory exercises.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "course",
+            "code": "CY 5001",
+            "minimumGrade": "C-"
+          },
+          {
+            "type": "course",
+            "code": "CY 5010",
+            "minimumGrade": "C-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CY 5001 with a minimum grade of C- or CY 5010 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CY 5001",
+        "CY 5010"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 5200",
+      "title": "Security Risk Management and Assessment",
+      "credits": 4,
+      "description": "Creates the opportunity for competency in the development of information security policies and plans including controls for physical, software, and networks. Discusses different malicious attacks, such as viruses and Trojan horses, detection strategies, countermeasures, damage assessment, and control. Covers information system risk analysis and management, audits, and log files. Uses case studies, site visits, and works with commercial products.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "any",
+                "items": [
+                  {
+                    "type": "any",
+                    "items": [
+                      {
+                        "type": "course",
+                        "code": "CS 2550",
+                        "minimumGrade": "D-"
+                      },
+                      {
+                        "type": "course",
+                        "code": "CY 2550",
+                        "minimumGrade": "D-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "course",
+                    "code": "IA 5010",
+                    "minimumGrade": "C-"
+                  }
+                ]
+              },
+              {
+                "type": "course",
+                "code": "CY 5010",
+                "minimumGrade": "C-"
+              }
+            ]
+          },
+          {
+            "type": "unknown",
+            "text": "graduate program admission"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CS 2550 with a minimum grade of D- or CY 2550 with a minimum grade of D- or IA 5010 with a minimum grade of C- or CY 5010 with a minimum grade of C- or graduate program admission",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CS 2550",
+        "CY 2550",
+        "CY 5010",
+        "IA 5010"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": [
+        "Prerequisite clause not fully understood: graduate program admission"
+      ]
+    },
+    {
+      "code": "CY 5210",
+      "title": "Information System Forensics",
+      "credits": 4,
+      "description": "Designed to allow students to explore the techniques used in computer forensic examinations. Examines computer hardware, physical and logical disk structure, and computer forensic techniques. Conducts hands-on experiences on DOS, Windows operating systems, Macintosh, Novell, and Unix/Linux platforms. Builds on basic computer skills and affords hands-on experience with the tools and techniques to investigate, seize, and analyze computer-based evidence using a variety of specialized forensic software in an IBM-PC environment.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "any",
+                "items": [
+                  {
+                    "type": "any",
+                    "items": [
+                      {
+                        "type": "course",
+                        "code": "CS 2550",
+                        "minimumGrade": "D-"
+                      },
+                      {
+                        "type": "course",
+                        "code": "CY 2550",
+                        "minimumGrade": "D-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "course",
+                    "code": "IA 5010",
+                    "minimumGrade": "C-"
+                  }
+                ]
+              },
+              {
+                "type": "course",
+                "code": "CY 5010",
+                "minimumGrade": "C-"
+              }
+            ]
+          },
+          {
+            "type": "unknown",
+            "text": "graduate program admission"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CS 2550 with a minimum grade of D- or CY 2550 with a minimum grade of D- or IA 5010 with a minimum grade of C- or CY 5010 with a minimum grade of C- or graduate program admission",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CS 2550",
+        "CY 2550",
+        "CY 5010",
+        "IA 5010"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Systems",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": [
+        "Prerequisite clause not fully understood: graduate program admission"
+      ]
+    },
+    {
+      "code": "CY 5240",
+      "title": "Cyberlaw: Privacy, Ethics, and Digital Rights",
+      "credits": 4,
+      "description": "Describes the legal and ethical issues associated with information security including access, use, and dissemination. Emphasizes legal infrastructure relating to information assurance, such as the Digital Millenium Copyright Act and Telecommunications Decency Act, and emerging technologies for management of digital rights. Examines the role of information security in various domains such as healthcare, scientific research, and personal communications such as email. Examines criminal activities such as computer fraud and abuse, desktop forgery, embezzlement, child pornography, computer trespass, and computer piracy.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "any",
+                "items": [
+                  {
+                    "type": "any",
+                    "items": [
+                      {
+                        "type": "course",
+                        "code": "CS 2550",
+                        "minimumGrade": "D-"
+                      },
+                      {
+                        "type": "course",
+                        "code": "CY 2550",
+                        "minimumGrade": "D-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "course",
+                    "code": "IA 5010",
+                    "minimumGrade": "C-"
+                  }
+                ]
+              },
+              {
+                "type": "course",
+                "code": "CY 5010",
+                "minimumGrade": "C-"
+              }
+            ]
+          },
+          {
+            "type": "unknown",
+            "text": "graduate program admission"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CS 2550 with a minimum grade of D- or CY 2550 with a minimum grade of D- or IA 5010 with a minimum grade of C- or CY 5010 with a minimum grade of C- or graduate program admission",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CS 2550",
+        "CY 2550",
+        "CY 5010",
+        "IA 5010"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": [
+        "Prerequisite clause not fully understood: graduate program admission"
+      ]
+    },
+    {
+      "code": "CY 5250",
+      "title": "Decision Making for Critical Infrastructure",
+      "credits": 4,
+      "description": "Focuses on the art and science of security program management leadership in the context of critical infrastructure protection programs. Includes selected readings, review of decision-making models in crisis, lectures and insights from accomplished leaders in infrastructure protection, and examination of the students’ own unique background and experiences. Trains students on the interaction of vulnerabilities, threats, and countermeasures and how to apply this knowledge to the protection of critical infrastructure using research and analysis of national and global strategies, historical and current legislation, and policies. Also seeks to give students a working knowledge of federal, state, and private-sector critical infrastructure protection resources and programs.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 5770",
+      "title": "Software Vulnerabilities and Security",
+      "credits": 4,
+      "description": "Seeks to help students to become aware of systems security issues and to gain a basic understanding of security. Presents the principal software and applications used in the Internet, discussing in detail the related vulnerabilities and how they are exploited. Also discusses programming vulnerabilities and how they are exploited. Examines protection and detection techniques. Includes a number of practical lab assignments as well as a discussion of current research in the field.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "course",
+            "code": "CY 5001",
+            "minimumGrade": "C-"
+          },
+          {
+            "type": "course",
+            "code": "CY 5010",
+            "minimumGrade": "C-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CY 5001 with a minimum grade of C- or CY 5010 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CY 5001",
+        "CY 5010"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 6120",
+      "title": "Software Security Practices",
+      "credits": 4,
+      "description": "Explores the fundamentals of software security issues from a practical perspective. Takes a deeper dive into the low-level mechanisms used in a variety of most prevalent software security issues and discusses some of the industry best practices needed to address the issues. Offers students an opportunity to learn both an attacker’s and defender’s perspectives when it comes to software security issue exploitation, detection, and mitigation. Incorporates a number of practical C and assembly coding and lab assignments. Includes an overview of some of the state-of-the-art software security issue exploitation and mitigation techniques used in the field.",
+      "prerequisites": {
+        "type": "course",
+        "code": "CY 5010",
+        "minimumGrade": "C-"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CY 5010 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CY 5010"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 6200",
+      "title": "Special Topics in IT Security Governance, Risk, and Compliance",
+      "credits": 1,
+      "maxCredits": 4,
+      "description": "Offers various topics in IT security governance, risk, and compliance. May be repeated for up to 8 total credits.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 6740",
+      "title": "Network Security",
+      "credits": 4,
+      "description": "Studies the theory and practice of computer security, focusing on the security aspects of multiuser systems and the Internet. Introduces cryptographic tools, such as encryption, key exchange, hashing, and digital signatures in terms of their applicability to maintaining network security. Discusses security protocols for mobile networks. Topics include firewalls, viruses, Trojan horses, password security, biometrics, VPNs, and Internet protocols such as SSL, IPSec, PGP, SNMP, and others.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "course",
+                "code": "CY 5001",
+                "minimumGrade": "C-"
+              },
+              {
+                "type": "course",
+                "code": "CY 5010",
+                "minimumGrade": "C-"
+              }
+            ]
+          },
+          {
+            "type": "course",
+            "code": "CS 5700",
+            "minimumGrade": "C-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CY 5001 with a minimum grade of C- or CY 5010 with a minimum grade of C- or CS 5700 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CS 5700",
+        "CY 5001",
+        "CY 5010"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 6760",
+      "title": "Wireless and Mobile Systems Security",
+      "credits": 4,
+      "description": "Focuses on security and privacy of mobile and wireless systems. Provides the foundations to understand the security and privacy threats and defenses in wireless and mobile systems, especially in an era where wireless network functions are implemented in software instead of traditional hardware-based solutions. Covers topics on availability/integrity issues in wireless networks, Wi-Fi and cellular network security, broadcast authentication techniques, jamming and antijamming techniques, etc. Emphasizes hands-on practical exercises to strengthen the understanding of concepts covered during the lectures. Reviews the state of the art in wireless security research through readings. Offers students an opportunity to execute a semester-long project in the broad area of wireless security.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 7790",
+      "title": "Special Topics in Security and Privacy",
+      "credits": 4,
+      "description": "Offers various topics in security and privacy. May be repeated for up to 8 total credits.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "CY 7900",
+      "title": "Capstone Project",
+      "credits": 4,
+      "description": "Draws together candidates from diverse backgrounds (technical, legal, and/or law enforcement) in a collaborative activity to address one or more security issues from an integrated perspective. Requires a project proposal, generally industrially oriented, to be submitted and accepted prior to the semester in which the project is to be undertaken.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cy/",
+      "uncertainties": []
+    },
+    {
+      "code": "DS 2000",
+      "title": "External course (DS 2000)",
+      "credits": 0,
+      "description": "Course details for DS 2000 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for DS 2000 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for DS 2000 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for DS 2000 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for DS 2000 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CY 2550"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for DS 2000 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "DS 2500",
+      "title": "External course (DS 2500)",
+      "credits": 0,
+      "description": "Course details for DS 2500 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for DS 2500 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for DS 2500 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for DS 2500 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for DS 2500 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CY 2550"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for DS 2500 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "IA 5010",
+      "title": "External course (IA 5010)",
+      "credits": 0,
+      "description": "Course details for IA 5010 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for IA 5010 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for IA 5010 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for IA 5010 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for IA 5010 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CY 5200",
+        "CY 5210",
+        "CY 5240"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for IA 5010 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "POLS 7341",
+      "title": "Security and Resilience Policy",
+      "credits": 4,
+      "description": "Examines the post-9/11 evolution of security and the new emphasis on bolstering societal, infrastructure, system, and network resilience. Emphasizes the complex organizational; jurisdictional (international, federal, state, and local); private-sector; and civil-society issues associated with managing the risk of terrorism, cyber-attacks, and naturally occurring disasters. Topics include policy development and implementation of critical infrastructure protection, cybersecurity, supply chain security, disaster management, and community resilience.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/pols/",
+      "uncertainties": []
+    },
+    {
+      "code": "PPUA 6503",
+      "title": "Managing People in Public and Nonprofit Sectors",
+      "credits": 4,
+      "description": "Introduces students to the human resources function from an individual and managerial standpoint. Studies various human resource management (HRM) activities, such as recruitment, selection, performance management, training and development, labor relations, and compensation. Applies the lens of strategic human resources management to foster a competent, motivated, and representative workforce.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/ppua/",
+      "uncertainties": []
+    }
+  ],
+  "lastUpdated": "2026-11-08T22:40:28.643Z",
+  "sources": [
+    "https://catalog.northeastern.edu/graduate/computer-information-science/cybersecurity/cybersecurity-ms/",
+    "https://catalog.northeastern.edu/course-descriptions/crim/",
+    "https://catalog.northeastern.edu/course-descriptions/cs/",
+    "https://catalog.northeastern.edu/course-descriptions/cy/",
+    "https://catalog.northeastern.edu/course-descriptions/pols/",
+    "https://catalog.northeastern.edu/course-descriptions/ppua/"
+  ],
+  "warnings": [
+    "10 courses have unavailable details or conservatively parsed prerequisite/corequisite clauses; inspect course uncertainties."
+  ]
+}

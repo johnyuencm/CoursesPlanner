@@ -41,7 +41,8 @@ export function programMapCodes(courses: Course[], requirements: DegreeRequireme
   const present = new Set(courses.map((course) => course.code));
   const visible = new Set<string>();
   for (const course of courses) {
-    if (!listed.has(course.code)) continue;
+    // A Map-tier catalog models no rule groups: its roadmap marks the program courses instead.
+    if (!listed.has(course.code) && course.requirementType !== "program") continue;
     visible.add(course.code);
     for (const dependency of [...course.prerequisiteCodes, ...course.corequisiteCodes]) {
       if (present.has(dependency)) visible.add(dependency);

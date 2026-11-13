@@ -1,8 +1,12 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { validateDiscoveredPrograms, validateProgramRoadmap, validateRoadmapCrawlStatus } from "../lib/catalog";
+import { publicCourses } from "../lib/course-pages";
+import { roadmapCatalog } from "../lib/program-catalog";
+import { requirementTier } from "../lib/requirements-v2";
 import { findUniversity, readOptionalJson, readState, summarize, universityDir } from "../lib/roadmap-reader";
 import type {
+  Course,
   DiscoveredProgram,
   DiscoveredPrograms,
   ProgramRoadmap,
@@ -31,6 +35,33 @@ export interface RoadmapCrawlOptions {
   retryErrors?: boolean;
   fetchImpl?: typeof fetch;
   now?: () => Date;
+}
+
+/** Parse report of one crawled program: what the crawl read, and what it could not read. */
+export function roadmapReport(roadmap: ProgramRoadmap) {
+  const catalog = roadmapCatalog(roadmap);
+  const pages = publicCourses(catalog);
+  const unknown = (expression: Course["prerequisites"]): string[] =>
+    expression.type === "unknown" ? [expression.text]
+      : expression.type === "all" || expression.type === "any" ? expression.items.flatMap(unknown) : [];
+  return {
+    version: 1,
+    catalogKey: `${roadmap.universityId}/${roadmap.programId}`,
+    program: roadmap.program,
+    officialUrl: roadmap.officialUrl,
+    crawledAt: roadmap.lastUpdated,
+    tier: requirementTier(catalog.requirements, catalog.courses),
+    courses: roadmap.courses.length,
+    programCourses: roadmap.programCourseCodes.length,
+    coursePages: pages.length,
+    // Prerequisites outside the fetched subject pages: they have no catalog text and no page.
+    placeholderCourses: roadmap.courses.length - pages.length,
+    unknownClauses: pages.flatMap((course) => [
+      ...unknown(course.prerequisites).map((text) => ({ course: course.code, field: "prerequisites", text })),
+      ...unknown(course.corequisites).map((text) => ({ course: course.code, field: "corequisites", text })),
+    ]),
+    warnings: roadmap.warnings,
+  };
 }
 
 export interface RoadmapCrawlResult {
@@ -189,6 +220,7 @@ export async function crawlRoadmaps(options: RoadmapCrawlOptions): Promise<Roadm
           };
           validateProgramRoadmap(roadmap, config.allowedOrigins);
           await atomicWrite(path.join(directory, "roadmaps", `${program.id}.json`), json(roadmap));
+          await atomicWrite(path.join(directory, "reports", `${program.id}.json`), json(roadmapReport(roadmap)));
           program.status = "ready";
           delete program.reason;
         }

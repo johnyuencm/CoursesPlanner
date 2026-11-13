@@ -547,6 +547,13 @@ function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRo
     if (overrideActive || !urlFocus) return;
     rememberSelection(urlFocus, urlFocus);
   }, [overrideActive, urlFocus]);
+  // A program without the default focus course (CS 5010) starts at its first program course (#74).
+  useEffect(() => {
+    if (overrideActive || urlFocus || !courses.length || courses.some((course) => course.code === focusCode)) return;
+    const listed = courses.filter((course) => course.requirementType === "program").map((course) => course.code);
+    const first = [...(listed.length ? listed : programCodes)].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))[0];
+    if (first) rememberSelection(first, first);
+  }, [overrideActive, urlFocus, courses, programCodes, focusCode]);
   const liveNavigation = (): GraphNavigationEntry => ({ selectedCode, focusCode, depth });
   const applyNavigation = (entry: GraphNavigationEntry) => {
     setSelectedCode(entry.selectedCode);

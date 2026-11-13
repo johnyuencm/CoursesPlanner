@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "catalogKey": "northeastern/computer-science-mscs-976b977119",
+  "program": "Computer Science, MSCS (Boston)",
+  "officialUrl": "https://catalog.northeastern.edu/graduate/computer-information-science/computer-science/computer-science-mscs/",
+  "crawledAt": "2026-11-08T22:40:28.502Z",
+  "tier": "map",
+  "courses": 84,
+  "programCourses": 41,
+  "coursePages": 62,
+  "placeholderCourses": 22,
+  "unknownClauses": [
+    {
+      "course": "CS 5330",
+      "field": "prerequisites",
+      "text": "graduate program admission"
+    },
+    {
+      "course": "CY 5210",
+      "field": "prerequisites",
+      "text": "graduate program admission"
+    },
+    {
+      "course": "DADS 5200",
+      "field": "prerequisites",
+      "text": "graduate program admission"
+    }
+  ],
+  "warnings": [
+    "25 courses have unavailable details or conservatively parsed prerequisite/corequisite clauses; inspect course uncertainties."
+  ]
+}

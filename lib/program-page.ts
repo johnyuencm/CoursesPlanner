@@ -1,7 +1,7 @@
 // Server helpers for the program routes under app/[universityId]/[programId] (#71).
 import { notFound } from "next/navigation";
-import { readCatalog } from "./catalog";
 import { CATALOGS } from "./catalog-key";
+import { readProgramCatalog } from "./program-catalog";
 import { programRoutes } from "./routes";
 import type { Catalog } from "./types";
 
@@ -25,7 +25,6 @@ export async function readProgram(params: Promise<ProgramParams>) {
   const { universityId, programId } = await params;
   const key = `${universityId}/${programId}`;
   if (!Object.hasOwn(CATALOGS, key)) notFound();
-  // ponytail: every catalog key serves the default catalog today (CATALOGS has one entry).
-  const catalog = await readCatalog();
+  const catalog = await readProgramCatalog(key);
   return { key, catalog, name: programName(catalog), routes: programRoutes(key) };
 }

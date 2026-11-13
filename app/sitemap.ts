@@ -1,17 +1,22 @@
 import type { MetadataRoute } from "next";
-import { readCatalog } from "@/lib/catalog";
 import { CATALOGS } from "@/lib/catalog-key";
-import { SITE_URL, programPagePaths } from "@/lib/course-pages";
+import { readProgramCatalog } from "@/lib/program-catalog";
+import { SITE_URL, pathwaysFitCatalog, programPagePaths } from "@/lib/course-pages";
 import { programRoutes } from "@/lib/routes";
 
-/** The program picker (`/`) and every page of every published program. Plan is left out: it has no catalog text of its own. */
+/**
+ * The program picker (`/`) and every page of every published program. Plan is left out: it has no catalog text of its own.
+ * Path pages are left out when the shared paths do not fit the program (`pathwaysFitCatalog`).
+ */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const catalog = await readCatalog(); // ponytail: every catalog key serves the default catalog today
-  const lastModified = new Date(catalog.lastUpdated);
-  return [{ url: `${SITE_URL}/`, lastModified }, ...Object.keys(CATALOGS).flatMap((key) => {
-    const plan = programRoutes(key).plan;
+  const programs = await Promise.all(Object.keys(CATALOGS).map(async (key) => ({ key, catalog: await readProgramCatalog(key) })));
+  const lastModified = new Date(Math.max(...programs.map(({ catalog }) => Date.parse(catalog.lastUpdated))));
+  return [{ url: `${SITE_URL}/`, lastModified }, ...programs.flatMap(({ key, catalog }) => {
+    const routes = programRoutes(key);
+    const paths = pathwaysFitCatalog(catalog);
+    const edited = new Date(catalog.lastUpdated);
     return programPagePaths(key, catalog)
-      .filter((path) => path !== plan)
-      .map((path) => ({ url: `${SITE_URL}${path}`, lastModified }));
+      .filter((path) => path !== routes.plan && (paths || (path !== routes.paths && !path.startsWith(`${routes.paths}/`))))
+      .map((path) => ({ url: `${SITE_URL}${path}`, lastModified: edited }));
   })];
 }

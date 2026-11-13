@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "catalogKey": "northeastern/data-science-ms-ptl-0da0db71be",
+  "program": "Data Science, MS (Portland)",
+  "officialUrl": "https://catalog.northeastern.edu/graduate/university-interdisciplinary-programs/data-science-ms-ptl/",
+  "crawledAt": "2026-11-08T22:40:28.790Z",
+  "tier": "map",
+  "courses": 71,
+  "programCourses": 43,
+  "coursePages": 51,
+  "placeholderCourses": 20,
+  "unknownClauses": [
+    {
+      "course": "ARTG 5151",
+      "field": "prerequisites",
+      "text": "with a minimum grade of C"
+    },
+    {
+      "course": "ARTG 5151",
+      "field": "prerequisites",
+      "text": "with a minimum grade of C"
+    },
+    {
+      "course": "CS 5330",
+      "field": "prerequisites",
+      "text": "graduate program admission"
+    },
+    {
+      "course": "EECE 2150",
+      "field": "prerequisites",
+      "text": "with a minimum grade of D-"
+    },
+    {
+      "course": "EECE 2150",
+      "field": "prerequisites",
+      "text": "with a minimum grade of D-"
+    },
+    {
+      "course": "EECE 2150",
+      "field": "prerequisites",
+      "text": "with a minimum grade of D-"
+    },
+    {
+      "course": "EECE 2150",
+      "field": "prerequisites",
+      "text": "with a minimum grade of D-"
+    },
+    {
+      "course": "EECE 2150",
+      "field": "prerequisites",
+      "text": "with a minimum grade of D-"
+    },
+    {
+      "course": "EECE 5644",
+      "field": "prerequisites",
+      "text": "graduate program admission"
+    }
+  ],
+  "warnings": [
+    "24 courses have unavailable details or conservatively parsed prerequisite/corequisite clauses; inspect course uncertainties."
+  ]
+}

@@ -23,6 +23,16 @@ export function DegreeRules({ catalog, routes }: { catalog: Catalog; routes: Pro
   const { totalCredits, core, breadthGroups, electiveGroups } = requirementView(rules);
   const link = courseLinker(catalog, routes);
   const byCode = new Map(catalog.courses.map((course) => [course.code, course]));
+  if (rules.root.kind === "unmodeled") {
+    // Map tier: a roadmap with no rule groups (lib/program-catalog.ts).
+    const listed = catalog.courses.filter((course) => course.requirementType === "program").length;
+    return <section className="summary-section" aria-labelledby="degree-rules-title">
+      <h2 id="degree-rules-title">{rules.name}: degree rules</h2>
+      <p>This program is at Map tier. The map shows the {listed} courses that the {rules.catalogYear} {catalog.university ?? "official"} catalog
+        lists for the program, and their prerequisites. The degree rules are not modeled, so the planner checks prerequisites but gives no degree audit.</p>
+      <p>The <Link href={routes.courses}>course index</Link> lists every course. <a href={rules.officialUrl} rel="noopener">Official program requirements</a>.</p>
+    </section>;
+  }
   return <section className="summary-section" aria-labelledby="degree-rules-title">
     <h2 id="degree-rules-title">{rules.name}: degree rules</h2>
     <p>The {rules.catalogYear} {catalog.university ?? "official"} catalog asks for {totalCredits ?? "a set number of"} credits{rules.minimumGpa !== undefined && <> and a minimum {rules.minimumGpa.toFixed(1)} GPA</>}.

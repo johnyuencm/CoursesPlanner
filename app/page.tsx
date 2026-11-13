@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ProgramPicker, type PickerCollege, type PickerProgram } from "@/components/program-picker";
-import { readCatalog } from "@/lib/catalog";
 import { CATALOGS } from "@/lib/catalog-key";
+import { readProgramCatalog } from "@/lib/program-catalog";
 import { requirementTier } from "@/lib/requirements-v2";
 import { programRoutes } from "@/lib/routes";
 import { loadUniversityDirectory } from "@/lib/university-directory";
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 async function pickerData(): Promise<{ programs: PickerProgram[]; colleges: PickerCollege[] }> {
   const directory = await loadUniversityDirectory();
   const programs = await Promise.all(Object.keys(CATALOGS).map(async (key): Promise<PickerProgram> => {
-    const catalog = await readCatalog(); // ponytail: every catalog key serves the default catalog today
+    const catalog = await readProgramCatalog(key);
     const universityId = key.split("/")[0]!;
     return {
       key,
@@ -27,6 +27,13 @@ async function pickerData(): Promise<{ programs: PickerProgram[]; colleges: Pick
       catalogYear: catalog.requirements.catalogYear,
     };
   }));
+  // One heading per college: catalogs of one university can spell its name differently (#74).
+  const collegeNames = new Map<string, string>();
+  for (const program of programs) {
+    const universityId = program.key.split("/")[0]!;
+    program.college = collegeNames.get(universityId) ?? program.college;
+    collegeNames.set(universityId, program.college);
+  }
   const published = new Set(Object.keys(CATALOGS).map((key) => key.split("/")[0]));
   const colleges = directory
     .filter((entry) => !published.has(entry.id))

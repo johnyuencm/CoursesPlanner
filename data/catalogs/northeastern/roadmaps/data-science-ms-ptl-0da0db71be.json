@@ -1,0 +1,2543 @@
+{
+  "universityId": "northeastern",
+  "university": "Northeastern",
+  "programId": "data-science-ms-ptl-0da0db71be",
+  "program": "Data Science, MS (Portland)",
+  "adapter": "northeastern-acalog",
+  "officialUrl": "https://catalog.northeastern.edu/graduate/university-interdisciplinary-programs/data-science-ms-ptl/",
+  "programCourseCodes": [
+    "ARTG 5150",
+    "ARTG 5151",
+    "ARTG 5310",
+    "ARTG 5330",
+    "ARTG 6110",
+    "ARTG 6330",
+    "CS 5100",
+    "CS 5180",
+    "CS 5200",
+    "CS 5330",
+    "CS 5340",
+    "CS 5610",
+    "CS 5800",
+    "CS 6120",
+    "CS 6140",
+    "CS 6200",
+    "CS 6220",
+    "CS 6240",
+    "CS 6350",
+    "CS 6620",
+    "CS 6650",
+    "CS 6954",
+    "CS 6955",
+    "CS 6964",
+    "CS 6965",
+    "CS 7140",
+    "CS 7150",
+    "CS 7180",
+    "CS 7200",
+    "CS 7250",
+    "CS 7280",
+    "CS 7290",
+    "CS 7990",
+    "CS 8674",
+    "DS 5110",
+    "DS 5500",
+    "DS 7995",
+    "EEAM 6954",
+    "EEAM 6955",
+    "EEAM 6964",
+    "EEAM 6965",
+    "EECE 5644",
+    "EECE 7205"
+  ],
+  "courses": [
+    {
+      "code": "ARTG 5100",
+      "title": "Information Design Studio 1: Principles",
+      "credits": 4,
+      "description": "Explores the theories and practices of information design through studio projects. Investigates visual systems and information structures such as maps, timelines, charts, and diagrams. Emphasizes the creative process of organizing, visualizing, and communicating data by seeking to make complex information easier to understand and use. Requires graduate standing or permission of program coordinator or instructor.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "ARTG 6110"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/artg/",
+      "uncertainties": []
+    },
+    {
+      "code": "ARTG 5150",
+      "title": "Information Visualization Principles and Practices",
+      "credits": 3,
+      "description": "Introduces information visualization from theoretical and practical perspectives. Defines the information visualization domain and advances principles and methods for the effective visual representation of data. Contextualizes the field from a historical perspective. Presents the perceptual and cognitive tasks enabled by visualizations. Studies an extensive range of visualization models. Illustrates good and bad practices in visualization with real-world examples. Introduces concepts in computer programming in an information visualization context.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "ARTG 5151"
+      ],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/artg/",
+      "uncertainties": []
+    },
+    {
+      "code": "ARTG 5151",
+      "title": "Information Design Critique Seminar",
+      "credits": 1,
+      "description": "Requires students to present their work in design critique sessions to peers, faculty, and guests. Through these critiques, offers students an opportunity to improve their projects based on feedback, learn how to present their work effectively, and articulate design problems in verbal discourse. Can only be taken in conjunction with ARTG 5150.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "all",
+            "items": [
+              {
+                "type": "course",
+                "code": "ARTG 5150",
+                "concurrent": true
+              },
+              {
+                "type": "unknown",
+                "text": "with a minimum grade of C"
+              }
+            ]
+          },
+          {
+            "type": "all",
+            "items": [
+              {
+                "type": "course",
+                "code": "ARTG 5150",
+                "concurrent": true
+              },
+              {
+                "type": "unknown",
+                "text": "with a minimum grade of C"
+              }
+            ]
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "ARTG 5150 (may be taken concurrently) with a minimum grade of C or ARTG 5150 (may be taken concurrently) with a minimum grade of C",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "ARTG 5150"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/artg/",
+      "uncertainties": [
+        "Prerequisite clause not fully understood: with a minimum grade of C",
+        "Prerequisite clause not fully understood: with a minimum grade of C"
+      ]
+    },
+    {
+      "code": "ARTG 5310",
+      "title": "Visual Cognition",
+      "credits": 4,
+      "description": "Introduces human visual cognition as it applies to information design and visualization. Focuses on perception, attention, pattern recognition, information acquisition, memory, and creation of mental models. Explores reasoning, cognition, decision making, and problem solving in relation to visual artifacts. Students who do not meet course restrictions may seek permission of instructor or program coordinator.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/artg/",
+      "uncertainties": []
+    },
+    {
+      "code": "ARTG 5330",
+      "title": "Visualization Technologies 1: Fundamentals",
+      "credits": 4,
+      "description": "Introduces programming languages that allow computational analysis and digital delivery of dynamic information. Examines implications of environmental and personal sensor data sources, mobile collection and analysis of data, real-time networked data sets, and social use of shared data visualization tools. Students who do not meet course restrictions may seek permission of instructor or program coordinator. May be repeated once.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Software Engineering",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/artg/",
+      "uncertainties": []
+    },
+    {
+      "code": "ARTG 6110",
+      "title": "Information Design Theory and Critical Thinking",
+      "credits": 4,
+      "description": "Examines various theoretical models of information visualization and delivery systems. Evaluates the concepts and effectiveness of the models through discussions and writing activities. Students who do not meet course prerequisites or restrictions may seek permission of program coordinator or instructor.",
+      "prerequisites": {
+        "type": "course",
+        "code": "ARTG 5100",
+        "minimumGrade": "C-"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "ARTG 5100 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "ARTG 5100"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/artg/",
+      "uncertainties": []
+    },
+    {
+      "code": "ARTG 6330",
+      "title": "Information Design Mapping Strategies",
+      "credits": 4,
+      "description": "Examines the relationships between content and context through mapping methods. Emphasizes the impact of geographic information systems, evolving technologies, community mapping tools, globalization, and delivery systems. Undergraduate students may seek permission of instructor.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/artg/",
+      "uncertainties": []
+    },
+    {
+      "code": "BIOE 2365",
+      "title": "External course (BIOE 2365)",
+      "credits": 0,
+      "description": "Course details for BIOE 2365 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for BIOE 2365 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for BIOE 2365 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for BIOE 2365 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for BIOE 2365 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 5644"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for BIOE 2365 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "BUSM 224M",
+      "title": "External course (BUSM 224M)",
+      "credits": 0,
+      "description": "Course details for BUSM 224M are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for BUSM 224M are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for BUSM 224M are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for BUSM 224M are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for BUSM 224M are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 5644"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for BUSM 224M are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "CIVE 3464",
+      "title": "External course (CIVE 3464)",
+      "credits": 0,
+      "description": "Course details for CIVE 3464 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for CIVE 3464 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for CIVE 3464 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for CIVE 3464 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for CIVE 3464 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 5644"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for CIVE 3464 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "CS 5100",
+      "title": "Foundations of Artificial Intelligence",
+      "credits": 4,
+      "description": "Introduces the fundamental problems, theories, and algorithms of the artificial intelligence field. Topics include heuristic search and game trees, knowledge representation using predicate calculus, automated deduction and its applications, problem solving and planning, and introduction to machine learning. Required course work includes the creation of working programs that solve problems, reason logically, and/or improve their own performance using techniques presented in the course.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5180",
+      "title": "Reinforcement Learning and Sequential Decision Making",
+      "credits": 4,
+      "description": "Introduces reinforcement learning and the underlying computational frameworks and the Markov decision process framework. Covers a variety of reinforcement learning algorithms, including model-based, model-free, value function, policy gradient, actor-critic, and Monte Carlo methods. Examines commonly used representations including deep learning representations and approaches to partially observable problems. Students are expected to have a working knowledge of probability and linear algebra, to complete programming assignments, and to complete a course project that applies some form of reinforcement learning to a problem of interest.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5200",
+      "title": "Database Management Systems",
+      "credits": 4,
+      "description": "Introduces relational database management systems as a class of software systems. Prepares students to be sophisticated users of database management systems. Covers design theory, query language, and performance/tuning issues. Topics include relational algebra, SQL, stored procedures, user-defined functions, cursors, embedded SQL programs, client-server interfaces, entity-relationship diagrams, normalization, B-trees, concurrency, transactions, database security, constraints, object-relational DBMSs, and specialized engines such as spatial, text, XML conversion, and time series. Includes exercises using a commercial relational or object-relational database management system.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5330",
+      "title": "Pattern Recognition and Computer Vision",
+      "credits": 4,
+      "description": "Introduces fundamental techniques for low-level and high-level computer vision. Examines image formation, early processing, boundary detection, image segmentation, texture analysis, shape from shading, photometric stereo, motion analysis via optic flow, object modeling, shape description, and object recognition (classification). Discusses models of human vision (gestalt effects, texture perception, subjective contours, visual illusions, apparent motion, mental rotations, and cyclopean vision). Requires knowledge of linear algebra.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "course",
+            "code": "MATH 2331",
+            "minimumGrade": "D-"
+          },
+          {
+            "type": "unknown",
+            "text": "graduate program admission"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "MATH 2331 with a minimum grade of D- or graduate program admission",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "MATH 2331"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": [
+        "Prerequisite clause not fully understood: graduate program admission"
+      ]
+    },
+    {
+      "code": "CS 5340",
+      "title": "Computer/Human Interaction",
+      "credits": 4,
+      "description": "Covers the principles of human-computer interaction and the design and evaluation of user interfaces. Topics include an overview of human information processing subsystems (perception, memory, attention, and problem solving); how the properties of these systems affect the design of user interfaces; the principles, guidelines, and specification languages for designing good user interfaces, with emphasis on tool kits and libraries of standard graphical user interface objects; and a variety of interface evaluation methodologies that can be used to measure the usability of software. Other topics may include World Wide Web design principles and tools, computer-supported cooperative work, multimodal and “next generation” interfaces, speech and natural language interfaces, and virtual reality interfaces. Course work includes both the creation and implementation of original user interface designs, and the evaluation of user interfaces created by others. Requires knowledge of C programming language/UNIX.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML",
+        "Software Engineering"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5610",
+      "title": "Web Development",
+      "credits": 4,
+      "description": "Discusses Web development for sites that are dynamic, data driven, and interactive. Focuses on the software development issues of integrating multiple languages, assorted data technologies, and Web interaction. Considers ASP.NET, C#, HTTP, HTML, CSS, XML, XSLT, JavaScript, AJAX, RSS/Atom, SQL, and Web services. Each student must deploy individually designed Web experiments that illustrate the Web technologies and at least one major integrative Web site project. Students may work in teams with the permission of the instructor. Each student or team must also create extensive documentation of their goals, plans, design decisions, accomplishments, and user guidelines. All source files must be open and be automatically served by a sources server.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Software Engineering",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 5800",
+      "title": "Algorithms",
+      "credits": 4,
+      "description": "Presents the mathematical techniques used for the design and analysis of computer algorithms. Focuses on algorithmic design paradigms and techniques for analyzing the correctness, time, and space complexity of algorithms. Topics may include asymptotic notation, recurrences, loop invariants, Hoare triples, sorting and searching, advanced data structures, lower bounds, hashing, greedy algorithms, dynamic programming, graph algorithms, and NP-completeness.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 6140",
+        "CS 6220",
+        "CS 6240",
+        "DS 5500"
+      ],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 6120",
+      "title": "Natural Language Processing",
+      "credits": 4,
+      "description": "Provides an introduction to the computational modeling of human language, the ongoing effort to create computer programs that can communicate with people in natural language, and current applications of the natural language field, such as automated document classification, intelligent query processing, and information extraction. Topics include computational models of grammar and automatic parsing, statistical language models and the analysis of large text corpuses, natural language semantics and programs that understand language, models of discourse structure, and language use by intelligent agents. Course work includes formal and mathematical analysis of language models, and implementation of working programs that analyze and interpret natural language text.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 6140",
+      "title": "Machine Learning",
+      "credits": 4,
+      "description": "Provides a broad look at a variety of techniques used in machine learning and data mining, and also examines issues associated with their use. Topics include algorithms for supervised learning including decision tree induction, artificial neural networks, instance-based learning, probabilistic methods, and support vector machines; unsupervised learning; and reinforcement learning. Also covers computational learning theory and other methods for analyzing and measuring the performance of learning algorithms. Course work includes a programming term project.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "course",
+            "code": "CS 5800",
+            "minimumGrade": "C-"
+          },
+          {
+            "type": "course",
+            "code": "CS 7800",
+            "minimumGrade": "C-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CS 5800 with a minimum grade of C- or CS 7800 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CS 5800",
+        "CS 7800"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 7140",
+        "CS 7150",
+        "DS 5500"
+      ],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML",
+        "Data",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 6200",
+      "title": "Information Retrieval",
+      "credits": 4,
+      "description": "Provides an introduction to information retrieval systems and different approaches to information retrieval. Topics covered include evaluation of information retrieval systems; retrieval, language, and indexing models; file organization; compression; relevance feedback; clustering; distributed retrieval and metasearch; probabilistic approaches to information retrieval; Web retrieval; filtering, collaborative filtering, and recommendation systems; cross-language IR; multimedia IR; and machine learning for information retrieval.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 6220",
+      "title": "Data Mining Techniques",
+      "credits": 4,
+      "description": "Covers various aspects of data mining, including classification, prediction, ensemble methods, association rules, sequence mining, and cluster analysis. The class project involves hands-on practice of mining useful knowledge from a large data set.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "course",
+            "code": "CS 5800",
+            "minimumGrade": "C-"
+          },
+          {
+            "type": "course",
+            "code": "CS 7800",
+            "minimumGrade": "C-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CS 5800 with a minimum grade of C- or CS 7800 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CS 5800",
+        "CS 7800"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "DS 5500"
+      ],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 6240",
+      "title": "Large-Scale Parallel Data Processing",
+      "credits": 4,
+      "description": "Covers big-data analysis techniques that scale out with increasing number of compute nodes, e.g., for cloud computing. Emphasizes approaches for problem and data partitioning that distribute work effectively, while keeping total cost for computation and data transfer low. Studies and analyzes deterministic and random algorithms from a variety of domains, including graphs, data mining, linear algebra, and information retrieval in terms of their cost, scalability, and robustness against skew. Course work emphasizes hands-on programming experience with modern state-of-the-art big-data processing technology. Students who do not meet course prerequisites may seek permission of instructor.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "course",
+                "code": "CS 5800",
+                "minimumGrade": "C-"
+              },
+              {
+                "type": "course",
+                "code": "CS 7800",
+                "minimumGrade": "C-"
+              }
+            ]
+          },
+          {
+            "type": "course",
+            "code": "EECE 7205",
+            "minimumGrade": "C-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CS 5800 with a minimum grade of C- or CS 7800 with a minimum grade of C- or EECE 7205 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CS 5800",
+        "CS 7800",
+        "EECE 7205"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Systems",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 6350",
+      "title": "Empirical Research Methods",
+      "credits": 4,
+      "description": "Presents an overview of methods for conducting empirical research within computer science. These methods help provide objective answers to questions about the usability, effectiveness, and acceptability of systems. The course covers the basics of the scientific method, building from a survey of objective measures to the fundamentals of hypothesis testing using relatively simple research designs, and on to more advanced research designs and statistical methods. The course also includes a significant amount of fieldwork, spanning the design, conduct, and presentation of small empirical studies.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 6620",
+      "title": "Fundamentals of Cloud Computing",
+      "credits": 4,
+      "description": "Covers fundamentals of cloud computing, including virtualization and containers, distributed file systems and object stores, infrastructure as a service platforms, open source cloud platforms, key big data platforms, and topics in data center scale systems. Combines classroom material delivered via lectures, readings from literature, student presentations, and a semester-long software project.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Systems",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 6650",
+      "title": "Building Scalable Distributed Systems",
+      "credits": 4,
+      "description": "Covers the essential elements of distributed, concurrent systems and builds upon that knowledge with engineering principles and practical experience with state-of-the-art technologies and methods for building scalable systems. Scalability is an essential quality of internet-facing systems and requires specialized skills and knowledge to build systems that scale at low cost.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Systems"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 6954",
+      "title": "Co-op Work Experience - Half-Time",
+      "credits": 0,
+      "description": "Provides eligible students with an opportunity for work experience. May be repeated without limit.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 6955",
+      "title": "Co-op Work Experience Abroad - Half-Time",
+      "credits": 0,
+      "description": "Provides eligible students with an opportunity for work experience abroad. May be repeated once.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 6964",
+      "title": "Co-op Work Experience",
+      "credits": 0,
+      "description": "Provides eligible students with an opportunity for work experience. May be repeated without limit.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 6965",
+      "title": "Co-op Work Experience Abroad",
+      "credits": 0,
+      "description": "Provides eligible students with an opportunity for work experience abroad. May be repeated without limit.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 7140",
+      "title": "Advanced Machine Learning",
+      "credits": 4,
+      "description": "Covers topics in advanced machine learning. Presents materials in the current machine learning literature. Focuses on graphical models, latent variable models, Bayesian inference, and nonparametric Bayesian methods. Seeks to prepare students to do research in machine learning. Expects students to read conference and journal articles, present these articles, and write an individual research paper. CS 7140 and EECE 7397 are cross-listed.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "any",
+                "items": [
+                  {
+                    "type": "any",
+                    "items": [
+                      {
+                        "type": "course",
+                        "code": "CS 6140",
+                        "minimumGrade": "C-"
+                      },
+                      {
+                        "type": "course",
+                        "code": "DADS 7275",
+                        "minimumGrade": "C-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "course",
+                    "code": "EECE 5644",
+                    "minimumGrade": "C-"
+                  }
+                ]
+              },
+              {
+                "type": "course",
+                "code": "EECE 7204",
+                "minimumGrade": "C-"
+              }
+            ]
+          },
+          {
+            "type": "course",
+            "code": "EECE 7313",
+            "minimumGrade": "C-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CS 6140 with a minimum grade of C- or DADS 7275 with a minimum grade of C- or EECE 5644 with a minimum grade of C- or EECE 7204 with a minimum grade of C- or EECE 7313 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CS 6140",
+        "DADS 7275",
+        "EECE 5644",
+        "EECE 7204",
+        "EECE 7313"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 7150",
+      "title": "Deep Learning",
+      "credits": 4,
+      "description": "Introduces deep learning, including the statistical learning framework, empirical risk minimization, loss function selection, fully connected layers, convolutional layers, pooling layers, batch normalization, multilayer perceptrons, convolutional neural networks, autoencoders, U-nets, residual networks, gradient descent, stochastic gradient descent, backpropagation, autograd, visualization of neural network features, robustness and adversarial examples, interpretability, continual learning, and applications in computer vision and natural language processing. Assumes students already have a basic knowledge of machine learning, optimization, linear algebra, and statistics.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "any",
+                "items": [
+                  {
+                    "type": "course",
+                    "code": "CS 6140",
+                    "minimumGrade": "C-"
+                  },
+                  {
+                    "type": "course",
+                    "code": "DADS 7275",
+                    "minimumGrade": "C-"
+                  }
+                ]
+              },
+              {
+                "type": "course",
+                "code": "DS 5220",
+                "minimumGrade": "C-"
+              }
+            ]
+          },
+          {
+            "type": "course",
+            "code": "EECE 5644",
+            "minimumGrade": "C-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "CS 6140 with a minimum grade of C- or DADS 7275 with a minimum grade of C- or DS 5220 with a minimum grade of C- or EECE 5644 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CS 6140",
+        "DADS 7275",
+        "DS 5220",
+        "EECE 5644"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML",
+        "Data",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 7180",
+      "title": "Special Topics in Artificial Intelligence",
+      "credits": 4,
+      "description": "Offers various topics on artificial intelligence. May be repeated up to two times.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 7200",
+      "title": "Statistical Methods for Computer Science",
+      "credits": 4,
+      "description": "Introduces concepts in applied statistics. Covers frequentist and Bayesian characterization of uncertainty for continuous and categorical data, principles of experimental design, and methods of causal inference. Discusses the methodological foundations, as well as issues of practical implementation and use.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 7250",
+      "title": "Information Visualization: Theory and Applications",
+      "credits": 4,
+      "description": "Covers foundational as well as contemporary topics of interest in data visualization to enable the effective representation of data across disciplines, including examples drawn from computer science, physical sciences, biomedical sciences, humanities, and economics. Topics include data visualization theory and methodology, visualization design and evaluation, visual perception and cognition, interaction principles, and data encoding and representation techniques. Students who do not meet course restrictions may seek permission of instructor.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 7280",
+      "title": "Special Topics in Database Management",
+      "credits": 4,
+      "description": "Offers various topics. Possible areas include object-oriented database systems and distributed database systems. May be repeated up to two times.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 7290",
+      "title": "Special Topics in Data Science",
+      "credits": 4,
+      "description": "Offers special topics in data science, including machine learning, statistics, data mining, parallel and distributed data analysis, database systems, information retrieval, knowledge representation, information visualization, natural language processing, computational biology and bioinformatics, computational social science, digital humanities, health informatics, business, and predictive analytics. May be repeated once for up to 8 total credits.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 7800",
+      "title": "Advanced Algorithms",
+      "credits": 4,
+      "description": "Presents advanced mathematical techniques for designing and analyzing computer algorithms. Reviews some of the material covered in CS 5800 and then covers advanced topics. Emphasizes theoretical underpinnings of techniques used to solve problems arising in diverse domains. Topics include asymptotic analysis, advanced data structures, dynamic programming, greedy algorithms and matroid theory, amortized analysis, randomization, string matching, algebraic algorithms, and approximation algorithms. Introduces Turing machines, P and NP classes, polynomial-time reducibility, and NP completeness.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 6140",
+        "CS 6220",
+        "CS 6240"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 7990",
+      "title": "Thesis",
+      "credits": 4,
+      "description": "Offers selected work with the agreement of a project supervisor. May be repeated once.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "CS 8674",
+      "title": "Master’s Project",
+      "credits": 4,
+      "description": "Offers selected work with the agreement of a project supervisor. May be repeated once.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/cs/",
+      "uncertainties": []
+    },
+    {
+      "code": "DADS 7275",
+      "title": "External course (DADS 7275)",
+      "credits": 0,
+      "description": "Course details for DADS 7275 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for DADS 7275 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for DADS 7275 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for DADS 7275 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for DADS 7275 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 7140",
+        "CS 7150"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for DADS 7275 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "DS 5110",
+      "title": "Essentials of Data Science",
+      "credits": 4,
+      "description": "Introduces students to the core tasks in data science, including data collection, storage, tidying, transformation, processing, management, and modeling for the purpose of extracting knowledge from raw observations. Programming is a cross-cutting aspect of the course. Offers students an opportunity to gain experience with data science tasks and tools through short assignments. Includes a term project based on real-world data.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "DS 5500"
+      ],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/ds/",
+      "uncertainties": []
+    },
+    {
+      "code": "DS 5220",
+      "title": "Supervised Machine Learning and Learning Theory",
+      "credits": 4,
+      "description": "Introduces supervised machine learning, which is the study and design of algorithms that enable computers/machines to learn from experience or data, given examples of data with a known outcome of interest. Offers a broad view of models and algorithms for supervised decision making. Discusses the methodological foundations behind the models and the algorithms, as well as issues of practical implementation and use, and techniques for assessing the performance. Includes a term project involving programming and/or work with real-world data sets. Requires proficiency in a programming language such as Python, R, or MATLAB.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 7150",
+        "DS 5500"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML",
+        "Software Engineering",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/ds/",
+      "uncertainties": []
+    },
+    {
+      "code": "DS 5230",
+      "title": "Unsupervised Machine Learning and Data Mining",
+      "credits": 4,
+      "description": "Introduces unsupervised machine learning and data mining, which is the process of discovering and summarizing patterns from large amounts of data, without examples of data with a known outcome of interest. Offers a broad view of models and algorithms for unsupervised data exploration. Discusses the methodological foundations behind the models and the algorithms, as well as issues of practical implementation and use, and techniques for assessing the performance. Includes a term project involving programming and/or work with real-life data sets. Requires proficiency in a programming language such as Python, R, or MATLAB.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "DS 5500"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML",
+        "Software Engineering",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/ds/",
+      "uncertainties": []
+    },
+    {
+      "code": "DS 5500",
+      "title": "Data Science Capstone",
+      "credits": 4,
+      "description": "Offers students a capstone opportunity to practice data science skills learned in previous courses and to build a portfolio. Students practice visualization, data wrangling, and machine learning skills by applying them to semester-long term projects on real-world data. Students may either propose their own projects or choose from a selection of industry options. Emphasizes the overall data science process, including identification of the scientific problem, selection of appropriate machine learning methods, and visualization and communication of results. Lectures may include additional topics, including visualization, communication, and data science ethics.",
+      "prerequisites": {
+        "type": "all",
+        "items": [
+          {
+            "type": "all",
+            "items": [
+              {
+                "type": "all",
+                "items": [
+                  {
+                    "type": "any",
+                    "items": [
+                      {
+                        "type": "course",
+                        "code": "CS 5800",
+                        "minimumGrade": "C-"
+                      },
+                      {
+                        "type": "course",
+                        "code": "EECE 7205",
+                        "minimumGrade": "C-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "any",
+                    "items": [
+                      {
+                        "type": "any",
+                        "items": [
+                          {
+                            "type": "course",
+                            "code": "CS 6140",
+                            "minimumGrade": "C-"
+                          },
+                          {
+                            "type": "course",
+                            "code": "DS 5220",
+                            "minimumGrade": "C-"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "course",
+                        "code": "EECE 5644",
+                        "minimumGrade": "C-"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "any",
+                "items": [
+                  {
+                    "type": "any",
+                    "items": [
+                      {
+                        "type": "course",
+                        "code": "CS 6220",
+                        "minimumGrade": "C-"
+                      },
+                      {
+                        "type": "course",
+                        "code": "DS 5230",
+                        "minimumGrade": "C-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "course",
+                    "code": "IE 7275",
+                    "minimumGrade": "C-"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "course",
+            "code": "DS 5110",
+            "minimumGrade": "C-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "(CS 5800 with a minimum grade of C- or EECE 7205 with a minimum grade of C- ); (CS 6140 with a minimum grade of C- or DS 5220 with a minimum grade of C- or EECE 5644 with a minimum grade of C- ); (CS 6220 with a minimum grade of C- or DS 5230 with a minimum grade of C- or IE 7275 with a minimum grade of C- ); DS 5110 with a minimum grade of C-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "CS 5800",
+        "CS 6140",
+        "CS 6220",
+        "DS 5110",
+        "DS 5220",
+        "DS 5230",
+        "EECE 5644",
+        "EECE 7205",
+        "IE 7275"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML",
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/ds/",
+      "uncertainties": []
+    },
+    {
+      "code": "DS 7995",
+      "title": "Project",
+      "credits": 1,
+      "maxCredits": 4,
+      "description": "Offers students an opportunity to participate in a direct data science project under the supervision of a faculty member. May be repeated once for a total of 8 credits.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/ds/",
+      "uncertainties": []
+    },
+    {
+      "code": "EEAM 6954",
+      "title": "Co-op Work Experience - Half-Time",
+      "credits": 0,
+      "description": "Provides eligible students with an opportunity for work experience. May be repeated without limit.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/eeam/",
+      "uncertainties": []
+    },
+    {
+      "code": "EEAM 6955",
+      "title": "Co-op Work Experience Abroad - Half-Time",
+      "credits": 0,
+      "description": "Provides eligible students with an opportunity for work experience. May be repeated without limit.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/eeam/",
+      "uncertainties": []
+    },
+    {
+      "code": "EEAM 6964",
+      "title": "Co-op Work Experience",
+      "credits": 0,
+      "description": "Provides eligible students with an opportunity for work experience. May be repeated without limit.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/eeam/",
+      "uncertainties": []
+    },
+    {
+      "code": "EEAM 6965",
+      "title": "Co-op Work Experience Abroad",
+      "credits": 0,
+      "description": "Provides eligible students with an opportunity for work experience abroad. May be repeated without limit.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/eeam/",
+      "uncertainties": []
+    },
+    {
+      "code": "EECE 2140",
+      "title": "Computing Fundamentals for Engineers",
+      "credits": 4,
+      "description": "Engages students in problem solving from an engineering perspective, offering essential computer hardware and software knowledge and experience. Computational problem solving involves expressing solutions to engineering problems in a way that a computer can efficiently solve. As our world continues to become more automated and interconnected, it becomes increasingly important to be able to leverage computer software and hardware, enabling us to evaluate and solve real-world engineering challenges. Offers students an opportunity to learn engineering solution design, leveraging a high-level programming language appropriate for interfacing hardware-based systems. Stresses best practices in design. Coursework includes programming assignments, quizzes, and a final project, offering students a number of ways to demonstrate their understanding of the concepts.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 2150"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "Software Engineering"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/eece/",
+      "uncertainties": []
+    },
+    {
+      "code": "EECE 2150",
+      "title": "Circuits and Signals: Biomedical Applications",
+      "credits": 5,
+      "description": "Offers an integrated lecture/lab course that covers circuit theory, signal processing, circuit building, and MATLAB programming. Introduces basic device and signal models and circuit laws used in the study of linear circuits. Analyzes resistive and complex impedance networks. Uses the ideal operational amplifier model, focusing on differential amplifiers and active filter circuits. Introduces basic concepts of linearity and time-invariance for both continuous and discrete-time systems and concepts associated with analog/digital conversion. Demonstrates discrete-time linear filter design on acquired signals in the MATLAB environment. Offers students an opportunity to explore circuits and signals in the lab and to use their knowledge of circuits, analog signals, digital signals, and biological signals to build a working analog/digital EKG system.",
+      "prerequisites": {
+        "type": "all",
+        "items": [
+          {
+            "type": "all",
+            "items": [
+              {
+                "type": "all",
+                "items": [
+                  {
+                    "type": "all",
+                    "items": [
+                      {
+                        "type": "any",
+                        "items": [
+                          {
+                            "type": "any",
+                            "items": [
+                              {
+                                "type": "course",
+                                "code": "GE 1111",
+                                "minimumGrade": "D-"
+                              },
+                              {
+                                "type": "course",
+                                "code": "GE 1502",
+                                "minimumGrade": "D-"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "course",
+                            "code": "ENGR 155M",
+                            "minimumGrade": "D-"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "any",
+                        "items": [
+                          {
+                            "type": "all",
+                            "items": [
+                              {
+                                "type": "course",
+                                "code": "MATH 2341",
+                                "concurrent": true
+                              },
+                              {
+                                "type": "unknown",
+                                "text": "with a minimum grade of D-"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "all",
+                            "items": [
+                              {
+                                "type": "course",
+                                "code": "MATH 315M",
+                                "concurrent": true
+                              },
+                              {
+                                "type": "unknown",
+                                "text": "with a minimum grade of D-"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "any",
+                    "items": [
+                      {
+                        "type": "any",
+                        "items": [
+                          {
+                            "type": "all",
+                            "items": [
+                              {
+                                "type": "course",
+                                "code": "PHYS 1155",
+                                "concurrent": true
+                              },
+                              {
+                                "type": "unknown",
+                                "text": "with a minimum grade of D-"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "all",
+                            "items": [
+                              {
+                                "type": "course",
+                                "code": "PHYS 1165",
+                                "concurrent": true
+                              },
+                              {
+                                "type": "unknown",
+                                "text": "with a minimum grade of D-"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "course",
+                        "code": "PHYS 1175",
+                        "minimumGrade": "D-"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "course",
+                "code": "EECE 2140",
+                "concurrent": true
+              }
+            ]
+          },
+          {
+            "type": "unknown",
+            "text": "with a minimum grade of D-"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "(GE 1111 with a minimum grade of D- or GE 1502 with a minimum grade of D- or ENGR 155M with a minimum grade of D- ); (MATH 2341 (may be taken concurrently) with a minimum grade of D- or MATH 315M (may be taken concurrently) with a minimum grade of D- ); (PHYS 1155 (may be taken concurrently) with a minimum grade of D- or PHYS 1165 (may be taken concurrently) with a minimum grade of D- or PHYS 1175 with a minimum grade of D- ); EECE 2140 (may be taken concurrently) with a minimum grade of D-",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "EECE 2140",
+        "ENGR 155M",
+        "GE 1111",
+        "GE 1502",
+        "MATH 2341",
+        "MATH 315M",
+        "PHYS 1155",
+        "PHYS 1165",
+        "PHYS 1175"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 3468"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/eece/",
+      "uncertainties": [
+        "Prerequisite clause not fully understood: with a minimum grade of D-",
+        "Prerequisite clause not fully understood: with a minimum grade of D-",
+        "Prerequisite clause not fully understood: with a minimum grade of D-",
+        "Prerequisite clause not fully understood: with a minimum grade of D-",
+        "Prerequisite clause not fully understood: with a minimum grade of D-"
+      ]
+    },
+    {
+      "code": "EECE 3468",
+      "title": "Analysis of Random Phenomena in Electrical and Computer Engineering",
+      "credits": 4,
+      "description": "Studies analytical concepts and methods for solving engineering problems involving randomness. Uses applications such as data analytics, artificial intelligence, signal processing, computer networks, electronic devices, and sensing systems as guiding examples. Begins with the basic theory of probability and random variables; then develops the concepts of random vectors, sequences, and processes with their statistical description. Introduces basic statistics, regression analysis, parameter estimation, and hypothesis testing, including the use of computer simulations. Defines the concepts of correlation, covariance, and power density spectra. Uses these concepts to discuss noise, uncertainty, and other random phenomena, which is covered in the context of electrical and computer engineering applications.",
+      "prerequisites": {
+        "type": "all",
+        "items": [
+          {
+            "type": "course",
+            "code": "EECE 2150",
+            "minimumGrade": "D-"
+          },
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "course",
+                "code": "MATH 2341",
+                "minimumGrade": "D-"
+              },
+              {
+                "type": "course",
+                "code": "MATH 315M",
+                "minimumGrade": "D-"
+              }
+            ]
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "EECE 2150 with a minimum grade of D- ; (MATH 2341 with a minimum grade of D- or MATH 315M with a minimum grade of D- )",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "EECE 2150",
+        "MATH 2341",
+        "MATH 315M"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 5644"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML",
+        "Data",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/eece/",
+      "uncertainties": []
+    },
+    {
+      "code": "EECE 5644",
+      "title": "Introduction to Machine Learning and Pattern Recognition",
+      "credits": 4,
+      "description": "Studies machine learning (the study and design of algorithms that enable computers/machines to learn from experience/data). Covers a range of algorithms, focusing on the underlying models between each approach. Emphasizes the foundations to prepare students for research in machine learning. Topics include Bayes decision theory, maximum likelihood parameter estimation, model selection, mixture density estimation, support vector machines, neural networks, probabilistic graphics models, and ensemble methods (boosting and bagging). Offers students an opportunity to learn where and how to apply machine learning algorithms and why they work.",
+      "prerequisites": {
+        "type": "any",
+        "items": [
+          {
+            "type": "any",
+            "items": [
+              {
+                "type": "any",
+                "items": [
+                  {
+                    "type": "any",
+                    "items": [
+                      {
+                        "type": "any",
+                        "items": [
+                          {
+                            "type": "any",
+                            "items": [
+                              {
+                                "type": "any",
+                                "items": [
+                                  {
+                                    "type": "any",
+                                    "items": [
+                                      {
+                                        "type": "any",
+                                        "items": [
+                                          {
+                                            "type": "course",
+                                            "code": "EECE 3468",
+                                            "minimumGrade": "D-"
+                                          },
+                                          {
+                                            "type": "course",
+                                            "code": "MATH 3081",
+                                            "minimumGrade": "D-"
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "type": "course",
+                                        "code": "MATH 1215",
+                                        "minimumGrade": "D-"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "type": "course",
+                                    "code": "MATH 2280",
+                                    "minimumGrade": "D-"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "course",
+                                "code": "IE 3412",
+                                "minimumGrade": "D-"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "course",
+                            "code": "CIVE 3464",
+                            "minimumGrade": "D-"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "course",
+                        "code": "BIOE 2365",
+                        "minimumGrade": "D-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "course",
+                    "code": "MGSC 2301",
+                    "minimumGrade": "D-"
+                  }
+                ]
+              },
+              {
+                "type": "course",
+                "code": "BUSM 224M",
+                "minimumGrade": "D-"
+              }
+            ]
+          },
+          {
+            "type": "unknown",
+            "text": "graduate program admission"
+          }
+        ]
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "EECE 3468 with a minimum grade of D- or MATH 3081 with a minimum grade of D- or MATH 1215 with a minimum grade of D- or MATH 2280 with a minimum grade of D- or IE 3412 with a minimum grade of D- or CIVE 3464 with a minimum grade of D- or BIOE 2365 with a minimum grade of D- or MGSC 2301 with a minimum grade of D- or BUSM 224M with a minimum grade of D- or graduate program admission",
+      "corequisiteText": "",
+      "prerequisiteCodes": [
+        "BIOE 2365",
+        "BUSM 224M",
+        "CIVE 3464",
+        "EECE 3468",
+        "IE 3412",
+        "MATH 1215",
+        "MATH 2280",
+        "MATH 3081",
+        "MGSC 2301"
+      ],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 7140",
+        "CS 7150",
+        "DS 5500"
+      ],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "AI / ML",
+        "Data",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/eece/",
+      "uncertainties": [
+        "Prerequisite clause not fully understood: graduate program admission"
+      ]
+    },
+    {
+      "code": "EECE 7204",
+      "title": "Applied Probability and Stochastic Processes",
+      "credits": 4,
+      "description": "Covers the fundamentals of probabilistic treatment and the concept of random processes, which are essential for many engineering disciplines and data analysis in general. Includes the basic laws of probability, random variables and their functions, probability density and cumulative distributions, statistical averages, bounds on probability, and the central limit theorem. Outlines basic principles of statistics, including estimation of probability, confidence intervals, and order statistics. Provides an overview of detection and estimation problems, including maximum likelihood and Bayesian principles, Cramer-Rao bound, linear estimators, and hypothesis testing. Studies random sequences, with notions of convergence, laws of large numbers, and examples of Markov chains. Defines random processes, along with the concepts of stationarity, ergodicity, autocorrelation and power spectral density, and filtering operations.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 7140"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [
+        "Data"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/eece/",
+      "uncertainties": []
+    },
+    {
+      "code": "EECE 7205",
+      "title": "Fundamentals of Computer Engineering",
+      "credits": 4,
+      "description": "Introduces fundamental techniques in computer engineering used throughout the graduate curriculum. Covers basic programming and analysis methods and the formulation and solution of a wide range of computer engineering problems. Also discusses the applications of algorithm analysis and complexity theory to analyzing and solving problems. Emphasizes those fundamental computational problems and related algorithms whose solution can be obtained in polynomial time. For basic computational problems such as sorting, searching, elementary graph algorithms, shortest-paths problems, as well as flow problems in networks, many different algorithms and data structures are described and analyzed, implemented, and compared both from a theoretical and from an experimental point of view.",
+      "prerequisites": {
+        "type": "none"
+      },
+      "corequisites": {
+        "type": "none"
+      },
+      "prerequisiteText": "",
+      "corequisiteText": "",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 6240",
+        "DS 5500"
+      ],
+      "breadthCategories": [],
+      "requirementType": "program",
+      "electiveEligible": false,
+      "topics": [
+        "Data",
+        "Networks / Security"
+      ],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/eece/",
+      "uncertainties": []
+    },
+    {
+      "code": "EECE 7313",
+      "title": "External course (EECE 7313)",
+      "credits": 0,
+      "description": "Course details for EECE 7313 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for EECE 7313 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for EECE 7313 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for EECE 7313 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for EECE 7313 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 7140"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for EECE 7313 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "ENGR 155M",
+      "title": "External course (ENGR 155M)",
+      "credits": 0,
+      "description": "Course details for ENGR 155M are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for ENGR 155M are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for ENGR 155M are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for ENGR 155M are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for ENGR 155M are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 2150"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for ENGR 155M are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "GE 1111",
+      "title": "External course (GE 1111)",
+      "credits": 0,
+      "description": "Course details for GE 1111 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for GE 1111 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for GE 1111 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for GE 1111 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for GE 1111 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 2150"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for GE 1111 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "GE 1502",
+      "title": "External course (GE 1502)",
+      "credits": 0,
+      "description": "Course details for GE 1502 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for GE 1502 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for GE 1502 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for GE 1502 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for GE 1502 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 2150"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for GE 1502 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "IE 3412",
+      "title": "External course (IE 3412)",
+      "credits": 0,
+      "description": "Course details for IE 3412 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for IE 3412 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for IE 3412 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for IE 3412 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for IE 3412 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 5644"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for IE 3412 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "IE 7275",
+      "title": "External course (IE 7275)",
+      "credits": 0,
+      "description": "Course details for IE 7275 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for IE 7275 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for IE 7275 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for IE 7275 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for IE 7275 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "DS 5500"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for IE 7275 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "MATH 315M",
+      "title": "External course (MATH 315M)",
+      "credits": 0,
+      "description": "Course details for MATH 315M are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for MATH 315M are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for MATH 315M are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for MATH 315M are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for MATH 315M are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 2150",
+        "EECE 3468"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for MATH 315M are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "MATH 1215",
+      "title": "External course (MATH 1215)",
+      "credits": 0,
+      "description": "Course details for MATH 1215 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for MATH 1215 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for MATH 1215 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for MATH 1215 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for MATH 1215 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 5644"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for MATH 1215 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "MATH 2280",
+      "title": "External course (MATH 2280)",
+      "credits": 0,
+      "description": "Course details for MATH 2280 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for MATH 2280 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for MATH 2280 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for MATH 2280 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for MATH 2280 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 5644"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for MATH 2280 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "MATH 2331",
+      "title": "External course (MATH 2331)",
+      "credits": 0,
+      "description": "Course details for MATH 2331 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for MATH 2331 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for MATH 2331 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for MATH 2331 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for MATH 2331 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "CS 5330"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for MATH 2331 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "MATH 2341",
+      "title": "External course (MATH 2341)",
+      "credits": 0,
+      "description": "Course details for MATH 2341 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for MATH 2341 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for MATH 2341 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for MATH 2341 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for MATH 2341 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 2150",
+        "EECE 3468"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for MATH 2341 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "MATH 3081",
+      "title": "External course (MATH 3081)",
+      "credits": 0,
+      "description": "Course details for MATH 3081 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for MATH 3081 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for MATH 3081 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for MATH 3081 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for MATH 3081 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 5644"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for MATH 3081 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "MGSC 2301",
+      "title": "External course (MGSC 2301)",
+      "credits": 0,
+      "description": "Course details for MGSC 2301 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for MGSC 2301 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for MGSC 2301 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for MGSC 2301 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for MGSC 2301 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 5644"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for MGSC 2301 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "PHYS 1155",
+      "title": "External course (PHYS 1155)",
+      "credits": 0,
+      "description": "Course details for PHYS 1155 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for PHYS 1155 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for PHYS 1155 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for PHYS 1155 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for PHYS 1155 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 2150"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for PHYS 1155 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "PHYS 1165",
+      "title": "External course (PHYS 1165)",
+      "credits": 0,
+      "description": "Course details for PHYS 1165 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for PHYS 1165 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for PHYS 1165 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for PHYS 1165 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for PHYS 1165 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 2150"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for PHYS 1165 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    },
+    {
+      "code": "PHYS 1175",
+      "title": "External course (PHYS 1175)",
+      "credits": 0,
+      "description": "Course details for PHYS 1175 are unavailable in the cached department sources.",
+      "prerequisites": {
+        "type": "unknown",
+        "text": "Course details for PHYS 1175 are unavailable in the cached department sources."
+      },
+      "corequisites": {
+        "type": "unknown",
+        "text": "Course details for PHYS 1175 are unavailable in the cached department sources."
+      },
+      "prerequisiteText": "Course details for PHYS 1175 are unavailable in the cached department sources.",
+      "corequisiteText": "Course details for PHYS 1175 are unavailable in the cached department sources.",
+      "prerequisiteCodes": [],
+      "corequisiteCodes": [],
+      "unlocks": [
+        "EECE 2150"
+      ],
+      "breadthCategories": [],
+      "requirementType": "external",
+      "electiveEligible": false,
+      "topics": [],
+      "officialUrl": "https://catalog.northeastern.edu/course-descriptions/",
+      "uncertainties": [
+        "Course details for PHYS 1175 are unavailable in the cached department sources.",
+        "Credits are unknown; zero is a placeholder and must not be counted."
+      ]
+    }
+  ],
+  "lastUpdated": "2026-11-08T22:40:28.790Z",
+  "sources": [
+    "https://catalog.northeastern.edu/graduate/university-interdisciplinary-programs/data-science-ms-ptl/",
+    "https://catalog.northeastern.edu/course-descriptions/artg/",
+    "https://catalog.northeastern.edu/course-descriptions/cs/",
+    "https://catalog.northeastern.edu/course-descriptions/ds/",
+    "https://catalog.northeastern.edu/course-descriptions/eeam/",
+    "https://catalog.northeastern.edu/course-descriptions/eece/"
+  ],
+  "warnings": [
+    "24 courses have unavailable details or conservatively parsed prerequisite/corequisite clauses; inspect course uncertainties."
+  ]
+}

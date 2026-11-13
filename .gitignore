@@ -13,6 +13,12 @@ data/catalogs/**
 !data/catalogs/northeastern/programs.json
 !data/catalogs/northeastern/roadmaps/
 !data/catalogs/northeastern/roadmaps/computer-science-mscs-sea-8b0d00dbda.json
+!data/catalogs/northeastern/roadmaps/computer-science-mscs-976b977119.json
+!data/catalogs/northeastern/roadmaps/computer-science-mscs-align-a4f8db6b17.json
+!data/catalogs/northeastern/roadmaps/cybersecurity-ms-429a5fa183.json
+!data/catalogs/northeastern/roadmaps/data-science-ms-ptl-0da0db71be.json
+!data/catalogs/northeastern/reports/
+!data/catalogs/northeastern/reports/*.json
 .ycm-harness/.migration-v3.tmp/
 .ycm-harness/legacy/
 playwright-report/
