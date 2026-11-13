@@ -118,6 +118,8 @@ export interface Catalog {
   id?: string;
   university?: string;
   program?: string;
+  /** Short name of the college and program for page titles, for example "NEU MSCS Seattle" (#117). */
+  shortName?: string;
   adapter?: string;
   courses: Course[];
   requirements: DegreeRequirementV2;
@@ -156,6 +158,8 @@ export interface ProgramRoadmap {
   university: string;
   programId: string;
   program: string;
+  /** `Catalog.shortName`. The crawl does not write it: add it when you publish the program. */
+  shortName?: string;
   adapter: string;
   officialUrl: string;
   programCourseCodes: string[];

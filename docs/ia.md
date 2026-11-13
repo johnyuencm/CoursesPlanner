@@ -23,19 +23,23 @@ flowchart TD
 - The shortcut reads `coursesplanner:catalog-key`. A program page writes it. The picker only reads it.
 - Each program page has the link **Change college or program** to `/`: in the sidebar on wide screens, and in the **Local plan** menu on every screen width.
 
-## Branding (#72)
+## Branding (#72, #117)
 
-The product name is **Course Map**. The college and program names come from the snapshot (`Catalog.university`, `Catalog.program`).
+The product name is **Course Map**. The college and program names come from the snapshot (`Catalog.university`, `Catalog.program`). Titles use the short name from the snapshot (`Catalog.shortName`, for example `NEU MSCS Seattle`), so that search results show the full title.
 
 | Place | Text |
 | --- | --- |
 | `/` title | `Course Map · Pick your college and program` |
-| Program overview title | `<university> <program> · Course Map` |
-| Other program page titles | `<page> · <university> <program> · Course Map` |
+| Program overview title | `<short name> · Course Map` |
+| Other program page titles | `<page> · <short name>` |
+| Course page title | `<code> <course title> · <short name>`, 60 characters or less. A long course title stops after a whole word and ends with "…". |
+| Course page description | 160 characters or less, clipped the same way |
 | Sidebar | `Course Map`, the university, the program |
 | Icons | `public/icon.svg`, `public/favicon.ico` |
 
-`tests/ia.test.ts` fails when `app/` or `components/` has a hardcoded "NEU MSCS", "Northeastern" or "MSCS Seattle" string.
+- `data/catalog.json` gets the short name from `catalog-service/sources/neu-mscs-seattle.json` at each refresh. A Map-tier roadmap gets it by hand when you publish the program (`docs/add-courseleaf-college.md`).
+- `tests/ia.test.ts` fails when `app/` or `components/` has a hardcoded "NEU MSCS", "Northeastern" or "MSCS Seattle" string.
+- `tests/sitemap-metadata.test.ts` merges the metadata of every sitemap page as vinext does. It fails when two titles are the same, when fewer than 90% of titles have 60 characters or less, when a program title does not have the short name, or when a course page description has more than 160 characters.
 
 ## Program paths (#71)
 

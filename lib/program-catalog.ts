@@ -26,6 +26,7 @@ export function roadmapCatalog(roadmap: ProgramRoadmap): Catalog {
     id: roadmap.programId,
     university: roadmap.university,
     program: roadmap.program,
+    shortName: roadmap.shortName,
     adapter: roadmap.adapter,
     courses: roadmap.courses,
     requirements: {

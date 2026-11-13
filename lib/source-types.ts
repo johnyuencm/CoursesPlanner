@@ -48,6 +48,8 @@ export interface CatalogSourceDefinition {
   id: string;
   university: string;
   program: string;
+  /** Copied to `Catalog.shortName`. */
+  shortName?: string;
   adapter: string;
   enabled: boolean;
   pollIntervalMs: number;

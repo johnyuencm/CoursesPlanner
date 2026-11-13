@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AppProvider } from "@/components/app-provider";
 import { AppShell } from "@/components/app-shell";
-import { programParams, readProgram, type ProgramParams } from "@/lib/program-page";
+import { programParams, readProgram, titleTemplate, type ProgramParams } from "@/lib/program-page";
 
 export const dynamicParams = false; // only published programs have pages
 
@@ -11,12 +11,12 @@ export function generateStaticParams() {
 
 type Props = { params: Promise<ProgramParams> };
 
-/** Every page title names the college and program from the snapshot: "Courses · <name> · Course Map". */
+/** Every page title names the program with the short name from the snapshot: "Courses · <short name>" (#117). */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { name } = await readProgram(params);
+  const { name, shortName } = await readProgram(params);
   return {
-    // The root template wraps this default: "<name> · Course Map".
-    title: { default: name, template: `%s · ${name} · Course Map` },
+    // The root template wraps this default: "<short name> · Course Map".
+    title: { default: shortName, template: titleTemplate(shortName) },
     description: `Understand what every course unlocks in the ${name} program. Explore the prerequisite map, then plan locally.`,
   };
 }

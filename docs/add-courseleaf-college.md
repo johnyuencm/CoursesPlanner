@@ -56,7 +56,8 @@ The loader rejects the config when it has an unknown key, a URL that is not HTTP
 2. Set `"support": "supported"` and `"enabled": true` only after the fixture test passes.
 3. Run a bounded crawl: `npm run catalog:refresh -- --crawl-roadmaps --limit=5 --university=<id>`.
 4. Read the roadmap files and the parse reports (`reports/<program-id>.json`). Then add the catalog key to `data/published.json` and `CATALOGS` in `lib/catalog-key.ts`. Allow the roadmap and report files in `.gitignore`.
-5. Run `npm run typecheck`, `npm test` and `npm run build`. Commit the output on a branch and open a PR.
+5. Add a `"shortName"` after `"program"` in each roadmap file you publish, for example `"NEU MSCS Seattle"`: college, degree and campus in a few words. Page titles use it. The crawl does not write it, so add it again after a new crawl of the program. `tests/sitemap-metadata.test.ts` fails when a published program has no short name, or when titles get too long.
+6. Run `npm run typecheck`, `npm test` and `npm run build`. Commit the output on a branch and open a PR.
 
 ## Limits
 

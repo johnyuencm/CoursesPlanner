@@ -140,7 +140,7 @@ test("program pages name the college and program; no hardcoded NEU MSCS branding
   const { generateMetadata } = await import("../app/[universityId]/[programId]/layout");
   const params = Promise.resolve({ universityId: "northeastern", programId: "computer-science-mscs-sea-8b0d00dbda" });
   const title = (await generateMetadata({ params })).title as { default: string; template: string };
-  assert.equal(title.template, "%s · Northeastern University Computer Science, MSCS—Seattle · Course Map");
+  assert.equal(title.template, "%s · NEU MSCS Seattle", "the short name from data/catalog.json (#117)");
   // The UI and metadata get college and program names from the snapshot only.
   for (const dir of ["app", "components"]) {
     for (const file of readdirSync(dir, { recursive: true, encoding: "utf8" }).filter((name) => /\.tsx?$/.test(name))) {
