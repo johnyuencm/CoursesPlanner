@@ -27,6 +27,13 @@ async function pickerData(): Promise<{ programs: PickerProgram[]; colleges: Pick
       catalogYear: catalog.requirements.catalogYear,
     };
   }));
+  // One heading per college: catalogs of one university can spell its name differently (#74).
+  const collegeNames = new Map<string, string>();
+  for (const program of programs) {
+    const universityId = program.key.split("/")[0]!;
+    program.college = collegeNames.get(universityId) ?? program.college;
+    collegeNames.set(universityId, program.college);
+  }
   const published = new Set(Object.keys(CATALOGS).map((key) => key.split("/")[0]));
   const colleges = directory
     .filter((entry) => !published.has(entry.id))

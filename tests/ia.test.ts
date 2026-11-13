@@ -121,6 +121,7 @@ test("/ is the program picker: published programs with tier and catalog year, ot
   assert.match(html, /<h1>Pick your college and program<\/h1>/);
   assert.match(html, new RegExp(`href="${base}"`), "the published program links to its overview");
   assert.match(html, /Northeastern University<\/h3>/);
+  assert.equal(html.match(/<h3>Northeastern/g)?.length, 1, "one heading per college, for every program of that college");
   assert.match(html, /Computer Science, MSCS—Seattle/);
   assert.match(html, />Audit<\/span><span>2026-2027 catalog/);
   assert.match(html, /Colleges not supported yet/);
