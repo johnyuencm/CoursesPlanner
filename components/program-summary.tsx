@@ -26,14 +26,14 @@ export function DegreeRules({ catalog, routes }: { catalog: Catalog; routes: Pro
   if (rules.root.kind === "unmodeled") {
     // Map tier: a roadmap with no rule groups (lib/program-catalog.ts).
     const listed = catalog.courses.filter((course) => course.requirementType === "program").length;
-    return <section aria-labelledby="degree-rules-title">
+    return <section className="summary-section" aria-labelledby="degree-rules-title">
       <h2 id="degree-rules-title">{rules.name}: degree rules</h2>
       <p>This program is at Map tier. The map shows the {listed} courses that the {rules.catalogYear} {catalog.university ?? "official"} catalog
         lists for the program, and their prerequisites. The degree rules are not modeled, so the planner checks prerequisites but gives no degree audit.</p>
       <p>The <Link href={routes.courses}>course index</Link> lists every course. <a href={rules.officialUrl} rel="noopener">Official program requirements</a>.</p>
     </section>;
   }
-  return <section aria-labelledby="degree-rules-title">
+  return <section className="summary-section" aria-labelledby="degree-rules-title">
     <h2 id="degree-rules-title">{rules.name}: degree rules</h2>
     <p>The {rules.catalogYear} {catalog.university ?? "official"} catalog asks for {totalCredits ?? "a set number of"} credits{rules.minimumGpa !== undefined && <> and a minimum {rules.minimumGpa.toFixed(1)} GPA</>}.
       This map models those rules from the official catalog. It is not an official degree audit.</p>
@@ -61,7 +61,7 @@ export function UnlockLeaders({ catalog, routes, limit }: { catalog: Catalog; ro
     .filter((item) => item.total > 0)
     .sort((a, b) => b.total - a.total || b.course.unlocks.length - a.course.unlocks.length)
     .slice(0, limit);
-  return <section aria-labelledby="unlock-leaders-title">
+  return <section className="summary-section" aria-labelledby="unlock-leaders-title">
     <h2 id="unlock-leaders-title">Courses that unlock the most</h2>
     <p>Other courses list these as prerequisites, directly or through a chain. Plan them before the courses that need them.</p>
     <ul className="static-list">{ranked.map(({ course, total }) => <li key={course.code}>{link(course.code)}
@@ -71,7 +71,7 @@ export function UnlockLeaders({ catalog, routes, limit }: { catalog: Catalog; ro
 
 export function PathwayList({ catalog, routes }: { catalog: Catalog; routes: ProgramRoutes }) {
   const link = courseLinker(catalog, routes);
-  return <section aria-labelledby="pathway-list-title">
+  return <section className="summary-section" aria-labelledby="pathway-list-title">
     <h2 id="pathway-list-title">Paths</h2>
     <p>A path is a suggested set of courses for one career goal. It never changes the degree requirements.</p>
     <ul className="static-list">{pathways.map((pathway) => <li key={pathway.id}>

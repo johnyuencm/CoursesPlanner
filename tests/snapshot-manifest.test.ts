@@ -1,6 +1,5 @@
 import { strict as assert } from "node:assert";
-import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { NextRequest } from "next/server";
@@ -9,28 +8,17 @@ import { handleRoadmapsRequest } from "../app/api/roadmaps/route";
 import { runCatalogCli } from "../catalog-service/cli";
 import { readCatalog } from "../lib/catalog";
 import { buildSnapshotAssets, type SnapshotManifest } from "../lib/snapshot-manifest";
+import { PROGRAMS, PUBLISHED, ROADMAP, publishedCopy, roadmapFile } from "./published-copy";
 
 const ROOT = process.cwd();
 const KEY = "northeastern/computer-science-mscs-sea-8b0d00dbda";
-const ROADMAP = "data/catalogs/northeastern/roadmaps/computer-science-mscs-sea-8b0d00dbda.json";
-const PROGRAMS = "data/catalogs/northeastern/programs.json";
-const PUBLISHED: string[] = JSON.parse(await readFile(path.join(ROOT, "data/published.json"), "utf8"));
-const roadmapFile = (key: string) => `data/catalogs/${key.split("/")[0]}/roadmaps/${key.split("/")[1]}.json`;
-
-/** A copy of the published repo files, so a test can break one without touching the repo. */
-async function publishedCopy(): Promise<string> {
-  const root = await mkdtemp(path.join(os.tmpdir(), "snapshots-"));
-  for (const file of ["catalog-service/universities.json", "data/catalog.json", "data/published.json", PROGRAMS, ...PUBLISHED.map(roadmapFile)]) {
-    await cp(path.join(ROOT, file), path.join(root, file));
-  }
-  return root;
-}
 
 const manifestOf = (assets: Map<string, string>) =>
   JSON.parse(assets.get("_snapshots/manifest.json")!) as SnapshotManifest;
 
 test("the build manifest lists every published snapshot, and each listed file ships", async () => {
-  const assets = await buildSnapshotAssets(ROOT);
+  const root = await publishedCopy();
+  const assets = await buildSnapshotAssets(root).finally(() => rm(root, { recursive: true, force: true }));
   const manifest = manifestOf(assets);
   assert.deepEqual(manifest.catalogs.map(({ key, tier, file }) => ({ key, tier, file })), [
     { key: "northeastern/computer-science-mscs-sea-8b0d00dbda", tier: "audit", file: "data/catalog.json" },

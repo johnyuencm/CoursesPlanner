@@ -1,7 +1,8 @@
 // Map-tier Northeastern programs from the bounded crawl of 2026-11-08 (#74).
 // The fixtures are the committed roadmap snapshots and parse reports in data/catalogs/northeastern/.
 import { strict as assert } from "node:assert";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 import test from "node:test";
 
 import { roadmapReport } from "../catalog-service/roadmaps";
@@ -12,7 +13,9 @@ import { programMapCodes } from "../lib/graph";
 import { readProgramCatalog } from "../lib/program-catalog";
 import { emptyPlan } from "../lib/plan";
 import { requirementTier, validatePlan } from "../lib/requirements-v2";
+import { programPageIndex } from "../lib/snapshot-manifest";
 import type { ProgramRoadmap } from "../lib/types";
+import { PUBLISHED, publishedCopy } from "./published-copy";
 
 const PROGRAMS = [
   { key: "northeastern/computer-science-mscs-976b977119", program: "Computer Science, MSCS (Boston)", courses: 84, pages: 62, chain: ["CS 5010", "CS 5500", "CS 6510"], page: "cs-6510" },
@@ -84,4 +87,26 @@ test("the default program keeps its path pages in the sitemap, with no noindex",
   assert.ok(urls.includes(`https://coursesplanner.johnyc.com/${DEFAULT_CATALOG_KEY}/pathways/systems`));
   const params = Promise.resolve({ universityId: "northeastern", programId: "computer-science-mscs-sea-8b0d00dbda", id: "systems" });
   assert.equal((await generateMetadata({ params })).robots, undefined);
+});
+
+test("each program catalog reads only its committed roadmap, never ignored crawl output (#123, #74)", async (t) => {
+  const clean = await publishedCopy();
+  const dirty = await publishedCopy();
+  t.after(() => Promise.all([clean, dirty].map((root) => rm(root, { recursive: true, force: true }))));
+  // What a local crawl leaves behind: an invalid status file, the raw cache and an unpublished roadmap.
+  const crawl = path.join(dirty, "data", "catalogs", "northeastern");
+  await writeFile(path.join(crawl, ".roadmap-crawl-status.json"), JSON.stringify({ version: 1 }));
+  await mkdir(path.join(crawl, "raw"), { recursive: true });
+  await writeFile(path.join(crawl, "raw", "x.html"), "<html></html>");
+  await writeFile(path.join(crawl, "roadmaps", "zz-extra.json"), "{ not json");
+  await mkdir(path.join(dirty, "data", "catalogs", "neu-mscs-seattle"), { recursive: true });
+  await writeFile(path.join(dirty, "data", "catalogs", "neu-mscs-seattle", "catalog.json"), "{}");
+  assert.deepEqual(PUBLISHED.slice(1), PROGRAMS.map((program) => program.key), "every Map-tier key is pinned here");
+  for (const { key, courses } of PROGRAMS) {
+    const catalog = await readProgramCatalog(key, dirty);
+    assert.deepEqual(catalog, await readProgramCatalog(key, clean), key);
+    assert.equal(catalog.courses.length, courses, key);
+  }
+  assert.deepEqual(await programPageIndex(dirty), await programPageIndex(clean));
+  assert.deepEqual(await programPageIndex(clean), await programPageIndex(process.cwd()), "the repo gives the tracked result");
 });

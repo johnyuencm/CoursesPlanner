@@ -54,7 +54,7 @@ export default async function PathwayPage({ params }: Props) {
     : <strong>{code}</strong>;
 
   return <article className="static-page pathway-page">
-    <PageHeading eyebrow="Path" title={pathway.name} description={pathway.description}
+    <PageHeading title={pathway.name} description={pathway.description}
       actions={<Link className="text-link" href={routes.paths}>Open the interactive paths page</Link>} />
 
     <p>This path lists {inPath.size} courses: {counts.core} core, {counts.breadth} breadth and {counts.elective} elective
@@ -65,8 +65,8 @@ export default async function PathwayPage({ params }: Props) {
       <ul className="static-list">{group.courses.map((code) => {
         const course = byCode.get(code);
         return <li key={code}>{link(code)}
-          {course && <small>{creditsLabel(course)} · {requirementLabel(course, catalog)}
-            {course.prerequisites.type === "none" ? " · no prerequisites" : ` · needs ${requirementText(course.prerequisites)}`}</small>}
+          {course && <small>{creditsLabel(course)}, {requirementLabel(course, catalog)}
+            {course.prerequisites.type === "none" ? ". No prerequisites." : `. Needs ${requirementText(course.prerequisites)}.`}</small>}
         </li>;
       })}</ul>
     </section>)}

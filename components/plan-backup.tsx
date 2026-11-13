@@ -97,11 +97,8 @@ export function PlanBackup() {
     try {
       const candidate = parsePlanBackup(await file.text());
       if (!mounted.current) return;
-      if (!window.confirm("Restore this backup? It permanently replaces the current plan on this device. Download a backup first if you may need the current plan.")) {
-        setMessage("Backup restore cancelled. Your current plan is unchanged.");
-        return;
-      }
-      if (restorePlanBackup(candidate)) setMessage("Backup restored and saved on this device.");
+      // No confirm dialog: the restore toast has Undo, which puts the earlier plan back.
+      if (restorePlanBackup(candidate)) setMessage("");
       else setMessage("Backup could not be restored because this browser could not save it. Your current plan is unchanged.");
     } catch (error) {
       if (mounted.current) setMessage(`Backup could not be restored: ${errorMessage(error)} Your current plan is unchanged.`);

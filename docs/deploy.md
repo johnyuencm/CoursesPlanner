@@ -293,6 +293,20 @@ Do these steps after the deploy of this fix. Do not change the Worker during the
 Pass: unknown-course 404 p50 6 ms or lower, with at least 40 events. Course page p50 4 ms or lower.
 If the unknown-course 404 and `/nothing` have the same CPU, the rest of the cost is the vinext `global-not-found` render, not `worker.ts`.
 
+Result after #110: Worker version `1524031c` (master `e257fff`), 2026-11-08. 40 rounds each.
+
+| Route | Round | p50 | p90 | Max | Over 10 ms |
+| --- | --- | --- | --- | --- | --- |
+| Course page | 1 (cold, right after deploy) | 6 ms | 31 ms | 58 ms | 12 of 40 |
+| Unknown course 404 | 1 | 7 ms | 39 ms | 78 ms | 10 of 40 |
+| Route miss `/nothing-N` | 1 | 9 ms | 43 ms | 66 ms | 14 of 40 |
+| Course page | 2 (warm) | 4 ms | 6 ms | 9 ms | 0 of 40 |
+| Unknown course 404 | 2 | 7 ms | 12 ms | 15 ms | 5 of 40 |
+| Route miss `/nothing-N` | 2 | 6 ms | 11 ms | 16 ms | 4 of 40 |
+
+- The course page passes (p50 4 ms warm).
+- The unknown-course 404 does not pass yet (p50 7 ms, target 6 ms). It now costs about the same as a route miss, so the rest of the cost is the shared `global-not-found` render. A cheaper 404, for example a static 404 asset, is the next step (#110).
+
 ### Program paths, 2026-11-08 (issue #71)
 
 Local check: `npm run build`, then `wrangler dev` on `127.0.0.1:3171`. This is not a CPU measurement. `<program>` is `/northeastern/computer-science-mscs-sea-8b0d00dbda`.

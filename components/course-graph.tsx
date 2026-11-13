@@ -723,12 +723,12 @@ function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRo
     const next = !criticalPathOn;
     setCriticalPathOn(next);
     if (next && (!courseTargetCode && !careerTargetId)) {
-      announce("Choose a target course or career direction to see the critical path.");
+      announce("Choose a target course or career direction to see the critical path.", { tone: "warning" });
     }
   };
   const toggleOverlay = () => {
     if (!careerTargetId) {
-      announce(`${PERSONA_PROMPT} Choose a persona in Paths or the Become control.`);
+      announce(`${PERSONA_PROMPT} Choose a persona in Paths or the Become control.`, { tone: "warning" });
       return;
     }
     setOverlayOn((on) => {
@@ -749,7 +749,7 @@ function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRo
       <span><i className="legend-arrow" aria-hidden="true" /> Unlocks after this course</span>
       <span><i className="legend-arrow legend-and" aria-hidden="true" /> AND</span>
       <span><i className="legend-arrow legend-or" aria-hidden="true" /> OR</span>
-      <span><i className="legend-arrow legend-coreq" aria-hidden="true" /> Take together · corequisites</span>
+      <span><i className="legend-arrow legend-coreq" aria-hidden="true" /> Corequisites (take together)</span>
       {overlay ? <>
         <span><span className="graph-critical-mark">★</span> Dependency-critical</span>
         <span><i className="legend-node overlay-core" /> {OVERLAY_ROLE_LABEL.core}</span>
@@ -812,7 +812,7 @@ function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRo
                   onClick={() => { setFindIndex(index); locate(course.code, true); }}
                 >
                   <strong>{course.code}</strong>
-                  <span>{course.title}{visible.has(course.code) ? "" : " · outside current view"}</span>
+                  <span>{course.title}{visible.has(course.code) ? "" : " (outside current view)"}</span>
                   <Crosshair size={14} />
                 </button>
               )) : <p>No matching courses. Try another code or title.</p>}
@@ -823,7 +823,7 @@ function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRo
             <button type="button" className="button button-secondary button-small" aria-label="Next course in history" disabled={navigation.index === navigation.entries.length - 1} onClick={() => goNavigation(navigation.index + 1)}><ArrowRight size={14} /></button>
           </div>
           <span>{depth === "program" ? <>Entire <strong>{programLabel}</strong> program</> : depth === "1" ? <><Crosshair size={15} /> Connections for <strong>{focusCode}</strong></> : depth === "unlocks" ? <>Unlocks of <strong>{focusCode}</strong></> : depth === "prerequisites" ? <>Prerequisites of <strong>{focusCode}</strong></> : <><Crosshair size={15} /> Course chain for <strong>{focusCode}</strong></>}</span>
-          <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "relationship" : "relationships"}. Selected {selectedCode} · {neighborhood.size} in focus{selectedRelationship ? ` · ${relationshipCopy?.title ?? ""}` : criticalPathOn && bottleneckCodes?.length ? ` · critical path ${bottleneckCodes.join(" → ")}` : overlay ? ` · ${overlay.personaName} overlay` : ""}.</span>
+          <span role="status">{graph.courseNodes.length} courses. {graph.edges.length} {graph.edges.length === 1 ? "relationship" : "relationships"}. Selected {selectedCode}, {neighborhood.size} in focus{selectedRelationship ? `. ${relationshipCopy?.title ?? ""}` : criticalPathOn && bottleneckCodes?.length ? `. Critical path ${bottleneckCodes.join(" → ")}` : overlay ? `. ${overlay.personaName} overlay` : ""}.</span>
           <div className="segmented-control" aria-label="Map display">
             <button type="button" aria-pressed={view === "graph"} className={view === "graph" ? "selected" : ""} onClick={() => setView("graph")}><Network size={15} /> Map</button>
             <button type="button" aria-pressed={view === "table"} className={view === "table" ? "selected" : ""} onClick={() => setView("table")}><List size={15} /> Table</button>
@@ -873,14 +873,14 @@ function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRo
               const course = courseMap.get(node.id);
               return <tr key={node.id} id={tableRowId(node.id)} className={node.id === selectedCode ? "graph-find-current" : undefined}>
                 <th scope="row"><button className="text-button" onClick={() => inspectCourse(node.id)} onDoubleClick={(event) => { event.preventDefault(); enterConnections(node.id); }}>{node.id}</button><span>{course?.title ?? "External reference — unknown metadata"}</span></th>
-                <td>{node.data.badgeLabel} · {node.data.statusLabel}{node.data.overlayLabel ? ` · ${node.data.overlayLabel}` : ""}</td>
+                <td>{node.data.badgeLabel}, {node.data.statusLabel}{node.data.overlayLabel ? `, ${node.data.overlayLabel}` : ""}</td>
                 <td><RequirementTree expression={course?.prerequisites ?? { type: "none" }} onSelect={overrideActive ? focus : selectRelated} /></td>
                 <td><RequirementTree expression={course?.corequisites ?? { type: "none" }} onSelect={overrideActive ? focus : selectRelated} /></td>
               </tr>;
             })}</tbody>
           </table>
         </div>}
-        {view === "graph" && <p className="graph-canvas-hint">Click a course to isolate its prerequisites and unlocks. The rest of the map stays visible but de-emphasized. Double-click a course to show its connections, then press Escape to return to the previous view. Select a colored branch for that exact relationship, or its AND/OR bus for the matching catalog group. Empty map / Exit line focus restores every relationship. Only my planned hides courses that are not completed, waived, or on your plan. Persona overlay keeps CORE, RECOMMENDED, and dependency-critical ★ courses readable and fades the rest. Critical path to target highlights the longest remaining chain and delay impact for My Target or your career direction.</p>}
+        {view === "graph" && <p className="graph-canvas-hint">Click a course to isolate its prerequisites and unlocks. The rest of the map stays visible but de-emphasized. Double-click a course to show its connections, then press Escape to return to the previous view. Select a colored branch for that exact relationship, or its AND/OR bus for the matching catalog group. Empty map / Exit line focus restores every relationship. Only my planned hides courses that are not completed, waived, or on your plan. Persona overlay keeps core, recommended and dependency-critical ★ courses readable and fades the rest. Critical path to target highlights the longest remaining chain and delay impact for My Target or your career direction.</p>}
       </section>
       <aside className="graph-inspector" id="graph-inspector" tabIndex={-1}>
         {overrideActive ? null : <TargetPathCard compact />}
@@ -895,12 +895,12 @@ function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRo
             <label className="field-label" htmlFor="line-focus-semester">Add this line to a semester</label>
             <div className="input-action-row">
               <select id="line-focus-semester" value={lineSemester} onChange={(event) => setLineSemesterId(event.target.value)}>
-                {plan.semesters.map((term) => <option key={term.id} value={term.id}>{term.name}{term.type === "coop" ? " · co-op" : ""}</option>)}
+                {plan.semesters.map((term) => <option key={term.id} value={term.id}>{term.name}{term.type === "coop" ? " (co-op)" : ""}</option>)}
               </select>
               <button type="button" className="button button-primary" disabled={!hydrated || !lineItems.length || !lineSemester} onClick={() => { if (lineSemester) addCourses(selectedRelationship.codes, lineSemester); }}><CalendarPlus size={15} /> Add {lineItems.length === 1 ? "1 course" : `${lineItems.length} courses`}</button>
             </div>
             <p className="muted small-text">{lineItems.length ? `Will add ${lineItems.map((item) => item.code).join(", ")}.` : "Every course on this line is already in your plan or history, or is an external catalog reference."}</p>
-          </div> : <p className="muted small-text">Create a semester on Build My Plan before adding this line.</p>)}
+          </div> : <p className="muted small-text">Create a semester on Plan before you add this line.</p>)}
         </div> : null}
         <div className="inspector-heading-meta">
           <span className={badge.className}>{badge.label}</span>
@@ -946,7 +946,7 @@ function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRo
           {selectedRelationship && relationshipCopy ? <div className="graph-relationship-explanation"><h3>{relationshipCopy.title}</h3><p>{relationshipCopy.body}</p><p><strong>{selectedRelationship.target} catalog rule:</strong> {nodeRequirementCopy(relationshipTarget, "prerequisites")}</p><p className="muted small-text">{relationshipCopy.note}</p></div> : null}
           {scene.arrows.length ? <><h3>Visible map relationships</h3><div className="graph-relationship-buttons">{relationshipGroups.map((group) => <Fragment key={`${group.target}:${group.groupId ?? "default"}`}>
             {group.sources.length > 1 ? <button key={`${group.target}-${group.groupId ?? "bus"}-bus`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "bus" && selectedRelationship.target === group.target && selectedRelationship.groupId === group.groupId} aria-label={group.join === "any" ? `Select OR alternatives of ${group.target}: ${group.sources.join(", ")}` : group.join === "all" ? `Select AND prerequisites of ${group.target}: ${group.sources.join(", ")}` : `Select every visible prerequisite of ${group.target}: ${group.sources.join(", ")}`} onClick={() => setSelectedRelationship(relationshipSelection.bus(scene.arrows, group.target, group.groupId))}>{relationshipGroupButtonLabel(group)}</button> : null}
-            {group.branches.map((edge) => <button key={`${edge.source}-${edge.target}-${edge.groupId ?? ""}`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "branch" && selectedRelationship.source === edge.source && selectedRelationship.target === edge.target} aria-label={edge.join === "any" ? `Select OR alternative ${edge.source} of ${edge.target}` : `Select exact relationship ${edge.source} unlocks ${edge.target}`} onClick={() => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target, edge.join))}>{edge.source} → {edge.target}{edge.join === "any" ? " · OR" : edge.join === "all" ? " · AND" : ""}</button>)}
+            {group.branches.map((edge) => <button key={`${edge.source}-${edge.target}-${edge.groupId ?? ""}`} type="button" className="text-button" aria-pressed={selectedRelationship?.kind === "branch" && selectedRelationship.source === edge.source && selectedRelationship.target === edge.target} aria-label={edge.join === "any" ? `Select OR alternative ${edge.source} of ${edge.target}` : `Select exact relationship ${edge.source} unlocks ${edge.target}`} onClick={() => setSelectedRelationship(relationshipSelection.branch(edge.source, edge.target, edge.join))}>{edge.source} → {edge.target}{edge.join === "any" ? " (OR)" : edge.join === "all" ? " (AND)" : ""}</button>)}
           </Fragment>)}</div></> : <p className="muted small-text">This course has no prerequisite or unlock relationships in this catalog.</p>}
           <h3>Prerequisites <span>{prereqItems.length}</span></h3>
           {selected?.requirementType === "external" ? <p>{nodeRequirementCopy(selected, "prerequisites")}</p> : <>
@@ -965,7 +965,7 @@ function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRo
             <label className="field-label" htmlFor="inspector-add-semester">Add to a semester</label>
             <div className="input-action-row">
               <select id="inspector-add-semester" value={lineSemester} onChange={(event) => setLineSemesterId(event.target.value)}>
-                {plan.semesters.map((term) => <option key={term.id} value={term.id}>{term.name}{term.type === "coop" ? " · co-op" : ""}</option>)}
+                {plan.semesters.map((term) => <option key={term.id} value={term.id}>{term.name}{term.type === "coop" ? " (co-op)" : ""}</option>)}
               </select>
               <button type="button" className="button button-primary" disabled={!hydrated || !lineSemester} onClick={() => { if (lineSemester) addCourses([selectedCode], lineSemester); }}><Plus size={15} /> Add to {plan.semesters.find((term) => term.id === lineSemester)?.name ?? "plan"}</button>
             </div>
@@ -973,10 +973,10 @@ function GraphWorkspace({ roadmap, requestedFocus = null }: { roadmap: ProgramRo
           </div> : !recorded.has(selectedCode) && selected && selected.requirementType !== "external" ? <button className="button button-primary" onClick={() => openPicker(undefined, selectedCode)}><Plus size={15} /> Add to plan</button> : recorded.has(selectedCode) ? <p className="muted small-text">{completed.has(selectedCode) ? "In your completed history." : waived.has(selectedCode) ? "Waived on this plan." : `Planned in ${plannedByCode.get(selectedCode)?.name ?? "your plan"}.`}{planned.has(selectedCode) ? <> <Link className="text-link" href={routes.plan}>View in Plan</Link></> : null}</p> : null}
           <button className="button button-secondary" onClick={() => openCourse(selectedCode)}>Full course details <ArrowRight size={14} /></button>
         </div>}
-        <div className="inspector-tip"><Info size={16} /><p>Selected course, its prerequisites, and its unlocks stay readable; everything else is de-emphasized. A blocked course explains the remaining chain and earliest term, and can add that chain in one click after showing term overloads. Offerings are not listed because they are unknown. The path card above shows remaining prerequisites, earliest term, and delay impact for your target. Persona overlay fades courses that are not CORE, RECOMMENDED, or dependency-critical ★. Critical path to target highlights the bottleneck chain on the map.</p></div>
+        <div className="inspector-tip"><Info size={16} /><p>Selected course, its prerequisites, and its unlocks stay readable; everything else is de-emphasized. A blocked course explains the remaining chain and earliest term, and can add that chain in one click after showing term overloads. Offerings are not listed because they are unknown. The path card above shows remaining prerequisites, earliest term, and delay impact for your target. Persona overlay fades courses that are not core, recommended or dependency-critical ★. Critical path to target highlights the bottleneck chain on the map.</p></div>
       </aside>
     </div>
-    <p className="page-footnote">The default map follows the selected course through its cataloged prerequisites and unlocks; it does not add a downstream course’s other prerequisite branches. Choose Entire program to browse all listed {programLabel} courses and their cataloged external prerequisites. Solid lines are AND or single named prerequisites; dashed lines are OR alternatives. Take together · corequisites sit in the same column with a dotted connector. A shared color still groups lines by destination. A connection does not verify course availability.</p>
+    <p className="page-footnote">The default map follows the selected course through its cataloged prerequisites and unlocks; it does not add a downstream course’s other prerequisite branches. Choose Entire program to browse all listed {programLabel} courses and their cataloged external prerequisites. Solid lines are AND or single named prerequisites; dashed lines are OR alternatives. Corequisites (take together) sit in the same column with a dotted connector. A shared color still groups lines by destination. A connection does not verify course availability.</p>
   </>;
 }
 

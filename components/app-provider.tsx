@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { Catalog, DegreeProgressV2, StudentPlan } from "@/lib/types";
 import {
   DEFAULT_WORKSPACE_SELECTION,
@@ -16,6 +16,7 @@ import {
   createPlanBackupDownload,
   emptyPlan,
   loadPlan,
+  planStorageKey,
   previewChainInsert,
   recordedCourseCodes,
   restorePlan,
@@ -46,6 +47,8 @@ interface AppContextValue {
   catalogMessage: string | null;
   refreshAvailable: boolean;
   refreshCatalog: () => Promise<void>;
+  /** Load the catalog again after a failed load (no cache rebuild). */
+  reloadCatalog: () => Promise<void>;
   plan: StudentPlan;
   setPlan: Dispatch<SetStateAction<StudentPlan>>;
   progress: DegreeProgressV2 | null;
@@ -72,9 +75,26 @@ interface AppContextValue {
   addPrerequisiteChain: (code: string) => void;
   workspaceSelection: WorkspaceSelection;
   setWorkspaceSelection: (next: WorkspaceSelection) => void;
-  notice: string;
-  announce: (message: string) => void;
+  /** The one toast. A new notice replaces the old one; an empty message clears it. */
+  notice: Notice | null;
+  /** Shows the toast and returns its id. */
+  announce: (message: string, options?: NoticeOptions) => number;
 }
+
+export type NoticeOptions = {
+  tone?: "success" | "warning";
+  action?: { label: string; run: () => void };
+  /** The action undoes the plan change that came just before this notice. Any later plan change removes the action. */
+  undoesPlanChange?: boolean;
+  /** Move keyboard focus to the action (used after an in-place confirm step). */
+  focusAction?: boolean;
+};
+export type Notice = NoticeOptions & { id: number; message: string; planVersion?: number };
+const WARNING: NoticeOptions = { tone: "warning" };
+let noticeId = 0;
+
+/** What an undo needs to put back: the plan and, when saving was blocked, the unreadable saved text. */
+type PlanSnapshot = { plan: StudentPlan; blocked: boolean; raw: string | null; error: string | null };
 
 const AppContext = createContext<AppContextValue | null>(null);
 
@@ -151,7 +171,16 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
   const [persistence, setPersistence] = useState<PersistenceStatus>("loading");
   const [detailCode, openCourse] = useState<string | null>(null);
   const [picker, setPicker] = useState<PickerState>(null);
-  const [notice, announce] = useState("");
+  const [notice, setNotice] = useState<Notice | null>(null);
+  // Count plan changes during render, so an Undo for an old plan state can be withdrawn (StrictMode-safe: a second render sees the same plan).
+  const planVersion = useRef({ plan, version: 0 });
+  if (planVersion.current.plan !== plan) planVersion.current = { plan, version: planVersion.current.version + 1 };
+  const announce = useCallback((message: string, options: NoticeOptions = {}) => {
+    // The plan change of the action itself has not rendered yet: it becomes version + 1.
+    const id = ++noticeId;
+    setNotice(message ? { ...options, id, message, planVersion: options.undoesPlanChange ? planVersion.current.version + 1 : undefined } : null);
+    return id;
+  }, []);
   const [careerTargetId, setCareerTargetIdState] = useState<string | null>(null);
   const [courseTargetCode, setCourseTargetCodeState] = useState<string | null>(null);
   // Graph/plan selection is independent of course-level My Target (`courseTargetCode`).
@@ -286,15 +315,33 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
   useEffect(save, [save]);
 
   const progress = useMemo(() => catalog ? validatePlan(plan, catalog) : null, [plan, catalog]);
+  // Undo replaces confirm dialogs (#ux-review-2026-11-08). The snapshot reads state through a ref, so the
+  // handlers keep a stable identity (CR8).
+  const snapshotRef = useRef<PlanSnapshot>({ plan, blocked: storageBlocked, raw: blockedRawStorage, error: storageError });
+  snapshotRef.current = { plan, blocked: storageBlocked, raw: blockedRawStorage, error: storageError };
+  const restoreSnapshot = useCallback((snapshot: PlanSnapshot, message: string) => {
+    if (snapshot.blocked) {
+      try {
+        // Put the unreadable saved text back exactly as it was, then block saving again.
+        if (snapshot.raw !== null) window.localStorage.setItem(planStorageKey(catalogKey), snapshot.raw);
+      } catch { /* Storage is unavailable: the in-tab plan is still restored. */ }
+      setStorageBlocked(true);
+      setBlockedRawStorage(snapshot.raw);
+      setStorageError(snapshot.error);
+      setPersistence("blocked");
+    }
+    setPlan(snapshot.plan);
+    announce(message);
+  }, [announce, catalogKey]);
   const resetPlan = useCallback(() => {
-    if (!window.confirm("Reset your local plan? This permanently replaces all saved semesters, completed courses, and waivers in this browser. If saved data is unreadable, it will also be replaced. This cannot be undone.")) return;
+    const before = snapshotRef.current;
     setPlan(emptyPlan());
     setStorageBlocked(false);
     setBlockedRawStorage(null);
     setPersistence("saved");
     setStorageError(null);
-    announce("Your plan has been reset. No courses are marked completed or waived.");
-  }, []);
+    announce("Plan reset. No courses are planned, completed or waived.", { undoesPlanChange: true, focusAction: true, action: { label: "Undo", run: () => restoreSnapshot(before, "Reset undone. Your plan is back.") } });
+  }, [announce, restoreSnapshot]);
   const exportPlanBackup = useCallback(
     () => createPlanBackupDownload({
       blocked: storageBlocked,
@@ -304,6 +351,7 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
     [blockedRawStorage, plan, storageBlocked],
   );
   const restorePlanBackup = useCallback((candidate: StudentPlan) => {
+    const before = snapshotRef.current;
     try {
       // Persist first: a failed write must never replace the plan the user is viewing.
       const restored = restorePlan(window.localStorage, candidate, catalogKey);
@@ -312,15 +360,14 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
       setBlockedRawStorage(null);
       setPersistence("saved");
       setStorageError(null);
-      announce("Backup restored and saved on this device.");
+      announce("Backup restored and saved on this device.", { undoesPlanChange: true, action: { label: "Undo", run: () => restoreSnapshot(before, "Restore undone. Your earlier plan is back.") } });
       return true;
     } catch (error) {
       setPersistence("error");
       setStorageError(error instanceof Error ? error.message : "Your browser could not save this restored plan.");
-      announce("Backup could not be restored because this browser could not save it. Your current plan is unchanged.");
       return false;
     }
-  }, [announce, catalogKey]);
+  }, [announce, catalogKey, restoreSnapshot]);
   const additionNotice = useCallback((nextPlan: StudentPlan, added: string[], semesterName: string) => {
     const addedLabel = added.join(added.length === 2 ? " and " : ", ");
     if (!catalog) return `${addedLabel} added to ${semesterName}. Check the live audit for prerequisites and corequisites.`;
@@ -334,6 +381,7 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
     return `${addedLabel} added to ${semesterName}. ${kind} — ${fix.suggestion}. Open Plan to apply a fix.`;
   }, [catalog]);
   const setCourseStatus = useCallback((code: string, status: CourseStatus, credits?: number) => {
+    const before = snapshotRef.current;
     setPlan((current) => {
       const completedCredits = { ...current.completedCredits };
       delete completedCredits[code];
@@ -346,8 +394,9 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
         semesters: current.semesters.map((semester) => ({ ...semester, courses: status === "none" ? semester.courses : semester.courses.filter((item) => item.code !== code) })),
       };
     });
-    announce(status === "none" ? `${code} completion or waiver undone.` : `${code} marked ${status}. ${status === "waived" ? "Waivers do not earn credits." : "Removed from planned semesters to avoid double counting."}`);
-  }, [catalog]);
+    if (status === "none") announce(`${code} is no longer marked completed or waived.`);
+    else announce(`${code} marked ${status}. ${status === "waived" ? "Waivers do not earn credits." : "Removed from planned semesters to avoid double counting."}`, { undoesPlanChange: true, action: { label: "Undo", run: () => restoreSnapshot({ ...before, blocked: false }, `${code} is back to its earlier status.`) } });
+  }, [catalog, announce, restoreSnapshot]);
   const addCourse = useCallback((code: string, semesterId: string, credits: number, includeCorequisite = false) => {
     const selectedCourse = catalog?.courses.find((course) => course.code === code);
     const companionCode = selectedCourse?.corequisites.type === "course" ? selectedCourse.corequisites.code : null;
@@ -363,16 +412,16 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
     });
     if (!result) return;
     if (!result.ok) {
-      if (result.reason === "missing-term") announce("Choose an existing term before adding a course.");
-      else if (result.reason === "capacity") announce(`${semesterName} supports up to 32 planned courses.`);
-      else announce(`${code} is already recorded in your plan or history.`);
+      if (result.reason === "missing-term") announce("Choose an existing term before adding a course.", WARNING);
+      else if (result.reason === "capacity") announce(`${semesterName} supports up to 32 planned courses.`, WARNING);
+      else announce(`${code} is already recorded in your plan or history.`, WARNING);
       return;
     }
     announce(additionNotice(result.plan, result.added, result.semesterName));
   }, [catalog, additionNotice]);
   const addCourses = useCallback((codes: Iterable<string>, semesterId: string) => {
     if (!catalog) {
-      announce("Catalog is still loading. Try adding the line again in a moment.");
+      announce("Catalog is still loading. Try adding the line again in a moment.", WARNING);
       return;
     }
     let result: ReturnType<typeof appendCoursesToSemester> | undefined;
@@ -385,20 +434,20 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
     });
     if (!result) return;
     if (!result.ok) {
-      if (result.reason === "missing-term") announce("Choose an existing term before adding a course.");
-      else if (result.reason === "capacity") announce(`${semesterName} supports up to 32 planned courses.`);
-      else announce("Every course on this line is already in your plan or history, or is an external catalog reference.");
+      if (result.reason === "missing-term") announce("Choose an existing term before adding a course.", WARNING);
+      else if (result.reason === "capacity") announce(`${semesterName} supports up to 32 planned courses.`, WARNING);
+      else announce("Every course on this line is already in your plan or history, or is an external catalog reference.", WARNING);
       return;
     }
     announce(additionNotice(result.plan, result.added, result.semesterName));
   }, [catalog, additionNotice]);
   const addPrerequisiteChain = useCallback((code: string) => {
     if (!catalog) {
-      announce("Catalog is still loading. Try adding the path again in a moment.");
+      announce("Catalog is still loading. Try adding the path again in a moment.", WARNING);
       return;
     }
     if (!code) {
-      announce("Choose a course before adding its prerequisite chain.");
+      announce("Choose a course before adding its prerequisite chain.", WARNING);
       return;
     }
     let added: string[] = [];
@@ -423,30 +472,30 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
       return result.plan;
     });
     if (blockedReason) {
-      announce(blockedReason);
+      announce(blockedReason, WARNING);
       return;
     }
     if (failed === "capacity") {
-      announce(`${capacityTerm ?? "That term"} supports up to 32 planned courses. The missing chain was not added.`);
+      announce(`${capacityTerm ?? "That term"} supports up to 32 planned courses. The missing chain was not added.`, WARNING);
       return;
     }
     if (failed === "missing-term") {
-      announce("A planned term for this path is missing. The missing chain was not added.");
+      announce("A planned term for this path is missing. The missing chain was not added.", WARNING);
       return;
     }
     if (failed === "semester-limit") {
-      announce("This local plan supports up to 32 terms. The missing chain was not added.");
+      announce("This local plan supports up to 32 terms. The missing chain was not added.", WARNING);
       return;
     }
     if (!added.length) {
-      announce("Every course on this path is already in your plan or history, or cannot be added.");
+      announce("Every course on this path is already in your plan or history, or cannot be added.", WARNING);
       return;
     }
     announce(`${added.join(", ")} added along the path to ${code}${createdTerms.length ? `. Created ${createdTerms.join(", ")}` : ""}. Check the live audit for prerequisites and corequisites.`);
   }, [catalog]);
   const addTargetChain = useCallback(() => {
     if (!courseTargetCode) {
-      announce("Choose a target course before adding its prerequisite chain.");
+      announce("Choose a target course before adding its prerequisite chain.", WARNING);
       return;
     }
     addPrerequisiteChain(courseTargetCode);
@@ -457,23 +506,27 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
   // reads outside a functional updater (catalog, courseTargetCode); setters are
   // stable. tests/app-provider.test.ts checks the value keeps its identity.
   const refreshCatalog = useCallback(() => fetchCatalog(true), [fetchCatalog]);
+  const reloadCatalog = useCallback(() => fetchCatalog(false), [fetchCatalog]);
   const openPicker = useCallback((semesterId?: string, courseCode?: string) => {
     openCourse(null);
     setPicker({ semesterId, courseCode });
   }, []);
   const closePicker = useCallback(() => setPicker(null), []);
+  // An Undo that would roll back later edits is withdrawn; the message stays.
+  const stale = notice?.action && notice.planVersion !== undefined && planVersion.current.version > notice.planVersion;
+  const liveNotice = useMemo(() => stale && notice ? { ...notice, action: undefined, focusAction: false } : notice, [notice, stale]);
   const contextValue = useMemo<AppContextValue>(() => ({
-    catalogKey, catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog, plan, setPlan, progress,
+    catalogKey, catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog, reloadCatalog, plan, setPlan, progress,
     hydrated, persistence, storageError, retrySave: save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode,
     openCourse, picker, openPicker, closePicker, setCourseStatus, addCourse, addCourses, careerTargetId,
     setCareerTargetId, courseTargetCode, setCourseTargetCode, addTargetChain, addPrerequisiteChain,
-    workspaceSelection, setWorkspaceSelection, notice, announce,
+    workspaceSelection, setWorkspaceSelection, notice: liveNotice, announce,
   }), [
-    catalogKey, catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog, plan, progress, hydrated,
+    catalogKey, catalog, catalogBusy, catalogError, catalogMessage, refreshAvailable, refreshCatalog, reloadCatalog, plan, progress, hydrated,
     persistence, storageError, save, resetPlan, exportPlanBackup, restorePlanBackup, detailCode, openCourse, picker,
     openPicker, closePicker, setCourseStatus, addCourse, addCourses, careerTargetId, setCareerTargetId,
     courseTargetCode, setCourseTargetCode, addTargetChain, addPrerequisiteChain, workspaceSelection,
-    setWorkspaceSelection, notice, announce,
+    setWorkspaceSelection, liveNotice, announce,
   ]);
 
   return contextValue;

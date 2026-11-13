@@ -6,9 +6,9 @@ export const PERSONA_PROMPT = "What are you trying to become?";
 export type OverlayRole = "critical" | "core" | "recommended";
 
 export const OVERLAY_ROLE_LABEL: Record<OverlayRole, string> = {
-  critical: "CRITICAL ★",
-  core: "CORE",
-  recommended: "RECOMMENDED",
+  critical: "Critical ★",
+  core: "Core",
+  recommended: "Recommended",
 };
 
 export type PathwayOverlay = {
