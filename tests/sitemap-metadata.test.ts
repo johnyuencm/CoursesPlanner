@@ -8,6 +8,7 @@ import { mergeMetadata } from "vinext/shims/metadata";
 import sitemap from "../app/sitemap";
 import { CATALOGS } from "../lib/catalog-key";
 import { readProgramCatalog } from "../lib/program-catalog";
+import { clip } from "../lib/program-page";
 
 // app/layout.tsx imports CSS, which Node cannot load. An empty module stands in for it.
 register(`data:text/javascript,${encodeURIComponent(
@@ -57,6 +58,14 @@ test("every sitemap page has a unique title, program titles use the short name, 
     assert.ok(shortName, `no short name in the catalog of ${pathname}`);
     assert.ok(title.includes(shortName), `${pathname}: "${title}" does not name ${shortName}`);
   }
+});
+
+test("clip stops after a whole word and drops a dangling separator or joining word (#117)", () => {
+  assert.equal(clip("CS 5800 Algorithms", 41), "CS 5800 Algorithms");
+  assert.equal(clip("CS 6650 Building Scalable Distributed Systems", 41), "CS 6650 Building Scalable Distributed…");
+  assert.equal(clip("CS 2100 Program Design and Implementation 1", 41), "CS 2100 Program Design…");
+  assert.equal(clip("CY 5001 Cyberlaw: Privacy, Ethics, and Digital Rights", 30), "CY 5001 Cyberlaw: Privacy…");
+  assert.equal(clip("Supercalifragilistic", 10), "Supercali…", "one long word is cut inside the word");
 });
 
 test("course page descriptions fit in 160 characters, and every description is unique (#117)", () => {

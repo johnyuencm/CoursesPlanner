@@ -29,11 +29,14 @@ export function shortName(catalog: Pick<Catalog, "shortName" | "university" | "p
 export const TITLE_MAX = 60;
 export const DESCRIPTION_MAX = 160;
 
-/** `text` with at most `max` characters. A longer text stops after a whole word and ends with "…". */
+/**
+ * `text` with at most `max` characters. A longer text stops after a whole word and ends with "…".
+ * A dangling separator or joining word goes too: "Design and…" becomes "Design…".
+ */
 export function clip(text: string, max: number): string {
   if (text.length <= max) return text;
   const end = text.lastIndexOf(" ", max - 1);
-  return `${text.slice(0, end > 0 ? end : max - 1).replace(/[\s,;:·—–-]+$/, "")}…`;
+  return `${text.slice(0, end > 0 ? end : max - 1).replace(/(?:[\s,;:·—–-]|\s(?:and|or|of|for|to|in|on|with|the|a|an|&))+$/i, "")}…`;
 }
 
 /** Title template of the pages of one program: "<page> · <short name>". */
