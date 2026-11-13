@@ -28,6 +28,8 @@ export function shortName(catalog: Pick<Catalog, "shortName" | "university" | "p
 /** Search results show about this many characters of a title and of a description. */
 export const TITLE_MAX = 60;
 export const DESCRIPTION_MAX = 160;
+/** A title keeps at least this many characters for its page part: the course code and the first words of the course title. */
+const PAGE_MIN = 30;
 
 /**
  * `text` with at most `max` characters. A longer text stops after a whole word and ends with "…".
@@ -35,13 +37,19 @@ export const DESCRIPTION_MAX = 160;
  */
 export function clip(text: string, max: number): string {
   if (text.length <= max) return text;
+  if (max < 2) return max === 1 ? "…" : "";
   const end = text.lastIndexOf(" ", max - 1);
   return `${text.slice(0, end > 0 ? end : max - 1).replace(/(?:[\s,;:·—–-]|\s(?:and|or|of|for|to|in|on|with|the|a|an|&))+$/i, "")}…`;
 }
 
-/** Title template of the pages of one program: "<page> · <short name>". */
+/** The program name in titles. A long name (no short name, or a long one) is clipped, so the page part keeps PAGE_MIN characters. */
+export function titleName(name: string): string {
+  return clip(name, TITLE_MAX - " · ".length - PAGE_MIN);
+}
+
+/** Title template of the pages of one program: "<page> · <title name>". */
 export function titleTemplate(name: string): string {
-  return `%s · ${name}`;
+  return `%s · ${titleName(name)}`;
 }
 
 /** The page part of a program page title, clipped so that the full title fits in TITLE_MAX. */

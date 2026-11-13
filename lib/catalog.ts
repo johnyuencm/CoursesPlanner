@@ -202,7 +202,7 @@ export function validateCatalog(value: unknown, grammar?: CourseCodeGrammar): as
     throw new Error("Catalog lastUpdated is invalid");
   }
   for (const field of ["id", "university", "program", "shortName", "adapter"] as const) {
-    if (value[field] !== undefined && (typeof value[field] !== "string" || value[field].length === 0)) {
+    if (value[field] !== undefined && (typeof value[field] !== "string" || !value[field].trim())) {
       throw new Error(`Catalog ${field} is invalid`);
     }
   }

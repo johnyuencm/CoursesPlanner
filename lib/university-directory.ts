@@ -75,12 +75,18 @@ function parseUniversityCrawlConfig(value: unknown, label: string): UniversityCr
   if (robotsUrl !== undefined && !allowedOrigins.includes(new URL(robotsUrl).origin)) {
     throw new Error(`${label}.robotsUrl origin must be listed in ${label}.allowedOrigins`);
   }
+  const { shortNames } = value;
+  if (shortNames !== undefined && (!isRecord(shortNames) ||
+    !Object.values(shortNames).every((name) => typeof name === "string" && name.trim()))) {
+    throw new Error(`${label}.shortNames must map program ids to names`);
+  }
   return {
     adapter: value.adapter,
     discoverySource,
     requestDelayMs: requiredNumber(value.requestDelayMs, `${label}.requestDelayMs`),
     robotsUrl,
     allowedOrigins,
+    ...(shortNames && { shortNames: shortNames as Record<string, string> }),
   };
 }
 

@@ -158,7 +158,7 @@ export interface ProgramRoadmap {
   university: string;
   programId: string;
   program: string;
-  /** `Catalog.shortName`. The crawl does not write it: add it when you publish the program. */
+  /** `Catalog.shortName`. The crawl copies it from `crawl.shortNames` in catalog-service/universities.json. */
   shortName?: string;
   adapter: string;
   officialUrl: string;

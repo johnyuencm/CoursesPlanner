@@ -39,7 +39,9 @@ The product name is **Course Map**. The college and program names come from the 
 | Header, 1180 px or less | `<university> · <program>` above the search box. The sidebar hides the names at these widths. |
 | Icons | `public/icon.svg`, `public/favicon.ico` |
 
-- `data/catalog.json` gets the short name from `catalog-service/sources/neu-mscs-seattle.json` at each refresh. A Map-tier roadmap gets it by hand when you publish the program (`docs/add-courseleaf-college.md`).
+- `data/catalog.json` gets the short name from `catalog-service/sources/neu-mscs-seattle.json` at each refresh. A Map-tier roadmap gets it from `crawl.shortNames` in `catalog-service/universities.json` (key: program id): the crawl writes it into the roadmap. Do not edit the short name in a roadmap file. `tests/published-programs.test.ts` fails when the two differ.
+- Cost: a long course name is clipped in the title tag, so the title has fewer words of the course name. The page `<h1>` and the description keep the full name.
+- A program with no short name, or a short name of more than 27 characters, gets a clipped name in its titles. Thus the page part keeps 30 characters, and titles stay unique and at 60 characters or less.
 - `tests/ia.test.ts` fails when `app/` or `components/` has a hardcoded "NEU MSCS", "Northeastern" or "MSCS Seattle" string.
 - `tests/sitemap-metadata.test.ts` merges the metadata of every sitemap page as vinext does. It fails when two titles are the same, when fewer than 90% of titles have 60 characters or less, when a program title does not have the short name, or when a course page description has more than 160 characters.
 

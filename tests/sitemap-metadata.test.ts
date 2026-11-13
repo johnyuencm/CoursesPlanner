@@ -8,7 +8,7 @@ import { mergeMetadata } from "vinext/shims/metadata";
 import sitemap from "../app/sitemap";
 import { CATALOGS } from "../lib/catalog-key";
 import { readProgramCatalog } from "../lib/program-catalog";
-import { clip } from "../lib/program-page";
+import { clip, pageTitle, titleTemplate } from "../lib/program-page";
 
 // app/layout.tsx imports CSS, which Node cannot load. An empty module stands in for it.
 register(`data:text/javascript,${encodeURIComponent(
@@ -66,6 +66,25 @@ test("clip stops after a whole word and drops a dangling separator or joining wo
   assert.equal(clip("CS 2100 Program Design and Implementation 1", 41), "CS 2100 Program Design…");
   assert.equal(clip("CY 5001 Cyberlaw: Privacy, Ethics, and Digital Rights", 30), "CY 5001 Cyberlaw: Privacy…");
   assert.equal(clip("Supercalifragilistic", 10), "Supercali…", "one long word is cut inside the word");
+  assert.equal(clip("CS 5800", 1), "…");
+  assert.equal(clip("CS 5800", 0), "");
+  assert.equal(clip("CS 5800", -16), "", "a negative limit gives an empty text, not a cut from the end");
+});
+
+test("a long or missing short name keeps titles unique, within 60 characters, with the course code (#117)", () => {
+  const pages = ["CS 5800 Algorithms", "CS 5010 Programming Design Paradigm", "CS 6650 Building Scalable Distributed Systems",
+    "CS 2100 Program Design and Implementation 1", "CS 3100 Program Design and Implementation 2", "Robotics Software Engineer path"];
+  // The fallback names (`programName`) of a Map-tier program (44) and of the default program (54), and a 73-character name.
+  for (const name of ["Northeastern Computer Science, MSCS (Boston)", "Northeastern University Computer Science, MSCS—Seattle",
+    "Example State University School of Engineering, Computer Science MS (Web)"]) {
+    const titles = pages.map((page) => titleTemplate(name).replace("%s", pageTitle(page, name)));
+    assert.ok(titles.every((title) => title.length <= 60), `over 60 characters:\n${titles.join("\n")}`);
+    assert.equal(new Set(titles).size, titles.length, `two titles are the same:\n${titles.join("\n")}`);
+    assert.ok(titles.every((title, index) => title.startsWith(pages[index]!.split(" ").slice(0, 2).join(" "))), `a title lost its code:\n${titles.join("\n")}`);
+  }
+  const seattle = "Northeastern University Computer Science, MSCS—Seattle";
+  assert.equal(titleTemplate(seattle).replace("%s", pageTitle("CS 6650 Building Scalable Distributed Systems", seattle)),
+    "CS 6650 Building Scalable… · Northeastern University…");
 });
 
 test("course page descriptions fit in 160 characters, and every description is unique (#117)", () => {

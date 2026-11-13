@@ -29,6 +29,8 @@ export interface UniversityCrawlConfig {
   requestDelayMs: number;
   robotsUrl?: string;
   allowedOrigins: string[];
+  /** Short name of a program for page titles, by program id. The crawl writes it into the roadmap (#117). */
+  shortNames?: Record<string, string>;
 }
 
 export interface UniversityDirectoryEntry {
