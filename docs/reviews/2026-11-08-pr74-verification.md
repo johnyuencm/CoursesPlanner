@@ -1,6 +1,6 @@
 # #74 verification: 4 more Northeastern programs at Map tier
 
-Date: 2026-11-08. Branch: `feat/74-more-neu-programs`, merged with master `e257fff` (#118). Not deployed.
+Date: 2026-11-08. Branch: `feat/74-more-neu-programs`, merged with master `5ab5973` (#118, #122, #124). Not deployed.
 
 ## Programs
 
@@ -56,7 +56,7 @@ Browser (own tab, 127.0.0.1:3211 only):
 |---|---|---|
 | Prerendered routes | 127 | 387 |
 | Static asset files | 315 | 839 |
-| Worker upload (gzip) | 611 KiB | 922 KiB |
+| Worker upload (gzip) | 611 KiB | 926 KiB |
 
 Limits on Workers Free: 3 MB gzip, 20,000 asset files. The prerendered HTML also ships in the Worker bundle, so each Map-tier program adds about 77 KiB gzip.
 
@@ -68,3 +68,11 @@ Limits on Workers Free: 3 MB gzip, 20,000 asset files. The prerendered HTML also
 ## worker.ts
 
 After the merge with #118, `worker.ts` is the #118 version. `programPageIndex()` in `lib/snapshot-manifest.ts` lists the pages of each program from its own catalog (`readProgramCatalog`). The test that forbids `readCatalog` and `await` in `worker.ts` passes.
+
+## Data isolation (#123, #124)
+
+- The default catalog is the tracked `data/catalog.json` only (#124).
+- `readProgramCatalog(key)` reads only the committed roadmap file of that key, plus the tracked `universities.json`. It does not read `.roadmap-crawl-status.json`, `raw/` or other roadmaps. The build manifest still checks that each published program is `ready`.
+- `tests/published-copy.ts` copies every roadmap in `data/published.json`, so the temp copy holds all 5 programs.
+- A test plants an invalid crawl status file, a raw cache, an unpublished broken roadmap and the old catalog mirror in a temp copy. Every Map-tier catalog and the page index stay equal to the clean copy.
+- `npm test` ran twice in this worktree with the ignored crawl output present (`.roadmap-crawl-status.json`, `raw/`): 350 of 350 pass both times. CI runs on a clean checkout.
