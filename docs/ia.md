@@ -18,6 +18,7 @@ flowchart TD
 ```
 
 - `app/page.tsx` reads `CATALOGS` (published programs) and `catalog-service/universities.json` (the college directory) at build time. The page is static: `X-Vinext-Cache: HIT`, no Worker render.
+- Under the heading, a short intro says what the site does: the prerequisite map, the planner, the Audit tier and the local plan (#117).
 - `components/program-picker.tsx` filters both lists in the browser. Each word of the query must be in the college or program name.
 - The tier is Audit or Map (`requirementTier`). The catalog year is `requirements.catalogYear`.
 - The shortcut reads `coursesplanner:catalog-key`. A program page writes it. The picker only reads it.

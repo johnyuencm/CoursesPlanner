@@ -119,6 +119,10 @@ test("/ is the program picker: published programs with tier and catalog year, ot
   const { default: HomePage, metadata } = await import("../app/page");
   const html = renderToStaticMarkup(await HomePage());
   assert.match(html, /<h1>Pick your college and program<\/h1>/);
+  // A short intro in the server HTML says what the site does (#117).
+  const intro = /<p class="picker-intro">([^<]+)<\/p>/.exec(html)?.[1] ?? "";
+  for (const word of ["prerequisite", "unlocks", "plan", "browser"]) assert.match(intro, new RegExp(word), `the intro does not say "${word}"`);
+  assert.ok(intro.length <= 300, `the intro has ${intro.length} characters`);
   assert.match(html, new RegExp(`href="${base}"`), "the published program links to its overview");
   assert.match(html, /Northeastern University<\/h3>/);
   assert.equal(html.match(/<h3>Northeastern/g)?.length, 1, "one heading per college, for every program of that college");
