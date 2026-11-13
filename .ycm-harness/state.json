@@ -1,7 +1,7 @@
 {
   "version": 3,
   "created_at": "2026-09-12T06:05:27.067Z",
-  "updated_at": "2026-09-16T03:00:53.914Z",
+  "updated_at": "2026-11-13T09:22:57.394Z",
   "goals": {
     "goal_complete-mscs-seattle-prerequisite-graph_5f65": {
       "id": "goal_complete-mscs-seattle-prerequisite-graph_5f65",
@@ -1044,6 +1044,17 @@
         "body_path": "pages/work-2026-09-15-seat-unlock-targets.md",
         "created_at": "2026-09-16T02:58:48.038Z",
         "updated_at": "2026-09-16T02:58:48.038Z"
+      },
+      "work-lite-2026-11-13-117-short-titles": {
+        "id": "work-lite-2026-11-13-117-short-titles",
+        "title": "Short program names in titles (#117)",
+        "source_ids": [],
+        "tags": [
+          "decision"
+        ],
+        "body_path": "pages/work-lite-2026-11-13-117-short-titles.md",
+        "created_at": "2026-11-13T09:22:57.393Z",
+        "updated_at": "2026-11-13T09:22:57.393Z"
       }
     },
     "log": [
@@ -1095,6 +1106,13 @@
         "ref": "work-2026-09-15-seat-unlock-targets",
         "note": "durable decision",
         "at": "2026-09-16T02:58:48.039Z"
+      },
+      {
+        "id": "wlg_4a7ae114",
+        "kind": "page.upserted",
+        "ref": "work-lite-2026-11-13-117-short-titles",
+        "note": "durable decision",
+        "at": "2026-11-13T09:22:57.394Z"
       }
     ]
   },

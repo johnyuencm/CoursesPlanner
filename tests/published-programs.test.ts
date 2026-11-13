@@ -15,6 +15,7 @@ import { emptyPlan } from "../lib/plan";
 import { requirementTier, validatePlan } from "../lib/requirements-v2";
 import { programPageIndex } from "../lib/snapshot-manifest";
 import type { ProgramRoadmap } from "../lib/types";
+import { loadUniversityDirectory } from "../lib/university-directory";
 import { PUBLISHED, publishedCopy } from "./published-copy";
 
 const PROGRAMS = [
@@ -74,6 +75,8 @@ for (const expected of PROGRAMS) {
     validateProgramRoadmap(roadmap, ["https://catalog.northeastern.edu"]);
     const report = JSON.parse(await readFile(`data/catalogs/northeastern/reports/${id}.json`, "utf8"));
     assert.deepEqual(report, roadmapReport(roadmap as ProgramRoadmap));
+    const shortNames = (await loadUniversityDirectory()).find((entry) => entry.id === "northeastern")?.crawl?.shortNames ?? {};
+    assert.equal((roadmap as ProgramRoadmap).shortName, shortNames[id!], "the crawl copies the short name from catalog-service/universities.json (#117)");
     assert.equal(report.tier, "map");
     assert.equal(report.courses, expected.courses);
   });

@@ -9,3 +9,4 @@ Append-only. Do not edit by hand.
 - 2026-09-15T22:24:40.215Z page.upserted ref=work-2026-09-15-line-focus-plan - durable decision
 - 2026-09-16T02:21:12.777Z page.upserted ref=work-2026-09-15-dblclick-connections - durable decision
 - 2026-09-16T02:58:48.039Z page.upserted ref=work-2026-09-15-seat-unlock-targets - durable decision
+- 2026-11-13T09:22:57.394Z page.upserted ref=work-lite-2026-11-13-117-short-titles - durable decision

@@ -2,6 +2,7 @@
   "id": "neu-mscs-seattle",
   "university": "Northeastern University",
   "program": "Computer Science, MSCS—Seattle",
+  "shortName": "NEU MSCS Seattle",
   "adapter": "northeastern-acalog",
   "courses": [
     {

@@ -211,9 +211,11 @@ export async function crawlRoadmaps(options: RoadmapCrawlOptions): Promise<Roadm
           const courses = adapter.buildRoadmapGraph(parsedCourses, scope.programCourseCodes, origin);
           const uncertain = courses.filter((course) => course.uncertainties.length).length;
           if (uncertain) warnings.push(`${uncertain} courses have unavailable details or conservatively parsed prerequisite/corequisite clauses; inspect course uncertainties.`);
+          const shortName = config.shortNames && Object.hasOwn(config.shortNames, program.id) ? config.shortNames[program.id] : undefined;
           const roadmap: ProgramRoadmap = {
             universityId: university.id, university: university.university,
-            programId: program.id, program: scope.name, adapter: adapter.id, officialUrl: program.officialUrl,
+            programId: program.id, program: scope.name, ...(shortName && { shortName }),
+            adapter: adapter.id, officialUrl: program.officialUrl,
             programCourseCodes: scope.programCourseCodes, courses, lastUpdated: now().toISOString(),
             sources: [...new Set([program.officialUrl, ...sources.map((source) => source.url)])],
             warnings: [...new Set([...scope.warnings, ...warnings])],

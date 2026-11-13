@@ -138,6 +138,8 @@ h4 { font-size: var(--fs-sm); letter-spacing: 0; }
 .top-search { display: flex; align-items: center; gap: 0.5rem; min-height: 42px; max-width: 720px; width: 100%; padding: 0 1rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-soft); color: var(--muted); }
 .top-search:focus-within, .search-field:focus-within, .target-control:focus-within { border-color: var(--focus); background: white; box-shadow: 0 0 0 1px var(--focus); }
 .top-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); }
+.topbar-program { display: none; grid-column: 1 / -1; margin: 0; overflow: hidden; color: var(--ink-soft); font-size: var(--fs-sm); font-weight: 600; line-height: 1.3; white-space: nowrap; text-overflow: ellipsis; }
+.topbar-program-short { display: none; }
 .top-utilities { display: flex; align-items: center; gap: 0.75rem; }
 .target-control { display: flex; align-items: center; gap: 0.5rem; min-height: 42px; padding: 0.25rem 0.5rem 0.25rem 0.5rem; border: 1px solid var(--line); border-radius: 999px; background: white; }
 .target-control svg { color: var(--red); }
@@ -800,6 +802,7 @@ textarea { resize: vertical; }
   :root { --sidebar: 82px; }
   .brand { align-items: center; justify-content: center; padding-left: 0; padding-right: 0; }
   .brand-name, .brand-program, .sidebar-label, .sidebar-tagline, .sidebar-status-link, .sidebar-underline, .sidebar-mountains, .local-note { display: none; }
+  .topbar-program { display: block; }
   .brand-mark { font-size: var(--fs-xs); text-align: center; width: 100%; }
   .main-nav { margin-top: 1rem; }
   .nav-link { justify-content: center; padding: 0.75rem 0.25rem; flex-direction: column; gap: 0.125rem; font-size: var(--fs-2xs); }
@@ -830,6 +833,7 @@ textarea { resize: vertical; }
   .nav-link.active { background: var(--red-soft); color: var(--red); }
   .nav-link svg { width: 18px; height: 18px; }
   .topbar { top: 0; min-height: 62px; display: flex; flex-wrap: wrap; }
+  .topbar-program { flex-basis: 100%; }
   .top-utilities { width: 100%; min-width: 0; }
   .target-control { flex: 1; min-width: 0; }
   .target-control label { flex: 1; }
@@ -853,6 +857,8 @@ textarea { resize: vertical; }
 @media (max-width: 620px) {
   .main-content { padding-left: 0.75rem; padding-right: 0.75rem; }
   .topbar, .global-banner, .workspace-footer { padding-left: 0.75rem; padding-right: 0.75rem; }
+  .topbar-program-full { display: none; }
+  .topbar-program-short { display: inline; }
   .profile-menu > summary > span:last-of-type { display: none; }
   .page-heading h1 { font-size: var(--fs-2xl); }
   .requirement-stats { grid-template-columns: 1fr; gap: 0.75rem; }

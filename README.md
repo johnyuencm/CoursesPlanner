@@ -42,7 +42,8 @@ Every page is under the catalog key of its program. The URL selects the catalog.
 - The build prerenders these pages for each published program (`CATALOGS` in `lib/catalog-key.ts`). A test checks that `data/published.json` lists the same keys.
 - `/` is the picker (#72). It is prerendered at build time from `CATALOGS` and `catalog-service/universities.json`. Search runs in the browser.
 - Old top-level URLs answer `308` to the same page of the default program. The query string stays. An old URL with a trailing slash (`/courses/`) also takes one hop: `worker.ts` sends it with `legacyDestination`.
-- Titles, descriptions and the sidebar name the college and program from the snapshot (`Catalog.university`, `Catalog.program`). The product name is "Course Map". A test in `tests/ia.test.ts` fails when `app/` or `components/` has a hardcoded "NEU MSCS" or "Northeastern" string.
+- Descriptions and the sidebar name the college and program from the snapshot (`Catalog.university`, `Catalog.program`). Titles use the short name from the snapshot (`Catalog.shortName`, for example "NEU MSCS Seattle"). The product name is "Course Map". A test in `tests/ia.test.ts` fails when `app/` or `components/` has a hardcoded "NEU MSCS" or "Northeastern" string.
+- At least 90% of the sitemap titles have 60 characters or less, and course page descriptions have 160 or less. A long course title is clipped after a whole word ("…"). `tests/sitemap-metadata.test.ts` checks the length and uniqueness of every sitemap title.
 - The icons are `public/icon.svg` and `public/favicon.ico`. Static assets answer them; the Worker does not run (`wrangler.jsonc` `run_worker_first`).
 - An unknown program or course gets a small `404` page. `worker.ts` sends it to `app/global-not-found.tsx` before vinext renders the layouts.
 - The page tier comes from the catalog. A Map-tier program gets map, courses and plan checks, but no degree audit.
