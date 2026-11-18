@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import pathwayConfig from "@/config/pathways.json";
 import { PageHeading } from "@/components/ui";
 import { courseSlug, creditsLabel, pathwayRobots, publicCourses, requirementLabel, requirementText, unmetRequirements } from "@/lib/course-pages";
-import { readProgram, type ProgramParams } from "@/lib/program-page";
+import { pageTitle, readProgram, type ProgramParams } from "@/lib/program-page";
 import type { Pathway } from "@/lib/types";
 
 const pathways = pathwayConfig as Pathway[];
@@ -19,12 +19,12 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const { catalog, name, routes } = await readProgram(params);
+  const { catalog, name, shortName, routes } = await readProgram(params);
   const pathway = pathways.find((item) => item.id === id);
   if (!pathway) return {};
   return {
     ...pathwayRobots(catalog),
-    title: `${pathway.name} path`,
+    title: pageTitle(`${pathway.name} path`, shortName),
     description: `${pathway.description} Courses for the ${pathway.name} path in the ${name} program, with prerequisites and how each one counts.`,
     alternates: { canonical: routes.pathway(id) },
   };

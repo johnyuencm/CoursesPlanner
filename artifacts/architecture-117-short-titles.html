@@ -1,0 +1,31 @@
+<title>Architecture pass: short titles (#117)</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>body{font-family:system-ui,sans-serif;background:#fafaf9;color:#1c1917}</style>
+<main class="max-w-4xl mx-auto p-6 space-y-6">
+<header>
+<h1 class="text-2xl font-bold">Architecture pass: short titles (#117, PR #131)</h1>
+<p class="text-sm text-stone-600">Scope: diff of PR #131 up to 37baa36. Hot spots: <code>lib/program-page.ts</code> (<code>clip</code>, <code>titleName</code>, <code>pageTitle</code>), <code>catalog-service/roadmaps.ts</code>, <code>catalog-service/universities.json</code>, <code>lib/catalog.ts</code> validators, <code>components/app-shell.tsx</code>. Date: 2026-11-13.</p>
+<p class="text-sm">Spec-backed candidates (Strong or Worth exploring, inside the #117 goal): <b>none</b>. The review rounds already moved the title and description rules into one module (<code>lib/program-page.ts</code>). They also made the crawl the single writer of Map-tier short names.</p>
+</header>
+
+<section class="bg-white rounded-xl shadow p-5 space-y-3">
+<div class="flex items-center gap-3"><h2 class="text-xl font-semibold">1. One short-name registry</h2><span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs font-bold">Speculative</span></div>
+<p><b>Files:</b> <code>catalog-service/sources/neu-mscs-seattle.json</code> (Seattle), <code>catalog-service/universities.json</code> <code>crawl.shortNames</code> (Map tier).</p>
+<p><b>Problem:</b> One concept, the program short name, has two config homes, one per pipeline (CourseLeaf refresh and roadmap crawl).</p>
+<p><b>Deletion test:</b> A merged registry would add a cross-pipeline read for one field. Each file is already the config of its own pipeline, and <code>tests/published-programs.test.ts</code> plus the sitemap test catch drift. Merging moves complexity, it does not concentrate it.</p>
+<pre class="mermaid">flowchart LR
+ S[sources/neu-mscs-seattle.json] -->|refresh| C[data/catalog.json]
+ U[universities.json crawl.shortNames] -->|crawl| R[roadmaps/*.json]
+ C --> T[lib/program-page.ts pageTitle]
+ R --> T
+ T --> X[sitemap test: <=60, unique]</pre>
+<p><b>Verdict:</b> Do not build now. Revisit when a third pipeline (Coursedog #84, Acalog #85) needs short names.</p>
+</section>
+
+<section class="bg-stone-900 text-stone-50 rounded-xl p-5">
+<h2 class="text-xl font-semibold">Top recommendation</h2>
+<p>Keep the current shape. When the Coursedog or Acalog adapter lands, put <code>shortName</code> in the one shared program config that every adapter reads, and delete the per-pipeline copies then.</p>
+</section>
+</main>
+<script>mermaid.initialize({startOnLoad:true});</script>

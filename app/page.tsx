@@ -48,7 +48,7 @@ export default async function HomePage() {
     <header className="picker-header">
       <p className="picker-brand">Course Map</p>
       <h1>Pick your college and program</h1>
-      <p>See what every course unlocks, read the degree rules, and plan your terms. Your plan stays in this browser.</p>
+      <p className="picker-intro">Course Map turns the official catalog of a program into a prerequisite map. See what each course needs first and what it unlocks next, then plan your terms. The planner checks prerequisites. For a program marked Audit, it also checks the degree rules. Your plan stays in this browser.</p>
     </header>
     <ProgramPicker programs={programs} colleges={colleges} />
   </main>;

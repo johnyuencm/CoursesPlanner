@@ -201,8 +201,8 @@ export function validateCatalog(value: unknown, grammar?: CourseCodeGrammar): as
   if (typeof value.lastUpdated !== "string" || Number.isNaN(Date.parse(value.lastUpdated))) {
     throw new Error("Catalog lastUpdated is invalid");
   }
-  for (const field of ["id", "university", "program", "adapter"] as const) {
-    if (value[field] !== undefined && (typeof value[field] !== "string" || value[field].length === 0)) {
+  for (const field of ["id", "university", "program", "shortName", "adapter"] as const) {
+    if (value[field] !== undefined && (typeof value[field] !== "string" || !value[field].trim())) {
       throw new Error(`Catalog ${field} is invalid`);
     }
   }
@@ -388,6 +388,9 @@ export function validateProgramRoadmap(
     if (typeof fieldValue !== "string" || !fieldValue.trim()) {
       throw new Error(`Program roadmap ${field} is invalid`);
     }
+  }
+  if (value.shortName !== undefined && (typeof value.shortName !== "string" || !value.shortName.trim())) {
+    throw new Error("Program roadmap shortName is invalid");
   }
   if (!validTimestamp(value.lastUpdated)) {
     throw new Error("Program roadmap lastUpdated is invalid");

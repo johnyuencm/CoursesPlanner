@@ -186,6 +186,8 @@ test("catalog trust boundary uses the catalog's grammar: 6.1210 and 15-122 pass 
   assert.throws(() => validateCatalog(cmu, mitLike), /Invalid course code: 15-112/);
   assert.doesNotThrow(() => validateCatalog(twoCourseCatalog("CS 5010", "CS 5800", "northeastern-acalog")));
   assert.throws(() => validateCatalog(twoCourseCatalog("CS 5010", "CS 5800", "no-such-adapter")), /no-such-adapter/);
+  // Like the roadmap and source validators, a blank short name is invalid (#117).
+  assert.throws(() => validateCatalog({ ...twoCourseCatalog("CS 5010", "CS 5800", "northeastern-acalog"), shortName: "  " }), /Catalog shortName is invalid/);
 });
 
 test("plan validation, explore focus and target matching take the active grammar", () => {

@@ -370,6 +370,31 @@ test("roadmap crawl is bounded, resumable, US-first, and reuses university cours
   }
 });
 
+test("the crawl writes the short name from the university config, also after a reset (#117)", { timeout: 60_000 }, async () => {
+  const rootDir = await mkdtemp(path.join(tmpdir(), "roadmap-short-name-"));
+  const directory = path.join(rootDir, "data", "catalogs", "us-supported");
+  const university = supportedUniversity("us-supported", "us", 20);
+  const options = { rootDir, limit: 1, fetchImpl: crawlerFetch([]), now: () => new Date(timestamp) };
+  try {
+    await crawlRoadmaps({ ...options, universities: [university] }); // discovery
+    const programId = (JSON.parse(await readFile(path.join(directory, "programs.json"), "utf8")) as DiscoveredPrograms).programs[0]!.id;
+    const named = { ...university, crawl: { ...university.crawl!, shortNames: { [programId]: "US MSCS Seattle" } } };
+    const shortName = async () =>
+      (JSON.parse(await readFile(path.join(directory, "roadmaps", `${programId}.json`), "utf8")) as ProgramRoadmap).shortName;
+    await crawlRoadmaps({ ...options, universities: [named] });
+    assert.equal(await shortName(), "US MSCS Seattle");
+    // A reset: without the crawl state, the crawl discovers the programs again and rewrites the roadmap.
+    await rm(path.join(directory, "programs.json"));
+    await rm(path.join(directory, ".roadmap-crawl-status.json"));
+    await crawlRoadmaps({ ...options, universities: [named] });
+    const again = await crawlRoadmaps({ ...options, universities: [named] });
+    assert.deepEqual(again.processed, [{ universityId: "us-supported", type: "program", programId, status: "ready" }]);
+    assert.equal(await shortName(), "US MSCS Seattle", "a new crawl keeps the short name");
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("roadmap crawl enforces limits, metadata skips, and robots rules", async () => {
   const rootDir = await mkdtemp(path.join(tmpdir(), "roadmap-safety-"));
   const calls: string[] = [];

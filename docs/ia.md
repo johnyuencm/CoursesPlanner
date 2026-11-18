@@ -18,24 +18,32 @@ flowchart TD
 ```
 
 - `app/page.tsx` reads `CATALOGS` (published programs) and `catalog-service/universities.json` (the college directory) at build time. The page is static: `X-Vinext-Cache: HIT`, no Worker render.
+- Under the heading, a short intro says what the site does: the prerequisite map, the planner, the Audit tier and the local plan (#117).
 - `components/program-picker.tsx` filters both lists in the browser. Each word of the query must be in the college or program name.
 - The tier is Audit or Map (`requirementTier`). The catalog year is `requirements.catalogYear`.
 - The shortcut reads `coursesplanner:catalog-key`. A program page writes it. The picker only reads it.
 - Each program page has the link **Change college or program** to `/`: in the sidebar on wide screens, and in the **Local plan** menu on every screen width.
 
-## Branding (#72)
+## Branding (#72, #117)
 
-The product name is **Course Map**. The college and program names come from the snapshot (`Catalog.university`, `Catalog.program`).
+The product name is **Course Map**. The college and program names come from the snapshot (`Catalog.university`, `Catalog.program`). Titles use the short name from the snapshot (`Catalog.shortName`, for example `NEU MSCS Seattle`), so that search results show the full title.
 
 | Place | Text |
 | --- | --- |
 | `/` title | `Course Map · Pick your college and program` |
-| Program overview title | `<university> <program> · Course Map` |
-| Other program page titles | `<page> · <university> <program> · Course Map` |
+| Program overview title | `<short name> · Course Map` |
+| Other program page titles | `<page> · <short name>` |
+| Course page title | `<code> <course title> · <short name>`, 60 characters or less. A long course title stops after a whole word and ends with "…". |
+| Course page description | 160 characters or less, clipped the same way |
 | Sidebar | `Course Map`, the university, the program |
+| Header, 1180 px or less | One line above the search box: `<university> · <program>`, and the short name at 620 px or less. The sidebar hides the names at these widths. |
 | Icons | `public/icon.svg`, `public/favicon.ico` |
 
-`tests/ia.test.ts` fails when `app/` or `components/` has a hardcoded "NEU MSCS", "Northeastern" or "MSCS Seattle" string.
+- `data/catalog.json` gets the short name from `catalog-service/sources/neu-mscs-seattle.json` at each refresh. A Map-tier roadmap gets it from `crawl.shortNames` in `catalog-service/universities.json` (key: program id): the crawl writes it into the roadmap. Do not edit the short name in a roadmap file. `tests/published-programs.test.ts` fails when the two differ.
+- Cost: a long course name is clipped in the title tag, so the title has fewer words of the course name. The page `<h1>` and the description keep the full name.
+- A program with no short name, or a short name of more than 27 characters, gets a clipped name in its titles. Thus the page part keeps 30 characters, and titles stay unique and at 60 characters or less.
+- `tests/ia.test.ts` fails when `app/` or `components/` has a hardcoded "NEU MSCS", "Northeastern" or "MSCS Seattle" string.
+- `tests/sitemap-metadata.test.ts` merges the metadata of every sitemap page as vinext does. It fails when two titles are the same, when fewer than 90% of titles have 60 characters or less, when a program title does not have the short name, or when a course page description has more than 160 characters.
 
 ## Program paths (#71)
 

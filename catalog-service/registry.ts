@@ -25,6 +25,9 @@ export function parseSourceDefinition(value: unknown, fileName: string): Catalog
       throw new Error(`${fileName} is missing ${field}`);
     }
   }
+  if (value.shortName !== undefined && (typeof value.shortName !== "string" || !value.shortName.trim())) {
+    throw new Error(`${fileName}.shortName is invalid`);
+  }
   const { codeGrammar } = getAdapter(String(value.adapter));
   if (typeof value.enabled !== "boolean") throw new Error(`${fileName}.enabled must be boolean`);
   const allowedOrigins = parseAllowedOrigins(value.allowedOrigins, `${fileName}.allowedOrigins`);
@@ -63,6 +66,7 @@ export function parseSourceDefinition(value: unknown, fileName: string): Catalog
     id: value.id,
     university: String(value.university),
     program: String(value.program),
+    shortName: value.shortName,
     adapter: String(value.adapter),
     enabled: value.enabled,
     pollIntervalMs: requiredNumber(value.pollIntervalMs, `${fileName}.pollIntervalMs`),

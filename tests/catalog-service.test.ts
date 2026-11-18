@@ -546,6 +546,7 @@ test("two registered sources refresh independently from the same fixtures", { ti
     });
     assert.equal(first.catalog.id, "neu-alpha");
     assert.equal(second.catalog.id, "neu-beta");
+    assert.equal(first.catalog.shortName, "NEU MSCS Seattle", "a refresh keeps the short name of the source (#117)");
     assert.equal(requirementView(first.catalog.requirements).totalCredits, 32);
     assert.equal(requirementView(second.catalog.requirements).totalCredits, 32);
     assert.ok(first.catalog.courses.some((course) => course.code === "CS 5010"));

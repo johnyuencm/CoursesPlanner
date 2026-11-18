@@ -293,6 +293,7 @@ function assembleCatalog(
     id: definition.id,
     university: definition.university,
     program: definition.program,
+    shortName: definition.shortName,
     adapter: definition.adapter,
     courses,
     requirements,

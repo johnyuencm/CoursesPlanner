@@ -229,7 +229,13 @@
       "robotsUrl": "https://catalog.northeastern.edu/robots.txt",
       "allowedOrigins": [
         "https://catalog.northeastern.edu"
-      ]
+      ],
+      "shortNames": {
+        "computer-science-mscs-976b977119": "NEU MSCS Boston",
+        "computer-science-mscs-align-a4f8db6b17": "NEU MSCS Align Boston",
+        "cybersecurity-ms-429a5fa183": "NEU MSCY Boston",
+        "data-science-ms-ptl-0da0db71be": "NEU MSDS Portland"
+      }
     }
   },
   {

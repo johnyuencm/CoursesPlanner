@@ -17,7 +17,7 @@ import {
   transitiveUnlocks,
 } from "@/lib/course-pages";
 import { simplifyRequirement } from "@/lib/requirement-logic";
-import { readProgram, type ProgramParams } from "@/lib/program-page";
+import { DESCRIPTION_MAX, clip, pageTitle, readProgram, type ProgramParams } from "@/lib/program-page";
 import type { Catalog, Pathway, RequirementExpression } from "@/lib/types";
 
 const pathways = pathwayConfig as Pathway[];
@@ -39,14 +39,22 @@ function unlockSummary(code: string, catalog: Catalog) {
     (all.length > course.unlocks.length ? `, and ${all.length - course.unlocks.length} more depend on it through a chain.` : ".");
 }
 
+/** `unlockSummary` in fewer words, for the meta description: "It unlocks 3 courses directly and 8 in all." */
+function unlockCount(code: string, catalog: Catalog) {
+  const direct = catalog.courses.find((item) => item.code === code)!.unlocks.length;
+  const all = transitiveUnlocks(code, catalog.courses).length;
+  if (!direct) return "It unlocks no other course in this catalog.";
+  return `It unlocks ${direct} course${direct > 1 ? "s" : ""}${all > direct ? ` directly and ${all} in all` : ""}.`;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params;
-  const { catalog, name, routes } = await readProgram(params);
+  const { catalog, shortName, routes } = await readProgram(params);
   const course = courseBySlug(catalog, code);
   if (!course) return {};
   return {
-    title: `${course.code} ${course.title}`,
-    description: `${course.code} ${course.title} (${creditsLabel(course)}) in the ${name} program: ${requirementLabel(course, catalog).toLowerCase()}. ${unlockSummary(course.code, catalog)}`,
+    title: pageTitle(`${course.code} ${course.title}`, shortName),
+    description: clip(`${course.code} ${course.title} (${creditsLabel(course)}) in ${shortName}: ${requirementLabel(course, catalog).toLowerCase()}. ${unlockCount(course.code, catalog)}`, DESCRIPTION_MAX),
     alternates: { canonical: routes.course(code) },
   };
 }
