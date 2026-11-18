@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { cp, mkdtemp } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -21,4 +21,18 @@ export async function publishedCopy(): Promise<string> {
     await cp(path.join(process.cwd(), file), path.join(root, file));
   }
   return root;
+}
+
+/**
+ * Plant what a local crawl leaves behind under data/catalogs/. Git ignores all of it.
+ * The status file is invalid, so a reader that reads it throws (#123, #127).
+ */
+export async function plantCrawlOutput(root: string): Promise<void> {
+  const crawl = path.join(root, "data", "catalogs", "northeastern");
+  await writeFile(path.join(crawl, ".roadmap-crawl-status.json"), JSON.stringify({ version: 1 }));
+  await mkdir(path.join(crawl, "raw"), { recursive: true });
+  await writeFile(path.join(crawl, "raw", "x.html"), "<html></html>");
+  await writeFile(path.join(crawl, "roadmaps", "zz-extra.json"), "{ not json");
+  await mkdir(path.join(root, "data", "catalogs", "neu-mscs-seattle"), { recursive: true });
+  await writeFile(path.join(root, "data", "catalogs", "neu-mscs-seattle", "catalog.json"), "{}");
 }

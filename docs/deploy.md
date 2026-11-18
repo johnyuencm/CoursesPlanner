@@ -56,7 +56,7 @@ flowchart LR
 ```
 
 - [`data/published.json`](../data/published.json) is the allowlist. Each entry is a catalog key, `<university-id>/<program-id>`, for one ready roadmap.
-- `npm run build` runs [`lib/snapshot-manifest.ts`](../lib/snapshot-manifest.ts) from a plugin in [`vite.config.ts`](../vite.config.ts). It validates each listed roadmap, its `programs.json`, `data/catalog.json` and `catalog-service/universities.json`.
+- `npm run build` runs [`lib/snapshot-manifest.ts`](../lib/snapshot-manifest.ts) from a plugin in [`vite.config.ts`](../vite.config.ts). It validates each listed roadmap, its `programs.json`, `data/catalog.json` and `catalog-service/universities.json`. It reads only tracked files. Ignored crawl output under `data/catalogs/`, for example `.roadmap-crawl-status.json`, does not change the build (#127).
 - The build fails when a listed roadmap is missing, invalid or not `ready`. The Worker never lists a program that answers 503.
 - The build writes the files to `dist/client/_snapshots/<repo path>`. It also writes `_snapshots/manifest.json`. Each manifest entry has a catalog key, a tier (`audit` or `map`), an edition (the snapshot `lastUpdated`) and a file.
 - The shipped `programs.json` keeps only the published programs. To unpublish a program, remove its key and deploy.

@@ -68,6 +68,20 @@ export function summarize(programs: DiscoveredPrograms, updatedAt: string): Road
   };
 }
 
+/** The tracked program directory (`programs.json`), validated. Undefined before discovery. Never reads the crawl status (#127). */
+export async function readPrograms(university: UniversityDirectoryEntry, rootDir: string): Promise<DiscoveredPrograms | undefined> {
+  if (!crawlable(university)) return undefined;
+  const programs = await readOptionalJson(path.join(universityDir(rootDir, university.id), "programs.json"));
+  if (programs === undefined) return undefined;
+  validateDiscoveredPrograms(programs, university.crawl!.allowedOrigins);
+  if (
+    programs.universityId !== university.id || programs.university !== university.university ||
+    programs.adapter !== university.crawl!.adapter || programs.sourceUrl !== university.crawl!.discoverySource.url
+  ) throw new Error("Discovered programs do not match the university registry");
+  programs.programs.sort((a, b) => a.officialUrl.localeCompare(b.officialUrl) || a.id.localeCompare(b.id));
+  return programs;
+}
+
 export async function readState(university: UniversityDirectoryEntry, rootDir: string, now: () => Date) {
   let status = initialStatus(university, now().toISOString());
   if (!crawlable(university)) return { programs: undefined, status };
@@ -78,17 +92,11 @@ export async function readState(university: UniversityDirectoryEntry, rootDir: s
     if (persistedStatus.universityId !== university.id) throw new Error("Roadmap crawl status university mismatch");
     status = persistedStatus;
   }
-  const programs = await readOptionalJson(path.join(directory, "programs.json"));
+  const programs = await readPrograms(university, rootDir);
   if (programs === undefined) {
     if (status.discoveryStatus === "ready") throw new Error("Completed discovery is missing its program directory");
     return { programs: undefined, status };
   }
-  validateDiscoveredPrograms(programs, university.crawl!.allowedOrigins);
-  if (
-    programs.universityId !== university.id || programs.university !== university.university ||
-    programs.adapter !== university.crawl!.adapter || programs.sourceUrl !== university.crawl!.discoverySource.url
-  ) throw new Error("Discovered programs do not match the university registry");
-  programs.programs.sort((a, b) => a.officialUrl.localeCompare(b.officialUrl) || a.id.localeCompare(b.id));
   // programs.json is the commit point; rebuild a sidecar left behind by an interrupted write.
   const updatedAt = [programs.discoveredAt, ...programs.programs.map((program) => program.statusUpdatedAt),
     ...(persistedStatus === undefined ? [] : [status.updatedAt])]
@@ -120,8 +128,8 @@ export async function readReadyRoadmap(
   rootDir = process.cwd(),
 ): Promise<ProgramRoadmap> {
   if (!validId(programId)) throw new Error(`Unknown roadmap program: ${programId}`);
-  const directory = await readProgramDirectory(university, rootDir);
-  const program = directory.programs.find((entry) => entry.id === programId);
+  // Tracked files only: the build ships this roadmap, and git ignores the crawl status (#127).
+  const program = (await readPrograms(university, rootDir))?.programs.find((entry) => entry.id === programId);
   if (!program) throw new Error(`Unknown roadmap program: ${programId}`);
   if (program.status !== "ready") throw new Error(`Roadmap is not ready: ${programId} (${program.status})`);
   const roadmap = await readOptionalJson(path.join(universityDir(rootDir, university.id), "roadmaps", `${programId}.json`));

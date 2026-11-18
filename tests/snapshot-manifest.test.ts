@@ -8,7 +8,7 @@ import { handleRoadmapsRequest } from "../app/api/roadmaps/route";
 import { runCatalogCli } from "../catalog-service/cli";
 import { readCatalog } from "../lib/catalog";
 import { buildSnapshotAssets, type SnapshotManifest } from "../lib/snapshot-manifest";
-import { PROGRAMS, PUBLISHED, ROADMAP, publishedCopy, roadmapFile } from "./published-copy";
+import { PROGRAMS, PUBLISHED, ROADMAP, plantCrawlOutput, publishedCopy, roadmapFile } from "./published-copy";
 
 const ROOT = process.cwd();
 const KEY = "northeastern/computer-science-mscs-sea-8b0d00dbda";
@@ -53,6 +53,14 @@ test("the build fails when a published snapshot is missing or invalid", async ()
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("the build reads only tracked files: ignored crawl output, an invalid status file included, changes nothing (#127)", async (t) => {
+  const clean = await publishedCopy();
+  const dirty = await publishedCopy();
+  t.after(() => Promise.all([clean, dirty].map((root) => rm(root, { recursive: true, force: true }))));
+  await plantCrawlOutput(dirty);
+  assert.deepEqual(await buildSnapshotAssets(dirty), await buildSnapshotAssets(clean));
 });
 
 test("the manifest tier comes from validation: credits that do not add up give the Map tier", async () => {
