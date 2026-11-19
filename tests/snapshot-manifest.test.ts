@@ -63,6 +63,44 @@ test("the build reads only tracked files: ignored crawl output, an invalid statu
   assert.deepEqual(await buildSnapshotAssets(dirty), await buildSnapshotAssets(clean));
 });
 
+test("a roadmap read without programs.json is 404, also when the local crawl status says discovery is ready (#127)", async (t) => {
+  const root = await publishedCopy();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, "data/catalogs/northeastern/.roadmap-crawl-status.json"), JSON.stringify({
+    version: 1, universityId: "northeastern", status: "ready", discoveryStatus: "ready",
+    queue: [], counts: { queued: 0, ready: PUBLISHED.length, unsupported: 0, error: 0 }, updatedAt: "2026-11-08T00:00:00.000Z",
+  }));
+  await rm(path.join(root, PROGRAMS));
+  const response = await handleRoadmapsRequest(
+    new NextRequest(`http://localhost/api/roadmaps?university=northeastern&program=${KEY.split("/")[1]}`),
+    root,
+  );
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), { error: "Unknown roadmap program." });
+});
+
+test("roadmap reads ignore local crawl output: the API and the CLI give each published roadmap as from a clean copy (#127)", async (t) => {
+  const clean = await publishedCopy();
+  const dirty = await publishedCopy();
+  t.after(() => Promise.all([clean, dirty].map((root) => rm(root, { recursive: true, force: true }))));
+  await plantCrawlOutput(dirty);
+  const read = async (root: string, key: string) => {
+    const [university, program] = key.split("/");
+    const response = await handleRoadmapsRequest(
+      new NextRequest(`http://localhost/api/roadmaps?university=${university}&program=${program}`),
+      root,
+    );
+    let cli = "";
+    await runCatalogCli([`--roadmap=${program}`, `--university=${university}`], { rootDir: root, write: (text) => { cli += text; } });
+    return { status: response.status, body: await response.json(), cli };
+  };
+  for (const key of PUBLISHED) {
+    const expected = await read(clean, key);
+    assert.equal(expected.status, 200, key);
+    assert.deepEqual(await read(dirty, key), expected, key);
+  }
+});
+
 test("the manifest tier comes from validation: credits that do not add up give the Map tier", async () => {
   const root = await publishedCopy();
   try {
