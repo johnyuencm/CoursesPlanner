@@ -154,6 +154,12 @@ async function requestCatalog(refresh: boolean, key: string): Promise<CatalogLoa
   return loadCatalogFromNetwork(true, key);
 }
 
+/** The toast after a prerequisite chain is added. Only an Audit-tier program has a live audit (#126). */
+export function chainAddedNotice(catalog: Catalog, added: string[], code: string, createdTerms: string[]): string {
+  const check = requirementTier(catalog.requirements, catalog.courses) === "audit" ? "Check the live audit" : "Review the plan checks";
+  return `${added.join(", ")} added along the path to ${code}${createdTerms.length ? `. Created ${createdTerms.join(", ")}` : ""}. ${check} for prerequisites and corequisites.`;
+}
+
 /**
  * The shared context value; exported so tests can check its identity across renders (CR8).
  * `catalogKey` comes from the URL (`/<universityId>/<programId>/...`) and is fixed for one provider.
@@ -492,7 +498,7 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
       announce("Every course on this path is already in your plan or history, or cannot be added.", WARNING);
       return;
     }
-    announce(`${added.join(", ")} added along the path to ${code}${createdTerms.length ? `. Created ${createdTerms.join(", ")}` : ""}. ${requirementTier(catalog.requirements, catalog.courses) === "audit" ? "Check the live audit" : "Review the plan checks"} for prerequisites and corequisites.`);
+    announce(chainAddedNotice(catalog, added, code, createdTerms));
   }, [catalog]);
   const addTargetChain = useCallback(() => {
     if (!courseTargetCode) {

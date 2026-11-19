@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 import PlannerPage, { generateMetadata } from "../app/[universityId]/[programId]/planner/page";
-import { AppContext, useAppContextValue } from "../components/app-provider";
+import { AppContext, chainAddedNotice, useAppContextValue } from "../components/app-provider";
 import { CourseDetail, CoursePicker } from "../components/course-dialogs";
 import { DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
 import { readProgramCatalog } from "../lib/program-catalog";
@@ -69,4 +69,16 @@ test("the Map-tier planner shows plan checks and never says it gives a degree au
     "Corequisite checked separately: CS 2001.",
     "Corequisite checked separately: unverified requirement: Course details for CS 2500",
   ]) assert.ok(text.includes(shown), `"${shown}" is missing`);
+});
+
+test("the prerequisite chain toast points to the live audit only on an Audit-tier program (#126)", async () => {
+  const [audit, map] = await Promise.all([readProgramCatalog(DEFAULT_CATALOG_KEY), readProgramCatalog(MAP_KEY)]);
+  assert.equal(
+    chainAddedNotice(audit, ["CS 5001", "CS 5002"], "CS 5004", []),
+    "CS 5001, CS 5002 added along the path to CS 5004. Check the live audit for prerequisites and corequisites.",
+  );
+  assert.equal(
+    chainAddedNotice(map, ["CS 5001", "CS 5002"], "CS 5004", ["Fall 2026"]),
+    "CS 5001, CS 5002 added along the path to CS 5004. Created Fall 2026. Review the plan checks for prerequisites and corequisites.",
+  );
 });
