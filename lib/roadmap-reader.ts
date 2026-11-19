@@ -85,12 +85,18 @@ export async function readPrograms(university: UniversityDirectoryEntry, rootDir
 export async function readState(university: UniversityDirectoryEntry, rootDir: string, now: () => Date) {
   let status = initialStatus(university, now().toISOString());
   if (!crawlable(university)) return { programs: undefined, status };
-  const directory = universityDir(rootDir, university.id);
-  const persistedStatus = await readOptionalJson(path.join(directory, ".roadmap-crawl-status.json"));
-  if (persistedStatus !== undefined) {
-    validateRoadmapCrawlStatus(persistedStatus);
-    if (persistedStatus.universityId !== university.id) throw new Error("Roadmap crawl status university mismatch");
-    status = persistedStatus;
+  const statusFile = path.join(universityDir(rootDir, university.id), ".roadmap-crawl-status.json");
+  let persistedStatus: unknown;
+  try {
+    persistedStatus = await readOptionalJson(statusFile);
+    if (persistedStatus !== undefined) {
+      validateRoadmapCrawlStatus(persistedStatus);
+      if (persistedStatus.universityId !== university.id) throw new Error("Roadmap crawl status university mismatch");
+      status = persistedStatus;
+    }
+  } catch (error) {
+    // Git ignores this file, so name it: the reader of the log or the CLI output can fix or delete it.
+    throw new Error(`${statusFile}: ${(error as Error).message}`);
   }
   const programs = await readPrograms(university, rootDir);
   if (programs === undefined) {

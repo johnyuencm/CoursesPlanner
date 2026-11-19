@@ -33,6 +33,8 @@ function safeReadError(error: unknown): { message: string; status: number } {
   if (message.startsWith("Unknown university:")) return { message: "Unknown university.", status: 404 };
   if (message.startsWith("Unknown roadmap program:")) return { message: "Unknown roadmap program.", status: 404 };
   if (message.startsWith("Roadmap is not ready:")) return { message: "Roadmap is not ready yet.", status: 503 };
+  // The body stays generic. One server log line gives the cause (a file path and its error). Error path only.
+  console.error(`/api/roadmaps: ${message || String(error)}`);
   return { message: "Roadmap data is temporarily unavailable.", status: 503 };
 }
 

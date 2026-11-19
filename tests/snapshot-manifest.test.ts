@@ -101,6 +101,21 @@ test("roadmap reads ignore local crawl output: the API and the CLI give each pub
   }
 });
 
+test("an invalid crawl status gives the generic 503; only one server log line names the file and the error", async (t) => {
+  const root = await publishedCopy();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await plantCrawlOutput(root);
+  const log = t.mock.method(console, "error", () => {});
+  const response = await handleRoadmapsRequest(new NextRequest("http://localhost/api/roadmaps?university=northeastern"), root);
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: "Roadmap data is temporarily unavailable." });
+  assert.equal(log.mock.callCount(), 1);
+  const line = String(log.mock.calls[0]!.arguments[0]);
+  assert.ok(line.includes(path.join(root, "data/catalogs/northeastern/.roadmap-crawl-status.json")), line);
+  assert.match(line, /Roadmap crawl status universityId is invalid$/);
+  assert.doesNotMatch(line, /\n/);
+});
+
 test("the manifest tier comes from validation: credits that do not add up give the Map tier", async () => {
   const root = await publishedCopy();
   try {
