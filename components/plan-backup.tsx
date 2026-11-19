@@ -137,6 +137,7 @@ export function PlanBackup() {
       </button>
     </div>
     <input ref={fileInput} hidden aria-label="Choose a plan backup JSON file" type="file" accept="application/json,.json" onChange={importBackup} />
+    {/* Empty until Download or Restore sets a message. A live region must exist before its text changes, or screen readers can miss the text. */}
     <p className="muted" role="status">{message}</p>
   </div>;
 }

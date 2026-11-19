@@ -123,6 +123,8 @@ test("while the catalog loads, the planner shows a loading status, not the unava
   // The provider's first state is the server render. `hydrated` is the state after the plan loads from browser storage.
   for (const html of [boardWithoutCatalog(), boardWithoutCatalog({ hydrated: true })]) {
     assert.match(html, /<(\w+)[^>]*role="status"[^>]*>(?:(?!<\/\1>)[^])*Loading the course map/, "a status element shows the loading state");
+    // A status region with content speaks. An empty one stays silent until its text changes.
+    assert.equal(html.match(/role="status"[^>]*>(?!<\/)/g)?.length, 1, "only the loading state speaks while the catalog loads");
     for (const failed of CATALOG_FAILED) assert.ok(!html.includes(failed), `"${failed}" shows while the catalog loads`);
   }
 });
