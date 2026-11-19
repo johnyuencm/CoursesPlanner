@@ -1,4 +1,4 @@
-// The planner text of an Audit-tier and a Map-tier program (#126).
+// The planner text of an Audit-tier and a Map-tier program (#126), and while the catalog loads or fails (#140).
 import { strict as assert } from "node:assert";
 import test from "node:test";
 import { createElement } from "react";
@@ -8,6 +8,7 @@ import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared
 import PlannerPage, { generateMetadata } from "../app/[universityId]/[programId]/planner/page";
 import { AppContext, chainAddedNotice, useAppContextValue } from "../components/app-provider";
 import { CourseDetail, CoursePicker } from "../components/course-dialogs";
+import PlannerBoard from "../components/planner-board";
 import { DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
 import { readProgramCatalog } from "../lib/program-catalog";
 import { validatePlan } from "../lib/requirements-v2";
@@ -105,4 +106,23 @@ test("the prerequisite chain toast points to the live audit only on an Audit-tie
     chainAddedNotice(map, ["CS 5001", "CS 5002"], "CS 5004", ["Fall 2026"]),
     "CS 5001, CS 5002 added along the path to CS 5004. Created Fall 2026. Review the plan checks for prerequisites and corequisites.",
   );
+});
+
+/** The planner board without a catalog, as HTML. `state` changes the catalog load state of the provider's first state. */
+function boardWithoutCatalog(state: Partial<ReturnType<typeof useAppContextValue>> = {}): string {
+  function Board() {
+    return createElement(AppContext.Provider, { value: { ...useAppContextValue(DEFAULT_CATALOG_KEY), ...state } }, createElement(PlannerBoard));
+  }
+  return renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: {} as never }, createElement(Board)));
+}
+
+/** The text that says the catalog failed (#140). */
+const CATALOG_FAILED = ["while the catalog is unavailable", "The catalog is unavailable", "The course catalog did not load"];
+
+test("while the catalog loads, the planner shows a loading status, not the unavailable text (#140)", () => {
+  // The provider's first state is the server render. `hydrated` is the state after the plan loads from browser storage.
+  for (const html of [boardWithoutCatalog(), boardWithoutCatalog({ hydrated: true })]) {
+    assert.match(html, /<(\w+)[^>]*role="status"[^>]*>(?:(?!<\/\1>)[^])*Loading the course map/, "a status element shows the loading state");
+    for (const failed of CATALOG_FAILED) assert.ok(!html.includes(failed), `"${failed}" shows while the catalog loads`);
+  }
 });
