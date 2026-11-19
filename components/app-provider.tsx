@@ -32,7 +32,7 @@ import {
   writeCatalogValue,
 } from "@/lib/catalog-key";
 import { programRoutes } from "@/lib/routes";
-import { validatePlan } from "@/lib/requirements-v2";
+import { requirementTier, validatePlan } from "@/lib/requirements-v2";
 
 type PickerState = { semesterId?: string; courseCode?: string } | null;
 type CourseStatus = "completed" | "waived" | "none";
@@ -371,7 +371,7 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
   }, [announce, catalogKey, restoreSnapshot]);
   const additionNotice = useCallback((nextPlan: StudentPlan, added: string[], semesterName: string) => {
     const addedLabel = added.join(added.length === 2 ? " and " : ", ");
-    if (!catalog) return `${addedLabel} added to ${semesterName}. Check the live audit for prerequisites and corequisites.`;
+    if (!catalog) return `${addedLabel} added to ${semesterName}.`;
     const issue = validatePlan(nextPlan, catalog).issues.find(
       (item) => added.includes(item.courseCode) && (item.kind === "prerequisite" || item.kind === "corequisite"),
     );
@@ -492,7 +492,7 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
       announce("Every course on this path is already in your plan or history, or cannot be added.", WARNING);
       return;
     }
-    announce(`${added.join(", ")} added along the path to ${code}${createdTerms.length ? `. Created ${createdTerms.join(", ")}` : ""}. Check the live audit for prerequisites and corequisites.`);
+    announce(`${added.join(", ")} added along the path to ${code}${createdTerms.length ? `. Created ${createdTerms.join(", ")}` : ""}. ${requirementTier(catalog.requirements, catalog.courses) === "audit" ? "Check the live audit" : "Review the plan checks"} for prerequisites and corequisites.`);
   }, [catalog]);
   const addTargetChain = useCallback(() => {
     if (!courseTargetCode) {
