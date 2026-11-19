@@ -2,7 +2,6 @@ import path from "node:path";
 import {
   validateDiscoveredPrograms,
   validateProgramRoadmap,
-  validateRoadmapCrawlStatus,
 } from "./catalog";
 import type {
   DiscoveredPrograms,
@@ -68,49 +67,51 @@ export function summarize(programs: DiscoveredPrograms, updatedAt: string): Road
   };
 }
 
-export async function readState(university: UniversityDirectoryEntry, rootDir: string, now: () => Date) {
-  let status = initialStatus(university, now().toISOString());
-  if (!crawlable(university)) return { programs: undefined, status };
-  const directory = universityDir(rootDir, university.id);
-  const persistedStatus = await readOptionalJson(path.join(directory, ".roadmap-crawl-status.json"));
-  if (persistedStatus !== undefined) {
-    validateRoadmapCrawlStatus(persistedStatus);
-    if (persistedStatus.universityId !== university.id) throw new Error("Roadmap crawl status university mismatch");
-    status = persistedStatus;
-  }
-  const programs = await readOptionalJson(path.join(directory, "programs.json"));
-  if (programs === undefined) {
-    if (status.discoveryStatus === "ready") throw new Error("Completed discovery is missing its program directory");
-    return { programs: undefined, status };
-  }
+/** The tracked program directory (`programs.json`), validated. Undefined before discovery. Never reads the crawl status (#127). */
+export async function readPrograms(university: UniversityDirectoryEntry, rootDir: string): Promise<DiscoveredPrograms | undefined> {
+  if (!crawlable(university)) return undefined;
+  const programs = await readOptionalJson(path.join(universityDir(rootDir, university.id), "programs.json"));
+  if (programs === undefined) return undefined;
   validateDiscoveredPrograms(programs, university.crawl!.allowedOrigins);
   if (
     programs.universityId !== university.id || programs.university !== university.university ||
     programs.adapter !== university.crawl!.adapter || programs.sourceUrl !== university.crawl!.discoverySource.url
   ) throw new Error("Discovered programs do not match the university registry");
   programs.programs.sort((a, b) => a.officialUrl.localeCompare(b.officialUrl) || a.id.localeCompare(b.id));
-  // programs.json is the commit point; rebuild a sidecar left behind by an interrupted write.
-  const updatedAt = [programs.discoveredAt, ...programs.programs.map((program) => program.statusUpdatedAt),
-    ...(persistedStatus === undefined ? [] : [status.updatedAt])]
-    .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
-  return { programs, status: summarize(programs, updatedAt) };
+  return programs;
 }
 
+/** The newest time in a program directory: its discovery, each program status, and `also` when given. */
+export function latestUpdate(programs: DiscoveredPrograms, also?: string): string {
+  return [programs.discoveredAt, ...programs.programs.map((program) => program.statusUpdatedAt), ...(also === undefined ? [] : [also])]
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+}
+
+/**
+ * The program directory that the app serves: tracked files only, so dev answers like the Worker (#127).
+ * The crawl status is crawler state. Only catalog-service/roadmaps.ts reads it.
+ */
 export async function readProgramDirectory(
   university: UniversityDirectoryEntry,
   rootDir = process.cwd(),
 ): Promise<ProgramDirectoryResponse> {
-  const { programs, status } = await readState(university, rootDir, () => new Date());
-  return { universityId: university.id, programs: programs?.programs ?? [], status };
+  const programs = await readPrograms(university, rootDir);
+  return {
+    universityId: university.id,
+    programs: programs?.programs ?? [],
+    status: programs ? summarize(programs, latestUpdate(programs)) : initialStatus(university, new Date().toISOString()),
+  };
 }
 
+/** Every university with its status. The crawler passes its own `readDirectory`, which adds the crawl status. */
 export async function listRoadmapUniversities(
   universities: UniversityDirectoryEntry[],
   rootDir = process.cwd(),
+  readDirectory = readProgramDirectory,
 ): Promise<UniversityRoadmapSummary[]> {
   return Promise.all(universities.map(async ({ crawl: _crawl, ...entry }) => ({
     ...entry,
-    status: (await readProgramDirectory(findUniversity(universities, entry.id), rootDir)).status,
+    status: (await readDirectory(findUniversity(universities, entry.id), rootDir)).status,
   })));
 }
 
@@ -120,8 +121,8 @@ export async function readReadyRoadmap(
   rootDir = process.cwd(),
 ): Promise<ProgramRoadmap> {
   if (!validId(programId)) throw new Error(`Unknown roadmap program: ${programId}`);
-  const directory = await readProgramDirectory(university, rootDir);
-  const program = directory.programs.find((entry) => entry.id === programId);
+  // Tracked files only: the build ships this roadmap, and git ignores the crawl status (#127).
+  const program = (await readPrograms(university, rootDir))?.programs.find((entry) => entry.id === programId);
   if (!program) throw new Error(`Unknown roadmap program: ${programId}`);
   if (program.status !== "ready") throw new Error(`Roadmap is not ready: ${programId} (${program.status})`);
   const roadmap = await readOptionalJson(path.join(universityDir(rootDir, university.id), "roadmaps", `${programId}.json`));
