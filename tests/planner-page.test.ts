@@ -34,7 +34,9 @@ async function plannerText(key: string): Promise<string> {
   // The board calls useRouter(), which needs a mounted app router. Nothing here navigates.
   const html = renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: {} as never }, createElement(LoadedPlanner)));
   const { description } = await generateMetadata({ params: params() });
-  return `${html.replace(/<[^>]+>/g, " ")} ${description}`.replace(/\s+/g, " ");
+  // Attributes that a browser shows or a screen reader reads. Class names are not text.
+  const attributes = [...html.matchAll(/\s(?:aria-(?:label|description|valuetext)|title|alt|placeholder)="([^"]*)"/g)].map((match) => match[1]);
+  return `${html.replace(/<[^>]+>/g, " ")} ${attributes.join(" ")} ${description}`.replace(/\s+/g, " ");
 }
 
 test("the Audit-tier planner (MSCS Seattle) keeps its degree audit text (#126)", async () => {
