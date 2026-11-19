@@ -7,6 +7,7 @@ import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared
 
 import PlannerPage, { generateMetadata } from "../app/[universityId]/[programId]/planner/page";
 import { AppContext, useAppContextValue } from "../components/app-provider";
+import { CoursePicker } from "../components/course-dialogs";
 import { DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
 import { readProgramCatalog } from "../lib/program-catalog";
 import { validatePlan } from "../lib/requirements-v2";
@@ -14,7 +15,10 @@ import { validatePlan } from "../lib/requirements-v2";
 /** MSCS Boston: a roadmap with no modeled degree rules, so Map tier. */
 const MAP_KEY = "northeastern/computer-science-mscs-976b977119";
 
-/** The planner page of `key` after its catalog has loaded, as plain text, and the page description. */
+/**
+ * The planner page of `key` after its catalog has loaded, as plain text, and the page description.
+ * The Add course dialog is open on CS 5500: an empty plan does not meet its prerequisites.
+ */
 async function plannerText(key: string): Promise<string> {
   const [universityId = "", programId = ""] = key.split("/");
   const params = () => Promise.resolve({ universityId, programId });
@@ -22,7 +26,8 @@ async function plannerText(key: string): Promise<string> {
   const page = await PlannerPage({ params: params() });
   function LoadedPlanner() {
     const app = useAppContextValue(key);
-    return createElement(AppContext.Provider, { value: { ...app, catalog, progress: validatePlan(app.plan, catalog) } }, page);
+    const value = { ...app, catalog, progress: validatePlan(app.plan, catalog), picker: { courseCode: "CS 5500" } };
+    return createElement(AppContext.Provider, { value }, page, createElement(CoursePicker));
   }
   // The board calls useRouter(), which needs a mounted app router. Nothing here navigates.
   const html = renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: {} as never }, createElement(LoadedPlanner)));
@@ -38,6 +43,7 @@ test("the Audit-tier planner (MSCS Seattle) keeps its degree audit text (#126)",
     "Review audit",
     "What this audit cannot verify",
     "It also counts your credits against the degree rules below.",
+    "You can still add this course and resolve the audit warnings.",
     "The planner checks prerequisites and degree rules, and saves the plan only in your browser.",
   ]) assert.ok(text.includes(kept), `"${kept}" is missing`);
 });
@@ -52,6 +58,7 @@ test("the Map-tier planner shows plan checks and never says it gives a degree au
     "Arrange semesters. The planner checks prerequisites and term order as you go.",
     "Review plan checks",
     "What the plan checks cannot verify",
+    "You can still add this course and resolve the plan check warnings.",
     "The planner checks prerequisites and term order, and saves the plan only in your browser.",
   ]) assert.ok(text.includes(shown), `"${shown}" is missing`);
 });
