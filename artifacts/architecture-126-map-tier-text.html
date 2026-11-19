@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture pass: Map-tier planner text (#126)</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; background: #fafaf9; color: #1c1917; }
+  @media (prefers-color-scheme: dark) { body { background: #1c1917; color: #f5f5f4; } }
+  pre.mermaid { background: transparent; overflow-x: auto; }
+  code { overflow-wrap: anywhere; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border-bottom: 1px solid rgba(120, 113, 108, .35); padding: .35rem .5rem; text-align: left; vertical-align: top; }
+</style>
+</head>
+<body>
+<main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+<header class="space-y-2">
+  <h1 class="text-2xl font-bold">Architecture pass: Map-tier planner text (#126)</h1>
+  <p class="text-sm text-stone-600 dark:text-stone-400">Scope: <code>git diff 04e51ff...HEAD -- app components lib tests</code> on branch <code>fix/126-map-tier-text</code> (product head <code>e7b07b2</code>), plus the code that it calls (<code>lib/validation.ts</code>, <code>lib/types.ts</code>, <code>components/program-summary.tsx</code>). Date: 2026-11-19 (UTC).</p>
+  <div class="rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 p-4 space-y-1">
+    <p><b>Built in this pass:</b> <a class="underline" href="#c2">candidate 2</a> (Strong, serves #126). The Map-tier "no audit" test now also reads the issue rail. <b>Test only, <code>0befb34</code>. No product code changed.</b></p>
+    <p><b>Top recommendation:</b> <a class="underline" href="#c1">candidate 1</a>, for a new ticket. See <a class="underline" href="#top">the end</a>.</p>
+  </div>
+  <p class="text-xs text-stone-500 dark:text-stone-400">Legend: box = module or function, red node = wrong or unseen text, red arrow = leak across the seam, dashed arrow = no link. Ratings: Strong, Worth exploring, Speculative.</p>
+</header>
+
+<section id="c1" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">1. Plan checks: one name, owned by the module that runs them</h2>
+    <span class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 text-xs font-bold">Strong</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
+    <span class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">not built: not #126</span></div>
+  <p><b>Files:</b> <code>lib/requirements-v2.ts:105</code> (<code>MAP_TIER_CHECKS</code>), <code>lib/validation.ts:216-219</code> (<code>auditPlanCourses</code>), <code>lib/types.ts:223</code> (<code>PlanIssue</code> kinds), <code>components/planner-board.tsx:208, :306, :313</code>, <code>app/[universityId]/[programId]/planner/page.tsx:11, :26</code>, <code>components/program-summary.tsx:32</code>.</p>
+  <div class="grid md:grid-cols-2 gap-3">
+    <div><p class="text-xs uppercase tracking-wider">Before</p>
+<pre class="mermaid">flowchart LR
+  K["lib/validation.ts<br/>auditPlanCourses: 5 issue kinds"] -->|issues| R["rail: 4 kinds named"]
+  C["lib/requirements-v2.ts<br/>MAP_TIER_CHECKS: 2 named"] --> H["heading"]
+  C --> S["status card: ... only"]
+  C --> M["meta description"]
+  C -. no link .-> K
+  A["about text: 2 named"]
+  D["degree rules text: 1 named"]
+  classDef wrong fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+  class S wrong
+  linkStyle 4 stroke:#dc2626,stroke-width:2px</pre></div>
+    <div><p class="text-xs uppercase tracking-wider">After</p>
+<pre class="mermaid">flowchart LR
+  K["lib/validation.ts<br/>auditPlanCourses + one name"] -->|issues| R["rail"]
+  K -->|name| H["heading"]
+  K -->|name| S["status card"]
+  K -->|name| M["meta description"]
+  T["test: every PlanIssue kind is named"] -.-> K</pre></div>
+  </div>
+  <p><b>Problem:</b> One Map-tier page names the plan checks five ways (table below). The status card says "only", but the rail on the same page shows corequisite, duplicate, unknown and credit issues. The name lives in the degree-rule module, away from the checks that it names.</p>
+  <p><b>Solution:</b> <code>lib/validation.ts</code> exports one name for the checks of <code>auditPlanCourses</code>. A test ties the name to every <code>PlanIssue</code> kind. The Map-tier heading, status card and meta description read that name.</p>
+  <p><b>Deletion test:</b> Delete <code>MAP_TIER_CHECKS</code> from the degree-rule module. The claim moves beside the checks. Knowledge and verification concentrate in one module.</p>
+  <ul class="list-disc pl-5 text-sm">
+    <li>Locality: claim and checks in one module.</li>
+    <li>A new issue kind fails a test until it has a name.</li>
+    <li>Leverage: one name, three Map-tier call sites.</li>
+    <li>The word "only" becomes true (UA F2).</li>
+  </ul>
+  <p class="font-semibold">Evidence: the rendered Map-tier planner (MSCS Boston, empty plan)</p>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Surface</th><th>Code</th><th>What it says the planner checks</th></tr>
+    <tr><td>Heading</td><td><code>planner-board.tsx:306</code></td><td>"prerequisites and term order"</td></tr>
+    <tr><td>Status card</td><td><code>planner-board.tsx:313</code></td><td>"prerequisites and term order <b>only</b>"</td></tr>
+    <tr><td>Meta description</td><td><code>page.tsx:11</code></td><td>"prerequisites and term order"</td></tr>
+    <tr><td>Rail, no issues</td><td><code>planner-board.tsx:208</code></td><td>"prerequisite, corequisite, duplicate, or credit issues"</td></tr>
+    <tr><td>About text</td><td><code>page.tsx:26</code></td><td>"prerequisites and corequisites"</td></tr>
+    <tr><td>Degree rules</td><td><code>program-summary.tsx:32</code></td><td>"checks prerequisites but gives no degree audit"</td></tr>
+    <tr><td>What runs</td><td><code>types.ts:223</code></td><td>prerequisite, corequisite, duplicate, unknown, credits</td></tr>
+  </table></div>
+  <p class="text-sm"><b>Why not in #126:</b> No audit claim changes, so it does not serve #126. It is a copy decision. A full fix also changes text that both tiers share (rail, about text), and #126 AC2 freezes the Audit-tier text. Write "credit values", not "credits": the Map text must not seem to count credits against degree rules (AC1).</p>
+</section>
+
+<section id="c2" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">2. The planner render guard sees only an empty plan</h2>
+    <span class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 text-xs font-bold">Strong</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
+    <span class="px-2 py-0.5 rounded bg-emerald-700 text-white text-xs">built 0befb34, test only</span></div>
+  <p><b>Files:</b> <code>tests/planner-page.test.ts</code>, <code>components/planner-board.tsx:202-215</code> (<code>AuditPanel</code> issue branch, <code>NextCourses</code>), <code>lib/validation.ts</code> (issue messages).</p>
+  <div class="grid md:grid-cols-2 gap-3">
+    <div><p class="text-xs uppercase tracking-wider">Before</p>
+<pre class="mermaid">flowchart TB
+  T["planner-page.test.ts<br/>empty plan"] -->|render| P["planner page"]
+  P --> E["rail: no-issue branch"]
+  P -. never rendered .-> I["rail: issue branch<br/>messages, fixes, next courses"]
+  E --> G["Map check: no audit word"]
+  classDef blind fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+  class I blind</pre></div>
+    <div><p class="text-xs uppercase tracking-wider">After</p>
+<pre class="mermaid">flowchart TB
+  T["planner-page.test.ts<br/>empty plan + PLAN_WITH_ISSUES"] -->|render two times| P["planner page"]
+  P --> E["rail: no-issue branch"]
+  P --> I["rail: issue branch<br/>all 5 issue kinds"]
+  E --> G["Map check: no audit word"]
+  I --> G</pre></div>
+  </div>
+  <p><b>Problem:</b> The #126 guard (Map tier: no "audit") rendered only an empty plan. So the rail never showed its issue text: "Plan checks that need attention.", the issue messages, the suggested fixes and the next-course rows. That rail is the <code>AuditPanel</code> module, where the original bug lived.</p>
+  <p><b>Solution:</b> The test renders the page a second time with a plan that raises one issue of every kind. It asserts that the rail shows each kind. The seam stays the same: the page render.</p>
+  <p class="font-semibold">Evidence: mutation check</p>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Product code</th><th>Old test (e7b07b2)</th><th>New test (0befb34)</th></tr>
+    <tr><td><code>lib/validation.ts:377</code>: "Corequisite not met" changed to "Corequisite audit failed"</td><td>pass (blind)</td><td>fail: <code>/audit/i</code> matched</td></tr>
+    <tr><td>Change reverted</td><td>pass</td><td>pass</td></tr>
+  </table></div>
+  <ul class="list-disc pl-5 text-sm">
+    <li>The guard reads the whole rail.</li>
+    <li>A lost issue kind fails loudly.</li>
+    <li>No product code changes.</li>
+  </ul>
+  <p class="text-sm"><b>Seam:</b> the planner page render, which the three #126 reviews accepted. It catches "audit" in Map-tier issue text. It misses toasts other than <code>chainAddedNotice</code>, and other routes (#138).</p>
+</section>
+
+<section id="c3" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">3. One word for one concept: plan checks are not a degree audit</h2>
+    <span class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 text-xs font-bold">Worth exploring</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
+    <span class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">not built: not #126</span></div>
+  <p><b>Files:</b> <code>lib/validation.ts</code> (<code>auditPlanCourses</code>, <code>PlanCourseAudit</code>, <code>auditNotes</code>), <code>lib/requirements-v2.ts:544</code> ("The Plan audit for a catalog snapshot."), <code>components/planner-board.tsx:202</code> (<code>AuditPanel</code>, <code>audit-*</code> class names), <code>components/pathways-workspace.tsx:143, :170</code> (#138).</p>
+  <div class="grid md:grid-cols-2 gap-3">
+    <div><p class="text-xs uppercase tracking-wider">Before</p>
+<pre class="mermaid">flowchart LR
+  subgraph code["code word: audit"]
+    A1["auditPlanCourses, every tier"]
+    A2["AuditPanel, every tier"]
+    A3["rule groups, Audit tier"]
+  end
+  A2 -->|leak| U1["Review audit (#126)"]
+  A1 -->|leak| U2["audited separately (#126 H1)"]
+  X["pathways-workspace"] -->|leak| U3["credit audit (#138)"]
+  linkStyle 0,1,2 stroke:#dc2626,stroke-width:2px</pre></div>
+    <div><p class="text-xs uppercase tracking-wider">After</p>
+<pre class="mermaid">flowchart LR
+  subgraph glossary["GLOSSARY.md"]
+    PC["plan checks: every tier"]
+    DA["degree audit: Audit tier only"]
+  end
+  PC --> C1["plan-check names in code"]
+  DA --> C2["validatePlanV2 rule groups"]</pre></div>
+  </div>
+  <p><b>Problem:</b> The code calls the tier-blind plan checks "audit". That word leaked into Map-tier text three times: the rail button and notes (#126), the corequisite note (#126 review H1) and the Paths page (#138).</p>
+  <p><b>Solution:</b> Add <code>GLOSSARY.md</code> with two terms: plan checks (every tier) and degree audit (Audit tier only). Rename the tier-blind modules when their code changes next.</p>
+  <p class="text-sm"><b>Why not now:</b> The renames touch about six files and the CSS class names, with no change in behaviour. No <code>GLOSSARY.md</code> exists yet, and #126 does not ask for one.</p>
+</section>
+
+<section id="c4" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">4. One tier-text table for the planner</h2>
+    <span class="px-2 py-0.5 rounded bg-stone-300 text-stone-800 text-xs font-bold">Speculative</span></div>
+  <p><b>Files:</b> <code>components/planner-board.tsx:213, :306, :313</code>, <code>components/course-dialogs.tsx:87</code>, <code>components/app-provider.tsx:158-161</code>, <code>app/[universityId]/[programId]/planner/page.tsx:11, :27</code>. House pattern: <code>components/program-picker.tsx:13</code> (<code>TIER_TEXT</code>).</p>
+  <div class="grid md:grid-cols-2 gap-3 text-xs">
+    <div class="space-y-1"><p class="uppercase tracking-wider">Before: 8 tier branches in 5 files</p>
+      <div class="flex flex-wrap gap-1"><span class="border rounded px-1">page.tsx x2</span><span class="border rounded px-1">planner-board.tsx x4</span><span class="border rounded px-1">course-dialogs.tsx x1</span><span class="border rounded px-1">app-provider.tsx x1</span></div>
+      <p>Each branch falls back to the Map text.</p></div>
+    <div class="space-y-1"><p class="uppercase tracking-wider">After: one table, a shallow module</p>
+      <div class="flex items-end gap-2 h-20"><div class="w-16 bg-stone-400 h-full flex items-end justify-center text-white">7 keys</div><div class="w-16 bg-stone-600 h-full flex items-end justify-center text-white">7 pairs</div></div>
+      <p>Interface (left) as tall as implementation (right).</p></div>
+  </div>
+  <p><b>Problem:</b> Eight tier branches in five files pick the Audit or the Map words. The Audit phrase "prerequisites and degree rules" (<code>page.tsx:11</code>) is a literal. The Map phrase is a constant.</p>
+  <p class="text-sm"><b>Why not:</b> Each text has one call site, so a table gives no leverage. Its interface is as wide as its implementation. The render test already checks both tiers in one place. A table would not have caught review H1, because that string had no tier branch. AC2 freezes the Audit literal, and a constant with one call site is a pass-through. Revisit when a third tier appears: a <code>Record&lt;SupportTier, …&gt;</code> then forces text for every tier.</p>
+</section>
+
+<section id="c5" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">5. The tier is derived in four places</h2>
+    <span class="px-2 py-0.5 rounded bg-stone-300 text-stone-800 text-xs font-bold">Speculative</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">keep</span></div>
+  <p><b>Files:</b> <code>app/[universityId]/[programId]/planner/page.tsx:11, :27</code> (build time), <code>components/app-provider.tsx:159</code> (<code>chainAddedNotice</code>), <code>lib/requirements-v2.ts:518</code> (<code>progress.tier</code>). Outside the planner: <code>app/page.tsx:26</code>, <code>lib/snapshot-manifest.ts:51</code>.</p>
+<pre class="mermaid">flowchart LR
+  C[("catalog: requirements, courses")] --> RT["requirementTier: deep module"]
+  RT --> P1["page metadata, build time"]
+  RT --> P2["page about text, build time"]
+  RT --> P3["chainAddedNotice, on click"]
+  RT --> P4["validatePlanV2: progress.tier"]</pre>
+  <p><b>Problem (reviewers):</b> PM L1 and two TL lows say that the tier is computed in three places.</p>
+  <p><b>Analysis:</b> All callers use one deep module, <code>requirementTier</code>, with the same catalog. So they cannot disagree. The toast reads the catalog, not <code>progress</code>. Then its callback depends only on <code>catalog</code>, and the context value keeps its identity (CR8). The page calls run at build time (prerendered).</p>
+  <p class="text-sm"><b>Rejected:</b> A stored <code>catalog.tier</code> is a second source of truth that can drift. A <code>catalogTier(catalog)</code> helper is a pass-through: the deletion test concentrates nothing. <b>Known edge (TL round 1):</b> after a catalog refresh, the prerendered about text follows the build snapshot. <code>DegreeRules</code> has the same pattern. A refresh needs a token or dev mode (<code>app/api/catalog/route.ts</code>).</p>
+</section>
+
+<section id="c6" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">6. The test reaches past the provider interface</h2>
+    <span class="px-2 py-0.5 rounded bg-stone-300 text-stone-800 text-xs font-bold">Speculative</span></div>
+  <p><b>Files:</b> <code>components/app-provider.tsx:100</code> (<code>export const AppContext</code>), <code>tests/planner-page.test.ts</code> (<code>LoadedPlanner</code>).</p>
+  <p><b>Problem:</b> The provider loads the catalog in an effect, so a server render has no catalog. The test exports the raw context and builds <code>progress</code> the same way as the provider. If the provider changes how it builds <code>progress</code>, the test does not follow.</p>
+  <p><b>Solution:</b> The provider accepts a catalog. Two adapters would justify that seam: the network fetch in the app and a given catalog in tests.</p>
+  <p class="text-sm"><b>Why not:</b> The test also sets the picker and target state, so the context export stays. A prerender seed puts the whole catalog into the page payload. #140 owns the loading-state decision.</p>
+</section>
+
+<section class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
+  <h2 class="text-xl font-semibold">Reviewer inputs in this pass</h2>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Input</th><th>Candidate</th><th>Result</th><th>Commit</th></tr>
+    <tr><td>PM L1, TL lows: the tier is computed in three places</td><td><a class="underline" href="#c5">5</a></td><td>Keep. One deep module, same catalog. The toast reads the catalog for CR8.</td><td>none</td></tr>
+    <tr><td>UA F2: <code>MAP_TIER_CHECKS</code> names fewer checks than the planner runs</td><td><a class="underline" href="#c1">1</a></td><td>Strong. Not #126. It needs a copy decision for both tiers.</td><td>none</td></tr>
+    <tr><td>TL round 2: the Audit phrase is a literal at <code>page.tsx:11</code></td><td><a class="underline" href="#c4">4</a></td><td>Keep. One call site, and AC2 freezes it.</td><td>none</td></tr>
+    <tr><td>PM round 1 H1 class: the test could not see some text</td><td><a class="underline" href="#c2">2</a></td><td>The Map check now reads the issue rail.</td><td><code>0befb34</code></td></tr>
+    <tr><td>PM L2: <code>AppContext</code> and <code>chainAddedNotice</code> are exported for tests</td><td><a class="underline" href="#c6">6</a></td><td>Keep.</td><td>none</td></tr>
+  </table></div>
+  <p class="text-sm"><b>Verify at <code>0befb34</code>:</b> <code>npm run typecheck</code> exit 0. <code>npm test</code> 358 pass, 0 fail (same count; two tests got stronger). <code>npm run build</code> exit 0.</p>
+  <p class="text-sm"><b>Not checked:</b> No sub-agent explored the code; one agent did the scan. No live <code>wrangler dev</code> walk: this pass changes no product code (the UA walked <code>e7b07b2</code>). The repo has no <code>GLOSSARY.md</code> and no ADRs to check against.</p>
+</section>
+
+<section id="top" class="rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 p-5 space-y-2">
+  <h2 class="text-xl font-semibold">Top recommendation</h2>
+  <p><a class="underline" href="#c1">Candidate 1: plan checks get one name, owned by the module that runs them.</a> It makes one Map-tier page tell one true story, and a test ties the text to the checks. It is about 15 lines, but it changes text on both tiers, so give it its own ticket.</p>
+</section>
+
+</main>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "neutral" });
+</script>
+</body>
+</html>
