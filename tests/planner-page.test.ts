@@ -126,3 +126,10 @@ test("while the catalog loads, the planner shows a loading status, not the unava
     for (const failed of CATALOG_FAILED) assert.ok(!html.includes(failed), `"${failed}" shows while the catalog loads`);
   }
 });
+
+test("the planner says the catalog is unavailable only after the catalog request fails (#140)", () => {
+  const html = boardWithoutCatalog({ hydrated: true, catalogBusy: false, catalogError: "The catalog could not be loaded." });
+  for (const failed of CATALOG_FAILED) assert.ok(html.includes(failed), `"${failed}" is missing after the request fails`);
+  assert.ok(html.includes("Try again"), "the failure offers a retry");
+  assert.ok(!html.includes("Loading the course map"), "the loading state stays after the request fails");
+});
