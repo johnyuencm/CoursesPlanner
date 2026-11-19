@@ -101,6 +101,9 @@ function requiredCredits(root: RuleGroup): number | null {
   return total?.kind === "total-credits" ? total.credits : null;
 }
 
+/** What the plan checks cover on a Map-tier program. The planner text uses it in three places (#126). */
+export const MAP_TIER_CHECKS = "prerequisites and term order";
+
 /** Audit when every top-level group is modeled and their credits add up to the program total; else Map. */
 export function requirementTier(requirements: DegreeRequirementV2, courses: Course[]): SupportTier {
   const total = requiredCredits(requirements.root);

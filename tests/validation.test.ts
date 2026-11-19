@@ -135,11 +135,12 @@ test("ordinary prerequisites reject same-term courses but concurrency metadata p
   );
 });
 
-test("getEligibility audits prerequisites only and communicates a separate corequisite note", () => {
+test("getEligibility checks prerequisites only and communicates a separate corequisite note", () => {
   const target = course("CS 6200", { prerequisites: none, corequisites: req("CS 6201") });
   const eligibility = getEligibility(target, new Set());
   assert.equal(eligibility.status, "eligible");
-  assert.match(eligibility.reasons.join(" "), /Corequisite audited separately/);
+  // Both tiers show this note, and a Map-tier program has no degree audit (#126).
+  assert.deepEqual(eligibility.reasons, ["Corequisite checked separately: CS 6201."]);
 });
 
 test("dependency closures are cycle safe in both directions", () => {
