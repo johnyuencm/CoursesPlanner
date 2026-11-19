@@ -96,7 +96,8 @@ let noticeId = 0;
 /** What an undo needs to put back: the plan and, when saving was blocked, the unreadable saved text. */
 type PlanSnapshot = { plan: StudentPlan; blocked: boolean; raw: string | null; error: string | null };
 
-const AppContext = createContext<AppContextValue | null>(null);
+/** Exported for tests: AppProvider loads the catalog in an effect, which a server render never runs. */
+export const AppContext = createContext<AppContextValue | null>(null);
 
 // One loaded catalog per tab, for the catalog key of the URL.
 let sessionCatalog: { key: string; catalog: Catalog } | null = null;
