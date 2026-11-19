@@ -60,6 +60,7 @@ test("the Map-tier planner shows plan checks and never says it gives a degree au
   assert.doesNotMatch(text, /degree requirement update|credits against the degree rules|checks prerequisites and degree rules/);
   for (const shown of [
     "Arrange semesters. The planner checks prerequisites and term order as you go.",
+    "Plan checks prerequisites and term order only.",
     "Review plan checks",
     "What the plan checks cannot verify",
     "You can still add this course and resolve the plan check warnings.",

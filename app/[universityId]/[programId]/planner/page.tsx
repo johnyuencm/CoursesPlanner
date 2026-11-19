@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import PlannerBoard from "@/components/planner-board";
 import { DegreeRules } from "@/components/program-summary";
 import { readProgram, type ProgramParams } from "@/lib/program-page";
-import { requirementTier } from "@/lib/requirements-v2";
+import { MAP_TIER_CHECKS, requirementTier } from "@/lib/requirements-v2";
 
 type Props = { params: Promise<ProgramParams> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { name, catalog, routes } = await readProgram(params);
-  const checks = requirementTier(catalog.requirements, catalog.courses) === "audit" ? "prerequisites and degree rules" : "prerequisites and term order";
+  const checks = requirementTier(catalog.requirements, catalog.courses) === "audit" ? "prerequisites and degree rules" : MAP_TIER_CHECKS;
   return {
     title: "Build my plan",
     description: `Plan your ${name} terms. The planner checks ${checks}, and saves the plan only in your browser.`,

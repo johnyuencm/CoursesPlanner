@@ -44,6 +44,7 @@ import {
   suggestedPrerequisiteFix,
   type PrerequisiteFix,
 } from "@/lib/plan";
+import { MAP_TIER_CHECKS } from "@/lib/requirements-v2";
 import { getEligibility } from "@/lib/validation";
 import { useApp, useRoutes } from "./app-provider";
 import { PlanBackup } from "./plan-backup";
@@ -302,14 +303,14 @@ export default function PlannerBoard() {
   };
 
   return <>
-    <PageHeading title="Build your plan" description={progress?.tier === "audit" ? "Arrange semesters, test prerequisites, and see every degree requirement update as you go." : "Arrange semesters. The planner checks prerequisites and term order as you go."} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span><PlanBackup /><Link className="button button-secondary" href={routes.explore}>View on map</Link><button className="button button-secondary" onClick={() => document.getElementById("plan-issue-rail")?.focus()}>{progress?.tier === "audit" ? "Review audit" : "Review plan checks"}</button><button className="button button-secondary" onClick={() => openPicker()}><Plus size={16} /> Add course</button></div>} />
+    <PageHeading title="Build your plan" description={progress?.tier === "audit" ? "Arrange semesters, test prerequisites, and see every degree requirement update as you go." : `Arrange semesters. The planner checks ${MAP_TIER_CHECKS} as you go.`} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span><PlanBackup /><Link className="button button-secondary" href={routes.explore}>View on map</Link><button className="button button-secondary" onClick={() => document.getElementById("plan-issue-rail")?.focus()}>{progress?.tier === "audit" ? "Review audit" : "Review plan checks"}</button><button className="button button-secondary" onClick={() => openPicker()}><Plus size={16} /> Add course</button></div>} />
     <TargetPathCard />
     <CriticalPathCard />
     {progress && <section className="status-card-row four" aria-label="Plan status">
       <article className="status-card"><span className="status-kicker">Total credits in plan</span><strong>{progress.totalCredits}{progress.requiredCredits !== null && ` / ${progress.requiredCredits}`}</strong>{progress.requiredCredits !== null && <Meter value={progress.totalCredits} max={progress.requiredCredits} label="Total credits in plan" />}</article>
       {progress.tier === "audit"
         ? <article className="status-card"><span className="status-kicker">Requirement groups met</span><strong>{ruleGroups.filter((group) => group.satisfied).length} / {ruleGroups.length}</strong><p className="muted">Modeled from the official degree rules</p></article>
-        : <article className="status-card"><span className="status-kicker">Requirements (map tier)</span><strong>No degree audit</strong><p className="muted">The model does not cover every catalog rule. Plan checks prerequisites and term order only.</p></article>}
+        : <article className="status-card"><span className="status-kicker">Requirements (map tier)</span><strong>No degree audit</strong><p className="muted">The model does not cover every catalog rule. Plan checks {MAP_TIER_CHECKS} only.</p></article>}
       <article className={`status-card ${progress.issues.length === 0 ? "success" : ""}`}><span className="status-kicker">Plan validity</span><strong>{progress.issues.length === 0 ? "No blocking issues" : `${progress.issues.length} issue${progress.issues.length === 1 ? "" : "s"}`}</strong><p className="muted">{progress.satisfied ? "Modeled requirements are satisfied." : "Keep resolving catalog-based checks."}</p></article>
       <article className="status-card"><span className="status-kicker">Plan timeline</span><strong>{plan.semesters[plan.semesters.length - 1]?.name ?? "No terms"}</strong><p className="muted">Last term in this local plan — not a graduation date</p></article>
     </section>}
