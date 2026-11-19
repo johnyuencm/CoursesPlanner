@@ -209,7 +209,7 @@ function AuditPanel({ onApplyFix, onViewDependency }: { onApplyFix: (fix: Prereq
       const fix = suggestedPrerequisiteFix(issue, plan, addable);
       return <div className={`audit-issue ${issue.severity}`} key={`${issue.semesterId}-${issue.courseCode}-${issue.kind}-${index}`}>{issue.severity === "error" ? <TriangleAlert size={17} /> : <Info size={17} />}<div><strong>{issue.courseCode}: {issue.kind}</strong><p>{issue.message}</p>{fix ? <p className="muted">Suggested: {fix.suggestion}.</p> : null}{(fix || issue.relatedCourses.length > 0) && <div className="button-row">{fix ? <><button type="button" className="button button-small button-primary" onClick={() => onApplyFix(fix)}>Apply</button><button type="button" className="text-button" onClick={() => onViewDependency(fix)}>View dependency</button></> : issue.relatedCourses.map((code) => <button type="button" key={code} className="text-button" onClick={() => openCourse(code)}>View {code}</button>)}</div>}</div></div>;
     }) : <div className="audit-clear"><CheckCircle2 size={18} /><span>Modeled plan checks are clear. Offerings are still unverified.</span></div>}</section>
-    <details className="audit-notes"><summary>What this audit cannot verify</summary><ul>{progress.notes.map((note) => <li key={note}>{note}</li>)}</ul></details>
+    <details className="audit-notes"><summary>{progress.tier === "audit" ? "What this audit cannot verify" : "What the plan checks cannot verify"}</summary><ul>{progress.notes.map((note) => <li key={note}>{note}</li>)}</ul></details>
     <NextCourses />
   </aside>;
 }
@@ -302,7 +302,7 @@ export default function PlannerBoard() {
   };
 
   return <>
-    <PageHeading title="Build your plan" description="Arrange semesters, test prerequisites, and see every degree requirement update as you go." actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span><PlanBackup /><Link className="button button-secondary" href={routes.explore}>View on map</Link><button className="button button-secondary" onClick={() => document.getElementById("plan-issue-rail")?.focus()}>Review audit</button><button className="button button-secondary" onClick={() => openPicker()}><Plus size={16} /> Add course</button></div>} />
+    <PageHeading title="Build your plan" description={progress?.tier === "audit" ? "Arrange semesters, test prerequisites, and see every degree requirement update as you go." : "Arrange semesters. The planner checks prerequisites and term order as you go."} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span><PlanBackup /><Link className="button button-secondary" href={routes.explore}>View on map</Link><button className="button button-secondary" onClick={() => document.getElementById("plan-issue-rail")?.focus()}>{progress?.tier === "audit" ? "Review audit" : "Review plan checks"}</button><button className="button button-secondary" onClick={() => openPicker()}><Plus size={16} /> Add course</button></div>} />
     <TargetPathCard />
     <CriticalPathCard />
     {progress && <section className="status-card-row four" aria-label="Plan status">

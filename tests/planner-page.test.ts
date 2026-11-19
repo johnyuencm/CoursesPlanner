@@ -11,6 +11,9 @@ import { DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
 import { readProgramCatalog } from "../lib/program-catalog";
 import { validatePlan } from "../lib/requirements-v2";
 
+/** MSCS Boston: a roadmap with no modeled degree rules, so Map tier. */
+const MAP_KEY = "northeastern/computer-science-mscs-976b977119";
+
 /** The planner page of `key` after its catalog has loaded, as plain text, and the page description. */
 async function plannerText(key: string): Promise<string> {
   const [universityId = "", programId = ""] = key.split("/");
@@ -37,4 +40,18 @@ test("the Audit-tier planner (MSCS Seattle) keeps its degree audit text (#126)",
     "It also counts your credits against the degree rules below.",
     "The planner checks prerequisites and degree rules, and saves the plan only in your browser.",
   ]) assert.ok(text.includes(kept), `"${kept}" is missing`);
+});
+
+test("the Map-tier planner shows plan checks and never says it gives a degree audit (#126)", async () => {
+  const text = await plannerText(MAP_KEY);
+  assert.match(text, /Requirements \(map tier\) No degree audit/, "the status card shows Map tier");
+  // "audit" stays only where the text says that there is none, or names the official university audit.
+  assert.doesNotMatch(text.replace(/no degree audit|official university audit/gi, ""), /audit/i);
+  assert.doesNotMatch(text, /degree requirement update|credits against the degree rules|checks prerequisites and degree rules/);
+  for (const shown of [
+    "Arrange semesters. The planner checks prerequisites and term order as you go.",
+    "Review plan checks",
+    "What the plan checks cannot verify",
+    "The planner checks prerequisites and term order, and saves the plan only in your browser.",
+  ]) assert.ok(text.includes(shown), `"${shown}" is missing`);
 });
