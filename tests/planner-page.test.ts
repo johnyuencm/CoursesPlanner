@@ -7,7 +7,7 @@ import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared
 
 import PlannerPage, { generateMetadata } from "../app/[universityId]/[programId]/planner/page";
 import { AppContext, useAppContextValue } from "../components/app-provider";
-import { CoursePicker } from "../components/course-dialogs";
+import { CourseDetail, CoursePicker } from "../components/course-dialogs";
 import { DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
 import { readProgramCatalog } from "../lib/program-catalog";
 import { validatePlan } from "../lib/requirements-v2";
@@ -17,7 +17,9 @@ const MAP_KEY = "northeastern/computer-science-mscs-976b977119";
 
 /**
  * The planner page of `key` after its catalog has loaded, as plain text, and the page description.
- * The Add course dialog is open on CS 5500: an empty plan does not meet its prerequisites.
+ * Each surface below shows the corequisite note of a course with an empty plan:
+ * the Add course dialog on CS 5004 (prerequisites not met), the course detail dialog on CS 2000,
+ * and the target path card on CS 2500 (prerequisites not verified).
  */
 async function plannerText(key: string): Promise<string> {
   const [universityId = "", programId = ""] = key.split("/");
@@ -26,8 +28,8 @@ async function plannerText(key: string): Promise<string> {
   const page = await PlannerPage({ params: params() });
   function LoadedPlanner() {
     const app = useAppContextValue(key);
-    const value = { ...app, catalog, progress: validatePlan(app.plan, catalog), picker: { courseCode: "CS 5500" } };
-    return createElement(AppContext.Provider, { value }, page, createElement(CoursePicker));
+    const value = { ...app, catalog, progress: validatePlan(app.plan, catalog), picker: { courseCode: "CS 5004" }, courseTargetCode: "CS 2500" };
+    return createElement(AppContext.Provider, { value }, page, createElement(CoursePicker), createElement(CourseDetail, { code: "CS 2000" }));
   }
   // The board calls useRouter(), which needs a mounted app router. Nothing here navigates.
   const html = renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: {} as never }, createElement(LoadedPlanner)));
@@ -60,5 +62,9 @@ test("the Map-tier planner shows plan checks and never says it gives a degree au
     "What the plan checks cannot verify",
     "You can still add this course and resolve the plan check warnings.",
     "The planner checks prerequisites and term order, and saves the plan only in your browser.",
+    // One corequisite note per surface, so the "audit" check above sees them (#126 review H1).
+    "Corequisite checked separately: CS 5005.",
+    "Corequisite checked separately: CS 2001.",
+    "Corequisite checked separately: unverified requirement: Course details for CS 2500",
   ]) assert.ok(text.includes(shown), `"${shown}" is missing`);
 });

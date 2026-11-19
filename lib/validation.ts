@@ -127,7 +127,7 @@ export function getEligibility(
     ...eligibility,
     reasons: [
       ...eligibility.reasons,
-      `Corequisite audited separately: ${expressionLabel(course.corequisites)}.`,
+      `Corequisite checked separately: ${expressionLabel(course.corequisites)}.`,
     ],
   };
 }
