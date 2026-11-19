@@ -131,5 +131,5 @@ test("the planner says the catalog is unavailable only after the catalog request
   const html = boardWithoutCatalog({ hydrated: true, catalogBusy: false, catalogError: "The catalog could not be loaded." });
   for (const failed of CATALOG_FAILED) assert.ok(html.includes(failed), `"${failed}" is missing after the request fails`);
   assert.ok(html.includes("Try again"), "the failure offers a retry");
-  assert.ok(!html.includes("Loading the course map"), "the loading state stays after the request fails");
+  assert.ok(!html.includes("Loading the course map"), "no loading state shows after the request fails");
 });
