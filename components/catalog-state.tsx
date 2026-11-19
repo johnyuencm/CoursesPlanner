@@ -4,7 +4,10 @@ import { BookOpen, RefreshCw } from "lucide-react";
 import { useApp } from "./app-provider";
 import { EmptyState, LoadingState } from "./ui";
 
-/** `quiet`: render nothing while the catalog loads, because the page has server-rendered content below. */
+/**
+ * `quiet`: render nothing while the catalog loads. Use it only when the server-rendered content below is enough until the catalog loads.
+ * Do not use it when this view is the main tool of the page (the map, the planner board): that page shows the loading state (#140).
+ */
 export function CatalogState({ quiet = false }: { quiet?: boolean }) {
   const { catalogBusy, catalogError, reloadCatalog } = useApp();
   if (catalogBusy && quiet) return null;
