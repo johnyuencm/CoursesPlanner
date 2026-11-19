@@ -4,11 +4,14 @@ import { validateDiscoveredPrograms, validateProgramRoadmap, validateRoadmapCraw
 import { publicCourses } from "../lib/course-pages";
 import { roadmapCatalog } from "../lib/program-catalog";
 import { requirementTier } from "../lib/requirements-v2";
-import { findUniversity, readOptionalJson, readState, summarize, universityDir } from "../lib/roadmap-reader";
+import {
+  findUniversity, initialStatus, latestUpdate, readOptionalJson, readPrograms, summarize, universityDir,
+} from "../lib/roadmap-reader";
 import type {
   Course,
   DiscoveredProgram,
   DiscoveredPrograms,
+  ProgramDirectoryResponse,
   ProgramRoadmap,
   RoadmapStatus,
 } from "../lib/types";
@@ -19,13 +22,51 @@ import { atomicWrite, CACHE_TTL_MS, json, loadCachedSource, readCacheMetadata } 
 import type { RobotsRules } from "./robots";
 import type { PageSource, UniversityDirectoryEntry } from "../lib/source-types";
 
-export { findUniversity, listRoadmapUniversities, readProgramDirectory, readReadyRoadmap } from "../lib/roadmap-reader";
+export { findUniversity, listRoadmapUniversities, readReadyRoadmap } from "../lib/roadmap-reader";
 
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 const reasonFor = (error: unknown) =>
   (error instanceof Error ? error.message : String(error)).replace(/\s+/g, " ").trim().slice(0, 500) || "Roadmap crawl failed.";
 const crawlable = (university: UniversityDirectoryEntry) =>
   university.support === "supported" && university.enabled && university.crawl !== undefined;
+
+/**
+ * The crawl state: the tracked programs.json and the ignored crawl status beside it. This module writes
+ * the status (persist), so it alone reads it. The app and the build read tracked files only (#127).
+ */
+async function readState(university: UniversityDirectoryEntry, rootDir: string, now: () => Date) {
+  let status = initialStatus(university, now().toISOString());
+  if (!crawlable(university)) return { programs: undefined, status };
+  const statusFile = path.join(universityDir(rootDir, university.id), ".roadmap-crawl-status.json");
+  let persistedStatus: unknown;
+  try {
+    persistedStatus = await readOptionalJson(statusFile);
+    if (persistedStatus !== undefined) {
+      validateRoadmapCrawlStatus(persistedStatus);
+      if (persistedStatus.universityId !== university.id) throw new Error("Roadmap crawl status university mismatch");
+      status = persistedStatus;
+    }
+  } catch (error) {
+    // Git ignores this file, so name it: the operator can fix or delete it.
+    throw new Error(`${statusFile}: ${(error as Error).message}`);
+  }
+  const programs = await readPrograms(university, rootDir);
+  if (programs === undefined) {
+    if (status.discoveryStatus === "ready") throw new Error("Completed discovery is missing its program directory");
+    return { programs: undefined, status };
+  }
+  // programs.json is the commit point; rebuild a sidecar left behind by an interrupted write.
+  return { programs, status: summarize(programs, latestUpdate(programs, persistedStatus === undefined ? undefined : status.updatedAt)) };
+}
+
+/** The operator view (`--list-*`, catalog service): the program directory with the persisted crawl status. */
+export async function readCrawlDirectory(
+  university: UniversityDirectoryEntry,
+  rootDir = process.cwd(),
+): Promise<ProgramDirectoryResponse> {
+  const { programs, status } = await readState(university, rootDir, () => new Date());
+  return { universityId: university.id, programs: programs?.programs ?? [], status };
+}
 
 export interface RoadmapCrawlOptions {
   limit: number;

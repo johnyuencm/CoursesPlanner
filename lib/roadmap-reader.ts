@@ -2,7 +2,6 @@ import path from "node:path";
 import {
   validateDiscoveredPrograms,
   validateProgramRoadmap,
-  validateRoadmapCrawlStatus,
 } from "./catalog";
 import type {
   DiscoveredPrograms,
@@ -82,49 +81,37 @@ export async function readPrograms(university: UniversityDirectoryEntry, rootDir
   return programs;
 }
 
-export async function readState(university: UniversityDirectoryEntry, rootDir: string, now: () => Date) {
-  let status = initialStatus(university, now().toISOString());
-  if (!crawlable(university)) return { programs: undefined, status };
-  const statusFile = path.join(universityDir(rootDir, university.id), ".roadmap-crawl-status.json");
-  let persistedStatus: unknown;
-  try {
-    persistedStatus = await readOptionalJson(statusFile);
-    if (persistedStatus !== undefined) {
-      validateRoadmapCrawlStatus(persistedStatus);
-      if (persistedStatus.universityId !== university.id) throw new Error("Roadmap crawl status university mismatch");
-      status = persistedStatus;
-    }
-  } catch (error) {
-    // Git ignores this file, so name it: the reader of the log or the CLI output can fix or delete it.
-    throw new Error(`${statusFile}: ${(error as Error).message}`);
-  }
-  const programs = await readPrograms(university, rootDir);
-  if (programs === undefined) {
-    if (status.discoveryStatus === "ready") throw new Error("Completed discovery is missing its program directory");
-    return { programs: undefined, status };
-  }
-  // programs.json is the commit point; rebuild a sidecar left behind by an interrupted write.
-  const updatedAt = [programs.discoveredAt, ...programs.programs.map((program) => program.statusUpdatedAt),
-    ...(persistedStatus === undefined ? [] : [status.updatedAt])]
+/** The newest time in a program directory: its discovery, each program status, and `also` when given. */
+export function latestUpdate(programs: DiscoveredPrograms, also?: string): string {
+  return [programs.discoveredAt, ...programs.programs.map((program) => program.statusUpdatedAt), ...(also === undefined ? [] : [also])]
     .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
-  return { programs, status: summarize(programs, updatedAt) };
 }
 
+/**
+ * The program directory that the app serves: tracked files only, so dev answers like the Worker (#127).
+ * The crawl status is crawler state. Only catalog-service/roadmaps.ts reads it.
+ */
 export async function readProgramDirectory(
   university: UniversityDirectoryEntry,
   rootDir = process.cwd(),
 ): Promise<ProgramDirectoryResponse> {
-  const { programs, status } = await readState(university, rootDir, () => new Date());
-  return { universityId: university.id, programs: programs?.programs ?? [], status };
+  const programs = await readPrograms(university, rootDir);
+  return {
+    universityId: university.id,
+    programs: programs?.programs ?? [],
+    status: programs ? summarize(programs, latestUpdate(programs)) : initialStatus(university, new Date().toISOString()),
+  };
 }
 
+/** Every university with its status. The crawler passes its own `readDirectory`, which adds the crawl status. */
 export async function listRoadmapUniversities(
   universities: UniversityDirectoryEntry[],
   rootDir = process.cwd(),
+  readDirectory = readProgramDirectory,
 ): Promise<UniversityRoadmapSummary[]> {
   return Promise.all(universities.map(async ({ crawl: _crawl, ...entry }) => ({
     ...entry,
-    status: (await readProgramDirectory(findUniversity(universities, entry.id), rootDir)).status,
+    status: (await readDirectory(findUniversity(universities, entry.id), rootDir)).status,
   })));
 }
 

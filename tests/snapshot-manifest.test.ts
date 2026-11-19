@@ -79,41 +79,46 @@ test("a roadmap read without programs.json is 404, also when the local crawl sta
   assert.deepEqual(await response.json(), { error: "Unknown roadmap program." });
 });
 
-test("roadmap reads ignore local crawl output: the API and the CLI give each published roadmap as from a clean copy (#127)", async (t) => {
+test("the app reads only tracked files: with local crawl output, each roadmap API answer is as from a clean copy (#127)", async (t) => {
   const clean = await publishedCopy();
   const dirty = await publishedCopy();
   t.after(() => Promise.all([clean, dirty].map((root) => rm(root, { recursive: true, force: true }))));
   await plantCrawlOutput(dirty);
-  const read = async (root: string, key: string) => {
-    const [university, program] = key.split("/");
-    const response = await handleRoadmapsRequest(
-      new NextRequest(`http://localhost/api/roadmaps?university=${university}&program=${program}`),
-      root,
-    );
-    let cli = "";
-    await runCatalogCli([`--roadmap=${program}`, `--university=${university}`], { rootDir: root, write: (text) => { cli += text; } });
-    return { status: response.status, body: await response.json(), cli };
+  const get = async (root: string, query: string) => {
+    const response = await handleRoadmapsRequest(new NextRequest(`http://localhost/api/roadmaps${query}`), root);
+    return { status: response.status, body: await response.json() };
   };
+  // Other universities have no files, and their status time is the request time.
+  const northeastern = async (root: string) => {
+    const list = await get(root, "");
+    return { status: list.status, entry: list.body.universities?.find((entry: { id: string }) => entry.id === "northeastern") };
+  };
+  for (const query of ["", "?university=northeastern", ...PUBLISHED.map((key) => `?university=${key.replace("/", "&program=")}`)]) {
+    const read = query ? (root: string) => get(root, query) : northeastern;
+    const expected = await read(clean);
+    assert.equal(expected.status, 200, query);
+    assert.deepEqual(await read(dirty), expected, query);
+  }
+  // The CLI roadmap read is the same read.
   for (const key of PUBLISHED) {
-    const expected = await read(clean, key);
-    assert.equal(expected.status, 200, key);
-    assert.deepEqual(await read(dirty, key), expected, key);
+    const [university, program] = key.split("/");
+    const roadmap = async (root: string) => {
+      let output = "";
+      await runCatalogCli([`--roadmap=${program}`, `--university=${university}`], { rootDir: root, write: (text) => { output += text; } });
+      return output;
+    };
+    assert.deepEqual(await roadmap(dirty), await roadmap(clean), key);
   }
 });
 
-test("an invalid crawl status gives the generic 503; only one server log line names the file and the error", async (t) => {
+test("only the crawler's operator view reads the crawl status, and an invalid status names its file", async (t) => {
   const root = await publishedCopy();
   t.after(() => rm(root, { recursive: true, force: true }));
   await plantCrawlOutput(root);
-  const log = t.mock.method(console, "error", () => {});
-  const response = await handleRoadmapsRequest(new NextRequest("http://localhost/api/roadmaps?university=northeastern"), root);
-  assert.equal(response.status, 503);
-  assert.deepEqual(await response.json(), { error: "Roadmap data is temporarily unavailable." });
-  assert.equal(log.mock.callCount(), 1);
-  const line = String(log.mock.calls[0]!.arguments[0]);
-  assert.ok(line.includes(path.join(root, "data/catalogs/northeastern/.roadmap-crawl-status.json")), line);
-  assert.match(line, /Roadmap crawl status universityId is invalid$/);
-  assert.doesNotMatch(line, /\n/);
+  const message = `${path.join(root, "data/catalogs/northeastern/.roadmap-crawl-status.json")}: Roadmap crawl status universityId is invalid`;
+  for (const command of [["--list-programs", "--university=northeastern"], ["--list-universities"]]) {
+    await assert.rejects(runCatalogCli(command, { rootDir: root, write: () => {} }), { message }, command[0]);
+  }
 });
 
 test("the manifest tier comes from validation: credits that do not add up give the Map tier", async () => {

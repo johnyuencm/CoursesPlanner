@@ -6,7 +6,7 @@ import { validateCatalog } from "../lib/catalog";
 import type { Catalog } from "../lib/types";
 import { defaultCatalogId, enabledSources, findSource, loadRegistry, loadUniversityDirectory } from "./registry";
 import { refreshSource, storagePaths } from "./refresh";
-import { findUniversity, listRoadmapUniversities, readProgramDirectory, readReadyRoadmap } from "./roadmaps";
+import { findUniversity, listRoadmapUniversities, readCrawlDirectory, readReadyRoadmap } from "./roadmaps";
 import { startScheduler, type SourceStatus } from "./scheduler";
 import type { CatalogSourceDefinition, UniversityDirectoryEntry } from "../lib/source-types";
 
@@ -93,10 +93,10 @@ export async function handleCatalogRequest(
   if (url.pathname === "/universities" || universityMatch) {
     if (method !== "GET") return json({ error: "Method not allowed." }, 405, { Allow: "GET" });
     try {
-      if (!universityMatch) return json({ universities: await listRoadmapUniversities(context.universities, context.rootDir) });
+      if (!universityMatch) return json({ universities: await listRoadmapUniversities(context.universities, context.rootDir, readCrawlDirectory) });
       const university = findUniversity(context.universities, universityMatch[1]);
       if (universityMatch[3]) return json(await readReadyRoadmap(university, universityMatch[3], context.rootDir));
-      const directory = await readProgramDirectory(university, context.rootDir);
+      const directory = await readCrawlDirectory(university, context.rootDir);
       return json(universityMatch[2] === "status" ? directory.status : directory);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
