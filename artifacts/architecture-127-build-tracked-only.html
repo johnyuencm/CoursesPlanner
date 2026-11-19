@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture pass: tracked files only (#127)</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; background: #fafaf9; color: #1c1917; }
+  @media (prefers-color-scheme: dark) { body { background: #1c1917; color: #f5f5f4; } }
+  pre.mermaid { background: transparent; overflow-x: auto; }
+  code { overflow-wrap: anywhere; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border-bottom: 1px solid rgba(120, 113, 108, .35); padding: .35rem .5rem; text-align: left; vertical-align: top; }
+</style>
+</head>
+<body>
+<main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+<header class="space-y-2">
+  <h1 class="text-2xl font-bold">Architecture pass: the build and the app read only tracked files (#127)</h1>
+  <p class="text-sm text-stone-600 dark:text-stone-400">Scope: <code>git diff 04e51ff...HEAD -- lib app tests</code> on branch <code>fix/127-build-tracked-only</code>, plus the code that it calls (<code>catalog-service/roadmaps.ts</code>, <code>cli.ts</code>, <code>server.ts</code>). Date: 2026-11-19.</p>
+  <div class="rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 p-4">
+    <p><b>Top recommendation:</b> <a class="underline" href="#c1">candidate 1</a>. The crawler module owns the crawl status file. The app, the build and the Worker read only tracked files. <b>Implemented in <code>8b2dd2e</code>.</b></p>
+    <p class="text-sm mt-1">Other candidates do not serve #127. They stay in this report.</p>
+  </div>
+  <p class="text-xs text-stone-500 dark:text-stone-400">Legend: box = module or function, red node = ignored file, red arrow = leak across the seam. Ratings: Strong, Worth exploring, Speculative.</p>
+</header>
+
+<section id="c1" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">1. The crawler owns the crawl status; the app reads tracked files only</h2>
+    <span class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 text-xs font-bold">Strong</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">local-substitutable</span>
+    <span class="px-2 py-0.5 rounded bg-emerald-700 text-white text-xs">implemented 8b2dd2e</span></div>
+  <p><b>Files:</b> <code>lib/roadmap-reader.ts</code>, <code>catalog-service/roadmaps.ts</code>, <code>catalog-service/cli.ts</code>, <code>catalog-service/server.ts</code>, <code>app/api/roadmaps/route.ts</code>.</p>
+  <div class="grid md:grid-cols-2 gap-3">
+    <div><p class="text-xs uppercase tracking-wider">Before</p>
+<pre class="mermaid">flowchart TB
+  subgraph shared["lib/roadmap-reader.ts: app, build, Worker"]
+    D["readProgramDirectory"] -->|call| S["readState"]
+    S -->|call| P["readPrograms"]
+  end
+  subgraph crawler["catalog-service/roadmaps.ts"]
+    W["persist()"]
+  end
+  A["/api/roadmaps list, ?university="] -->|call| D
+  S -->|read| ST[(".roadmap-crawl-status.json (ignored)")]
+  P -->|read| PJ[("programs.json (tracked)")]
+  W -->|write| ST
+  classDef ignored fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+  class ST ignored
+  linkStyle 3 stroke:#dc2626,stroke-width:3px</pre></div>
+    <div><p class="text-xs uppercase tracking-wider">After</p>
+<pre class="mermaid">flowchart TB
+  subgraph shared["lib/roadmap-reader.ts: app, build, Worker"]
+    D["readProgramDirectory, readReadyRoadmap"] -->|call| P["readPrograms"]
+  end
+  subgraph crawler["catalog-service/roadmaps.ts"]
+    C["readCrawlDirectory"] -->|call| S["readState"]
+    W["persist()"]
+  end
+  A["/api/roadmaps (all)"] -->|call| D
+  O["CLI --list-*, catalog service"] -->|call| C
+  S -->|call| P
+  P -->|read| PJ[("programs.json (tracked)")]
+  S -->|read| ST[(".roadmap-crawl-status.json (ignored)")]
+  W -->|write| ST
+  classDef ignored fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+  class ST ignored</pre></div>
+  </div>
+  <p><b>Problem:</b> The crawler module wrote the status file, but the shared reader module read it. So in dev, the app's list and <code>?university=</code> answers depended on ignored crawler state. The Worker never has that file.</p>
+  <p><b>Solution:</b> <code>readProgramDirectory()</code> builds the directory from <code>programs.json</code> only, as the Worker did. <code>readState()</code> moves beside its writer, <code>persist()</code>. The operator views pass <code>readCrawlDirectory</code> to <code>listRoadmapUniversities()</code>, so their output does not change.</p>
+  <p><b>Deletion test:</b> Delete <code>readState()</code> from the shared reader. The status read joins the status write (locality). The app needs nothing new. The complexity concentrates.</p>
+  <ul class="list-disc pl-5 text-sm">
+    <li>Dev answers like the Worker.</li>
+    <li>Locality: status read and write in one module.</li>
+    <li>Two adapters justify the seam: tracked status for the app, persisted status for the operator.</li>
+    <li>The three app endpoints agree (PM medium, UA low-2).</li>
+    <li>Stale crawl output cannot hide the selector (UA low-1).</li>
+    <li>The Worker bundle no longer names the status file (0 files in <code>dist/server</code>).</li>
+  </ul>
+  <p class="font-semibold">Evidence: <code>handleRoadmapsRequest</code> on a temp copy of the tracked files</p>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Local state</th><th>Tree</th><th>list</th><th><code>?university=</code></th><th><code>&amp;program=</code> published</th><th><code>&amp;program=nope</code></th></tr>
+    <tr><td rowspan="2">invalid status file</td><td>base 04e51ff</td><td>503</td><td>503</td><td>503</td><td>503</td></tr>
+    <tr><td>head 8b2dd2e</td><td>200</td><td>200, 5 programs</td><td>200</td><td>404</td></tr>
+    <tr><td rowspan="2">status "ready", no <code>programs.json</code></td><td>base 04e51ff</td><td>503</td><td>503</td><td>503</td><td>503</td></tr>
+    <tr><td>head 8b2dd2e</td><td>200, queued</td><td>200, 0 programs</td><td>404</td><td>404</td></tr>
+    <tr><td>clean copy (production data)</td><td>base vs head</td><td colspan="4">Byte-equal bodies for 8 queries. Only the request-time stamps of the 39 universities without files differ.</td></tr>
+  </table></div>
+  <p class="text-sm"><b>Tests:</b> <code>tests/snapshot-manifest.test.ts</code>. With planted crawl output, every <code>/api/roadmaps</code> answer equals a clean copy (red before 8b2dd2e: the list gave 503). The CLI operator views still read the status, and an invalid status names its file.</p>
+</section>
+
+<section id="c2" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">2. One error vocabulary for roadmap reads</h2>
+    <span class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 text-xs font-bold">Worth exploring</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
+    <span class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">not built: not #127</span></div>
+  <p><b>Files:</b> <code>lib/roadmap-reader.ts</code> (throw sites), <code>app/api/roadmaps/route.ts</code> (<code>safeReadError</code>), <code>catalog-service/server.ts</code> (prefix match), <code>catalog-service/cli.ts</code>.</p>
+  <div class="grid md:grid-cols-2 gap-3">
+    <div><p class="text-xs uppercase tracking-wider">Before</p>
+<pre class="mermaid">flowchart LR
+  R["roadmap reader"] -->|message text| N["route.ts: prefix match, log"]
+  R -->|message text| V["server.ts: prefix match, no log"]
+  R -->|message text| L["cli.ts: print"]</pre></div>
+    <div><p class="text-xs uppercase tracking-wider">After</p>
+<pre class="mermaid">flowchart LR
+  R["roadmap reader"] -->|"RoadmapReadError {kind}"| M["one map: status, public text, log"]
+  M -->|response| N["route.ts"]
+  M -->|response| V["server.ts"]
+  R -->|message| L["cli.ts"]</pre></div>
+  </div>
+  <p><b>Problem:</b> The reader's error interface is message text. Two transports match message prefixes. A new error kind needs edits in three files.</p>
+  <p><b>Solution:</b> The reader throws one small error type with a kind. One map gives the HTTP status, the public text and the log line.</p>
+  <ul class="list-disc pl-5 text-sm">
+    <li>The UA low-2 text ("no program list" instead of "Unknown roadmap program.") becomes a one-line change.</li>
+    <li>The catalog service also logs the cause of its 503. Today it does not.</li>
+  </ul>
+  <p class="text-sm"><b>Why not now:</b> It does not change which files the app reads. Do it with the next new error kind.</p>
+</section>
+
+<section id="c3" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">3. One checked program-list read per build and per isolate</h2>
+    <span class="px-2 py-0.5 rounded bg-stone-300 text-stone-800 text-xs font-bold">Speculative</span></div>
+  <p><b>Files:</b> <code>lib/roadmap-reader.ts</code> (<code>readPrograms</code>), <code>lib/snapshot-manifest.ts</code>, <code>lib/snapshot-assets.ts</code>.</p>
+  <p><b>Problem:</b> The build reads and checks <code>programs.json</code> 6 times for 5 published keys. On the Worker, <code>readPrograms()</code> checks the file again and sorts the memoized asset object in place (TL low-3: the sort is idempotent, so no bug). <code>docs/deploy.md</code> says the Worker does not check the files again. That is true for the program pages, not for <code>/api/roadmaps</code>.</p>
+  <p><b>Why not:</b> The build cost is small. The route memo already keeps one 200 body per query. A memo in Node dev would serve stale files. Revisit if <code>/api/roadmaps</code> nears the 10 ms CPU limit.</p>
+</section>
+
+<section id="c4" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">4. Dev can serve a roadmap that is not published</h2>
+    <span class="px-2 py-0.5 rounded bg-stone-300 text-stone-800 text-xs font-bold">Speculative</span></div>
+  <p><b>Files:</b> <code>lib/roadmap-reader.ts</code> (<code>readReadyRoadmap</code>), <code>data/published.json</code>.</p>
+  <p><b>Problem:</b> After a local crawl, dev serves any ready roadmap on disk. The Worker serves only the published ones. Today the tracked <code>programs.json</code> lists exactly the 5 published programs, so dev equals production.</p>
+  <p><b>Why not:</b> A filter on <code>data/published.json</code> removes the local review of a new crawl before publish. It adds a check, it does not concentrate one. A product owner must decide this.</p>
+</section>
+
+<section class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
+  <h2 class="text-xl font-semibold">Review findings in this round</h2>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Finding</th><th>Result</th><th>Commit</th></tr>
+    <tr><td>TL low-1, PM medium: the new 404 has no test</td><td>Test pins 404. Base gives 503.</td><td><code>c7602d7</code></td></tr>
+    <tr><td>TL low-2: <code>&amp;program=</code> and <code>--roadmap</code> with an invalid status</td><td>Test: same answer as a clean copy. Base fails.</td><td><code>c7602d7</code></td></tr>
+    <tr><td>UA low-1: a generic 503 with no cause</td><td>One server log line names the file and the error. The body stays generic. Error path only.</td><td><code>0b7b7e5</code></td></tr>
+    <tr><td>PM medium, UA low-1, UA low-2: endpoints disagree</td><td>Candidate 1: every app endpoint reads tracked files only.</td><td><code>8b2dd2e</code></td></tr>
+    <tr><td>UA low-2: text "Unknown roadmap program."</td><td>Not changed. It now agrees with the directory (0 programs). A new text needs candidate 2.</td><td>none</td></tr>
+  </table></div>
+  <p class="text-sm"><b>Not checked:</b> no full <code>next dev</code> HTTP run (the tests call the route handler directly). No sub-agent explored the code; one agent did the scan.</p>
+</section>
+
+</main>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "neutral" });
+</script>
+</body>
+</html>
