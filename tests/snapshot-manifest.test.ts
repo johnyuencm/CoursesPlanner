@@ -8,7 +8,7 @@ import { handleRoadmapsRequest } from "../app/api/roadmaps/route";
 import { runCatalogCli } from "../catalog-service/cli";
 import { readCatalog } from "../lib/catalog";
 import { buildSnapshotAssets, type SnapshotManifest } from "../lib/snapshot-manifest";
-import { PROGRAMS, PUBLISHED, ROADMAP, publishedCopy, roadmapFile } from "./published-copy";
+import { PROGRAMS, PUBLISHED, ROADMAP, plantCrawlOutput, publishedCopy, roadmapFile } from "./published-copy";
 
 const ROOT = process.cwd();
 const KEY = "northeastern/computer-science-mscs-sea-8b0d00dbda";
@@ -52,6 +52,72 @@ test("the build fails when a published snapshot is missing or invalid", async ()
     await assert.rejects(buildSnapshotAssets(root), /not-a-program is missing or invalid: Unknown roadmap program/);
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("the build reads only tracked files: ignored crawl output, an invalid status file included, changes nothing (#127)", async (t) => {
+  const clean = await publishedCopy();
+  const dirty = await publishedCopy();
+  t.after(() => Promise.all([clean, dirty].map((root) => rm(root, { recursive: true, force: true }))));
+  await plantCrawlOutput(dirty);
+  assert.deepEqual(await buildSnapshotAssets(dirty), await buildSnapshotAssets(clean));
+});
+
+test("a roadmap read without programs.json is 404, also when the local crawl status says discovery is ready (#127)", async (t) => {
+  const root = await publishedCopy();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, "data/catalogs/northeastern/.roadmap-crawl-status.json"), JSON.stringify({
+    version: 1, universityId: "northeastern", status: "ready", discoveryStatus: "ready",
+    queue: [], counts: { queued: 0, ready: PUBLISHED.length, unsupported: 0, error: 0 }, updatedAt: "2026-11-08T00:00:00.000Z",
+  }));
+  await rm(path.join(root, PROGRAMS));
+  const response = await handleRoadmapsRequest(
+    new NextRequest(`http://localhost/api/roadmaps?university=northeastern&program=${KEY.split("/")[1]}`),
+    root,
+  );
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), { error: "Unknown roadmap program." });
+});
+
+test("the app reads only tracked files: with local crawl output, each roadmap API answer is as from a clean copy (#127)", async (t) => {
+  const clean = await publishedCopy();
+  const dirty = await publishedCopy();
+  t.after(() => Promise.all([clean, dirty].map((root) => rm(root, { recursive: true, force: true }))));
+  await plantCrawlOutput(dirty);
+  const get = async (root: string, query: string) => {
+    const response = await handleRoadmapsRequest(new NextRequest(`http://localhost/api/roadmaps${query}`), root);
+    return { status: response.status, body: await response.json() };
+  };
+  // Other universities have no files, and their status time is the request time.
+  const northeastern = async (root: string) => {
+    const list = await get(root, "");
+    return { status: list.status, entry: list.body.universities?.find((entry: { id: string }) => entry.id === "northeastern") };
+  };
+  for (const query of ["", "?university=northeastern", ...PUBLISHED.map((key) => `?university=${key.replace("/", "&program=")}`)]) {
+    const read = query ? (root: string) => get(root, query) : northeastern;
+    const expected = await read(clean);
+    assert.equal(expected.status, 200, query);
+    assert.deepEqual(await read(dirty), expected, query);
+  }
+  // The CLI roadmap read is the same read.
+  for (const key of PUBLISHED) {
+    const [university, program] = key.split("/");
+    const roadmap = async (root: string) => {
+      let output = "";
+      await runCatalogCli([`--roadmap=${program}`, `--university=${university}`], { rootDir: root, write: (text) => { output += text; } });
+      return output;
+    };
+    assert.deepEqual(await roadmap(dirty), await roadmap(clean), key);
+  }
+});
+
+test("only the crawler's operator view reads the crawl status, and an invalid status names its file", async (t) => {
+  const root = await publishedCopy();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await plantCrawlOutput(root);
+  const message = `${path.join(root, "data/catalogs/northeastern/.roadmap-crawl-status.json")}: Roadmap crawl status universityId is invalid`;
+  for (const command of [["--list-programs", "--university=northeastern"], ["--list-universities"]]) {
+    await assert.rejects(runCatalogCli(command, { rootDir: root, write: () => {} }), { message }, command[0]);
   }
 });
 

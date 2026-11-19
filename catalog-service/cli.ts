@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { json, refreshCatalog, refreshEnabledSources } from "./refresh";
 import { loadUniversityDirectory } from "./registry";
-import { crawlRoadmaps, findUniversity, listRoadmapUniversities, readProgramDirectory, readReadyRoadmap, type RoadmapCrawlOptions } from "./roadmaps";
+import { crawlRoadmaps, findUniversity, listRoadmapUniversities, readCrawlDirectory, readReadyRoadmap, type RoadmapCrawlOptions } from "./roadmaps";
 
 function invokedDirectly(): boolean {
   const entry = process.argv[1];
@@ -49,11 +49,11 @@ export async function runCatalogCli(
     const universities = options.universities ?? await loadUniversityDirectory(path.join(rootDir, "catalog-service", "universities.json"));
     const selected = universityId === undefined ? undefined : findUniversity(universities, universityId);
     if (mode === "--list-universities") {
-      write(json({ universities: await listRoadmapUniversities(selected ? [selected] : universities, rootDir) }));
+      write(json({ universities: await listRoadmapUniversities(selected ? [selected] : universities, rootDir, readCrawlDirectory) }));
     } else {
       if (!selected) throw new Error(`${mode} requires --university=<id>`);
       write(json(mode === "--list-programs"
-        ? await readProgramDirectory(selected, rootDir)
+        ? await readCrawlDirectory(selected, rootDir)
         : await readReadyRoadmap(selected, flags.get("--roadmap") as string, rootDir)));
     }
     return;

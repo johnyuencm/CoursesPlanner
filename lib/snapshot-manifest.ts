@@ -5,7 +5,7 @@ import { CATALOGS, DEFAULT_CATALOG_KEY } from "./catalog-key";
 import { programPagePaths } from "./course-pages";
 import { readProgramCatalog } from "./program-catalog";
 import { requirementTier } from "./requirements-v2";
-import { findUniversity, readReadyRoadmap, readState } from "./roadmap-reader";
+import { findUniversity, readPrograms, readReadyRoadmap } from "./roadmap-reader";
 import { SNAPSHOT_ASSET_DIR } from "./snapshot-assets";
 import type { SupportTier } from "./types";
 import { loadUniversityDirectory } from "./university-directory";
@@ -68,7 +68,7 @@ export async function buildSnapshotAssets(rootDir: string): Promise<Map<string, 
       contents.set(file, roadmap);
       catalogs.push({ key, tier: "map", edition: roadmap.lastUpdated, file });
       if (!programFiles.has(universityId)) {
-        programFiles.set(universityId, (await readState(university, rootDir, () => new Date())).programs);
+        programFiles.set(universityId, await readPrograms(university, rootDir));
       }
     } catch (error) {
       throw new Error(`Published snapshot ${key} is missing or invalid: ${(error as Error).message}`);

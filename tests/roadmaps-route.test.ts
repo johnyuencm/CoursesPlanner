@@ -226,13 +226,17 @@ test("a program id without a university id is 400", async () => {
   });
 });
 
-test("roadmap storage failures return a safe public error", async () => {
+test("roadmap storage failures return a safe public error", async (t) => {
   await withFixture(async (rootDir) => {
     await rm(path.join(rootDir, "catalog-service", "universities.json"));
+    const log = t.mock.method(console, "error", () => {});
     const response = await request(rootDir);
     assert.equal(response.status, 503);
     const data = await response.json();
     assert.equal(data.error, "Roadmap data is temporarily unavailable.");
     assert.doesNotMatch(data.error, /ENOENT|universities\.json/);
+    // Only the server log names the file.
+    assert.equal(log.mock.callCount(), 1);
+    assert.match(String(log.mock.calls[0]!.arguments[0]), /universities\.json/);
   });
 });
