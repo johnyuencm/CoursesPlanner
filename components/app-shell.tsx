@@ -162,6 +162,7 @@ function Toast({ notice, dismiss, overlay }: { notice: Notice | null; dismiss: (
   }, [hasAction]);
   const sync = () => setPaused(inside.current.hover || inside.current.focus);
   const warning = notice?.tone === "warning";
+  // The region renders with no notice too. A live region must exist before its text changes, or screen readers can miss the toast.
   const toast = <div ref={rootRef} className="announcement" role="status" aria-live="polite"
     onMouseEnter={() => { inside.current.hover = true; sync(); }} onMouseLeave={() => { inside.current.hover = false; sync(); }}
     onFocus={() => { inside.current.focus = true; sync(); }} onBlur={() => { inside.current.focus = false; sync(); }}>

@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture pass: catalog loading state (#140)</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; background: #fafaf9; color: #1c1917; }
+  @media (prefers-color-scheme: dark) { body { background: #1c1917; color: #f5f5f4; } }
+  pre.mermaid { background: transparent; overflow-x: auto; }
+  code { overflow-wrap: anywhere; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border-bottom: 1px solid rgba(120, 113, 108, .35); padding: .35rem .5rem; text-align: left; vertical-align: top; }
+</style>
+</head>
+<body>
+<main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+<header class="space-y-2">
+  <h1 class="text-2xl font-bold">Architecture pass: catalog loading state (#140)</h1>
+  <p class="text-sm text-stone-600 dark:text-stone-400">Scope: <code>git diff c87953a...HEAD -- components tests</code> on branch <code>fix/140-catalog-loading</code> (product head <code>a0b581b</code>, this pass up to <code>80e9a69</code>), plus the code that it calls (<code>components/app-provider.tsx</code>, <code>components/catalog-state.tsx</code>, <code>lib/plan.ts</code>). Date: 2026-11-19 (UTC). Goal of #140: a normal load never looks like a failure.</p>
+  <div class="rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 p-4 space-y-1">
+    <p><b>Built in this pass:</b> <a class="underline" href="#c2">candidate 2</a> (test, <code>4bb3951</code>) and <a class="underline" href="#c3">candidate 3</a> (doc comment, <code>80e9a69</code>). Both are Strong and serve #140.</p>
+    <p><b>Product code:</b> comments only. The server HTML of the planner board is byte-identical to <code>a0b581b</code> in 3 states (server render, hydrated, failed). So Worker CPU per request does not change in this pass.</p>
+    <p><b>Top recommendation:</b> <a class="underline" href="#c1">candidate 1</a>, as the first step of #145. See <a class="underline" href="#top">the end</a>.</p>
+  </div>
+  <p class="text-xs text-stone-500 dark:text-stone-400">Legend: box = module or function, red node = wrong or unseen state, dashed arrow = no link. Ratings: Strong, Worth exploring, Speculative.</p>
+</header>
+
+<section id="c1" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">1. One catalog status, owned by the provider</h2>
+    <span class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 text-xs font-bold">Strong</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
+    <span class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">not built: not small, overlaps #145</span></div>
+  <p><b>Files:</b> <code>components/app-provider.tsx:44-46, :169-170, :196-213</code>, <code>components/catalog-state.tsx:13-14</code>, <code>components/planner-board.tsx:250-251</code>, <code>lib/plan.ts:747-765</code> (<code>isCatalogOutage</code>, <code>canRestorePlanBackup</code>), <code>components/plan-backup.tsx:52-59, :128-131</code>, <code>components/app-shell.tsx:97, :107</code>.</p>
+  <div class="grid md:grid-cols-2 gap-3">
+    <div><p class="text-xs uppercase tracking-wider">Before</p>
+<pre class="mermaid">flowchart LR
+  P["app-provider<br/>catalog, catalogBusy, catalogError"] --> CS["CatalogState<br/>busy: loading, else failed"]
+  P --> H["planner heading<br/>!catalog: unavailable"]
+  P --> O["isCatalogOutage<br/>hydrated, !available, !busy"]
+  P --> R["canRestorePlanBackup<br/>hydrated, available, busy"]
+  P --> T["restore tooltip<br/>!available &amp;&amp; busy"]
+  classDef wrong fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+  class H wrong</pre></div>
+    <div><p class="text-xs uppercase tracking-wider">After</p>
+<pre class="mermaid">flowchart LR
+  P["app-provider<br/>one status: loading, failed, ready"] -->|status| CS["CatalogState"]
+  P -->|status| H["planner heading"]
+  P -->|status| B["PlanBackup<br/>banner, restore, tooltip"]
+  T["test: set one status"] -.-> H</pre></div>
+  </div>
+  <p><b>Problem:</b> The provider gives three raw fields. Five places re-derive "loading" or "failed" from them. The planner heading used <code>!catalog</code> alone, so every load looked like a failure. That was the #140 bug (red node, before the fix).</p>
+  <p><b>Solution:</b> The provider derives one catalog status (loading, failed or ready) in one place. The five places read it.</p>
+  <p><b>Deletion test:</b> Delete <code>isCatalogOutage</code> and the inline busy checks. The rule concentrates in the provider. Today it is in five places.</p>
+  <ul class="list-disc pl-5 text-sm">
+    <li>Locality: one rule for "failed".</li>
+    <li>Leverage: one value, five consumers.</li>
+    <li>Tests set one value, not a combination.</li>
+    <li>#145 "say unavailable once" becomes one decision.</li>
+  </ul>
+  <p class="font-semibold">Evidence: where the code decides the catalog state</p>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Place</th><th>Rule</th><th>Question</th></tr>
+    <tr><td><code>catalog-state.tsx:13-14</code></td><td><code>catalogBusy</code> (the caller checked <code>!catalog</code>)</td><td>loading or failed</td></tr>
+    <tr><td><code>planner-board.tsx:250-251</code></td><td><code>!catalog</code>, then <code>catalogBusy</code> (since #140)</td><td>heading: "loads" or "unavailable"</td></tr>
+    <tr><td><code>lib/plan.ts:752</code></td><td><code>hydrated &amp;&amp; !catalogAvailable &amp;&amp; !catalogBusy</code></td><td>outage banner</td></tr>
+    <tr><td><code>lib/plan.ts:755-765</code></td><td>hydrated, available, busy, acknowledged</td><td>restore allowed</td></tr>
+    <tr><td><code>plan-backup.tsx:128-131</code></td><td><code>!catalogAvailable &amp;&amp; catalogBusy</code></td><td>restore tooltip: "wait for the load"</td></tr>
+    <tr><td><code>app-shell.tsx:97, :107</code></td><td><code>catalogBusy</code>; <code>catalogError &amp;&amp; catalog</code></td><td>refresh runs; refresh failed (keep both)</td></tr>
+  </table></div>
+  <p class="text-sm"><b>Why not now:</b> It changes the provider interface and five consumers, and the tests of the two plan helpers. Three consumers are the failure state, and #145 owns the failure state. So it is not small, and it is not a #140 fix.</p>
+</section>
+
+<section id="c2" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">2. The provider's catalog load gets a test seam</h2>
+    <span class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 text-xs font-bold">Strong</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">mock: fetch is the system boundary</span>
+    <span class="px-2 py-0.5 rounded bg-emerald-700 text-white text-xs">built 4bb3951, test only</span></div>
+  <p><b>Files:</b> <code>tests/app-provider.test.ts</code>, <code>components/app-provider.tsx:196-216</code> (<code>fetchCatalog</code> and the load effect).</p>
+  <div class="grid md:grid-cols-2 gap-3">
+    <div><p class="text-xs uppercase tracking-wider">Before</p>
+<pre class="mermaid">flowchart TB
+  T["planner-page.test.ts"] -->|"busy, error set by hand"| B["PlannerBoard"]
+  S["server render"] -. "runs no effects" .-> F["fetchCatalog<br/>busy, then error, then not busy"]
+  classDef blind fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+  class F blind</pre></div>
+    <div><p class="text-xs uppercase tracking-wider">After</p>
+<pre class="mermaid">flowchart TB
+  T["app-provider.test.ts"] -->|"client render, stub root"| H["useAppContextValue"]
+  H -->|effect| F["fetchCatalog"]
+  F -->|"GET /api/catalog"| X["stub fetch<br/>open, then rejected"]
+  T -->|"reads busy, error"| H</pre></div>
+  </div>
+  <p><b>Problem:</b> A server render runs no effects, so no test ran <code>fetchCatalog</code>. The planner tests set <code>catalogBusy</code> and <code>catalogError</code> by hand (TL L1, PM F3). A loader that never stops passed every test.</p>
+  <p><b>Solution:</b> One test runs the real provider hook with React's client renderer (<code>react-dom/client</code>, installed) and a stub DOM root. A stub <code>fetch</code> stays open, then rejects. The test reads the state at both points.</p>
+  <p class="font-semibold">Evidence: mutation check</p>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Mutation in <code>components/app-provider.tsx</code></th><th>Result</th></tr>
+    <tr><td>Drop <code>setCatalogBusy(false)</code> from <code>finally</code> (TL L1)</td><td>killed: "after the request fails, the load is not busy and has the error"</td></tr>
+    <tr><td>The <code>catch</code> block does not set the error</td><td>killed: same assert</td></tr>
+    <tr><td>The load sets busy to <code>false</code> when it starts</td><td>killed: "while the request is open, the load is busy and has no error"</td></tr>
+  </table></div>
+  <ul class="list-disc pl-5 text-sm">
+    <li>The real hook runs, not a copy.</li>
+    <li>The #140 rule is tested at its source.</li>
+    <li>No new dependency.</li>
+  </ul>
+  <p class="text-sm"><b>Limits:</b> The stub root is a shortcut. It covers a root that renders <code>null</code>. Use a DOM library when a test needs real nodes. The tab cache (<code>sessionCatalog</code>) is module state, so the test uses a key that never loads.</p>
+</section>
+
+<section id="c3" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">3. The <code>quiet</code> interface states the real rule</h2>
+    <span class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 text-xs font-bold">Strong</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
+    <span class="px-2 py-0.5 rounded bg-emerald-700 text-white text-xs">built 80e9a69, doc only</span></div>
+  <p><b>Files:</b> <code>components/catalog-state.tsx:7-10</code>. Callers: <code>overview.tsx:22</code>, <code>courses-explorer.tsx:75</code>, <code>pathways-workspace.tsx:99</code> (quiet); <code>course-graph.tsx:686</code>, <code>planner-board.tsx:253-254</code> (not quiet).</p>
+  <div class="grid md:grid-cols-2 gap-3 text-sm">
+    <div class="space-y-2"><p class="text-xs uppercase tracking-wider">Before: the doc reason is true for every page</p>
+      <p class="italic">"quiet: ... because the page has server-rendered content below."</p>
+      <div class="flex flex-wrap gap-1 text-xs"><span class="border rounded px-1">Overview: has it</span><span class="border rounded px-1">Courses: has it</span><span class="border rounded px-1">Paths: has it</span><span class="border border-red-500 rounded px-1">Explore: has it, not quiet</span><span class="border border-red-500 rounded px-1">Planner: has it, not quiet</span></div>
+      <p>The reason splits no page from another.</p></div>
+    <div class="space-y-2"><p class="text-xs uppercase tracking-wider">After: the doc rule splits the pages</p>
+      <p class="italic">"Use it only when the server-rendered content below is enough until the catalog loads. ... the main tool of the page ... shows the loading state."</p>
+      <div class="flex flex-wrap gap-1 text-xs"><span class="border rounded px-1">Overview: quiet</span><span class="border rounded px-1">Courses: quiet</span><span class="border rounded px-1">Paths: quiet</span><span class="border border-emerald-600 rounded px-1">Explore: main tool</span><span class="border border-emerald-600 rounded px-1">Planner: main tool</span></div></div>
+  </div>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Page</th><th>Catalog view</th><th>Server-rendered content below</th><th>quiet</th></tr>
+    <tr><td>Overview</td><td>plan snapshot</td><td>degree rules, unlock leaders, paths</td><td>yes</td></tr>
+    <tr><td>Courses</td><td>course explorer</td><td>course index</td><td>yes</td></tr>
+    <tr><td>Paths</td><td>path workspace</td><td>path list</td><td>yes</td></tr>
+    <tr><td>Explore</td><td>prerequisite map (main tool)</td><td>about the map, unlock leaders</td><td>no</td></tr>
+    <tr><td>Planner</td><td>semester board (main tool)</td><td>how the planner works, degree rules</td><td>no, since #140</td></tr>
+  </table></div>
+  <p><b>Problem:</b> The interface of <code>CatalogState</code> gave a reason that is true for all five pages. So it did not tell a caller when to use <code>quiet</code>. The real rule lived only in a planner comment.</p>
+  <p><b>Solution:</b> The doc comment states the rule that #140 set. The behavior does not change.</p>
+  <ul class="list-disc pl-5 text-sm">
+    <li>Locality: the rule sits in the interface.</li>
+    <li>A new page picks <code>quiet</code> correctly.</li>
+    <li>Test: the planner loading test fails if the planner is quiet again (re-run in this pass).</li>
+  </ul>
+</section>
+
+<section id="c4" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">4. One save-status label for both planner headings</h2>
+    <span class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 text-xs font-bold">Worth exploring</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
+    <span class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">not built: not #140</span></div>
+  <p><b>Files:</b> <code>components/planner-board.tsx:251</code> (no catalog), <code>:307</code> (loaded).</p>
+  <div class="grid md:grid-cols-2 gap-3 text-xs">
+    <div class="space-y-1"><p class="uppercase tracking-wider">Before: two copies</p>
+      <div class="border rounded p-2 font-mono">:251 !hydrated ? "Local plan" : ... : "Preparing"</div>
+      <div class="border rounded p-2 font-mono">:307 !hydrated ? "Local plan" : ... : "Preparing"</div></div>
+    <div class="space-y-1"><p class="uppercase tracking-wider">After: one module, two call sites</p>
+      <div class="border-2 border-stone-700 dark:border-stone-300 rounded p-2 font-mono">save-status label (hydrated, persistence)</div>
+      <p>:251 and :307 call it.</p></div>
+  </div>
+  <p><b>Problem:</b> Both planner headings hold the same five-way choice for the save status. One copy can drift from the other.</p>
+  <p><b>Solution:</b> One small save-status module. Both headings use it. Deletion test: two call sites, so it earns its keep.</p>
+  <p class="text-sm"><b>Why not now:</b> It does not serve #140, and no copy has drifted yet. Do it the next time the planner heading changes.</p>
+</section>
+
+<section id="c5" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">5. A request port for the provider</h2>
+    <span class="px-2 py-0.5 rounded bg-stone-300 text-stone-800 text-xs font-bold">Speculative</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">rejected</span></div>
+  <p><b>Files:</b> <code>components/app-provider.tsx:121-155</code> (<code>loadCatalogFromNetwork</code>, <code>requestCatalog</code>).</p>
+  <p><b>Idea:</b> The provider takes a request function: the network in the app, a stub in tests. Then candidate 2 needs no stub <code>fetch</code>.</p>
+  <p class="text-sm"><b>Why not:</b> <code>fetch</code> is already that seam, with two adapters: the browser in the app and a stub in tests. A port adds an indirection with one product adapter. The stub DOM root is a test cost, not a product cost.</p>
+</section>
+
+<section class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
+  <h2 class="text-xl font-semibold">Reviewer inputs in this pass</h2>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Input</th><th>Where</th><th>Result</th><th>Commit</th></tr>
+    <tr><td>TL L1, PM F3: no test drives the provider load path</td><td><a class="underline" href="#c2">2</a></td><td>One client-render test with a stub <code>fetch</code>. It kills 3 mutations.</td><td class="whitespace-nowrap"><code>4bb3951</code></td></tr>
+    <tr><td>TL L2: an assert message says the opposite of the assert</td><td>test fix</td><td>The message says "no loading state shows after the request fails".</td><td class="whitespace-nowrap"><code>5c76868</code></td></tr>
+    <tr><td>TL L3, UA L3: empty <code>role="status"</code> regions while loading</td><td>test + comments</td><td>One region speaks: <code>LoadingState</code> (<code>ui.tsx:56</code>, not empty). The two empty regions are the backup message (<code>plan-backup.tsx</code>) and the toast (<code>app-shell.tsx</code>). Both must exist before their text changes, so they stay with one comment each. The loading test counts one speaking region.</td><td class="whitespace-nowrap"><code>6f91581</code></td></tr>
+    <tr><td>TL M1, PM F1: Worker CPU acceptance item</td><td>none</td><td>This pass changes no render output (board HTML identical to <code>a0b581b</code>). The PR body note from PM F1 still applies.</td><td>none</td></tr>
+    <tr><td>UA M1, M2, L1, L2, L4: failure state</td><td>#145</td><td>Left alone.</td><td>none</td></tr>
+    <tr><td>Layout shift when the board lands</td><td>#144</td><td>Left alone.</td><td>none</td></tr>
+  </table></div>
+  <p class="text-sm"><b>Verify at <code>80e9a69</code>:</b> <code>npm run typecheck</code> exit 0. <code>npm test</code> exit 0, 365 pass, 0 fail (364 before, plus the provider test). <code>npm run build</code> exit 0, working tree clean after the build.</p>
+  <p class="text-sm"><b>Not checked:</b> No sub-agent explored the code; one agent did the scan. No live <code>wrangler dev</code> walk: this pass changes no behavior (the UA walked <code>a0b581b</code>). No real screen reader. The repo has no <code>GLOSSARY.md</code> and no ADRs to check against.</p>
+</section>
+
+<section id="top" class="rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 p-5 space-y-2">
+  <h2 class="text-xl font-semibold">Top recommendation</h2>
+  <p><a class="underline" href="#c1">Candidate 1: one catalog status, owned by the provider.</a> It removes the #140 bug class at its source: no consumer can read "no catalog yet" as "failed". #145 must make the page say "unavailable" once, and that needs one status. So do candidate 1 as the first step of #145.</p>
+</section>
+
+</main>
+<script>
+  mermaid.initialize({ startOnLoad: true, deterministicIds: true, theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "neutral" });
+</script>
+</body>
+</html>

@@ -237,7 +237,7 @@ function NextCourses() {
 }
 
 export default function PlannerBoard() {
-  const { catalog, plan, setPlan, hydrated, persistence, resetPlan, openPicker, announce, progress, workspaceSelection, setWorkspaceSelection } = useApp();
+  const { catalog, catalogBusy, plan, setPlan, hydrated, persistence, resetPlan, openPicker, announce, progress, workspaceSelection, setWorkspaceSelection } = useApp();
   const routes = useRoutes();
   const router = useRouter();
   const [activeCourse, setActiveCourse] = useState<string | null>(null);
@@ -248,9 +248,10 @@ export default function PlannerBoard() {
   }, [workspaceSelection.selectedCode]);
   const ruleGroups = progress ? topLevelGroups(progress.root) : [];
   if (!catalog) return <>
-    <PageHeading title="Build your plan" description="Your local plan remains available for backup while the catalog is unavailable." actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span></div>} />
+    <PageHeading title="Build your plan" description={catalogBusy ? "Your local plan remains available for backup while the catalog loads." : "Your local plan remains available for backup while the catalog is unavailable."} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span></div>} />
     <PlanBackup />
-    <CatalogState quiet />
+    {/* Not quiet: the board is the main content of this page, so it shows the loading state (#140). */}
+    <CatalogState />
   </>;
 
   const updateTerms = (change: (terms: Semester[]) => Semester[]) => setPlan((current) => ({ ...current, semesters: change(current.semesters) }));
