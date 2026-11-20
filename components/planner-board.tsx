@@ -251,7 +251,7 @@ export default function PlannerBoard() {
     <PageHeading title="Build your plan" description={catalogBusy ? "Your local plan remains available for backup while the catalog loads." : "Your local plan remains available for backup while the catalog is unavailable."} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span></div>} />
     <PlanBackup />
     {/* Not quiet: the board is the main content of this page, so it shows the loading state (#140). */}
-    {/* While it loads, the placeholder holds one screen, so the board does not push the page text down when it lands (#144). */}
+    {/* While it loads, the placeholder holds one screen, so the page text below stays out of view when the board lands (#144). */}
     {catalogBusy ? <div className="board-placeholder"><CatalogState /></div> : <CatalogState />}
   </>;
 
