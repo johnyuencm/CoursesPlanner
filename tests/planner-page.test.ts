@@ -144,7 +144,8 @@ test("after the request fails, the planner says so once, and only the failure ca
 test("the failure card says what failed and what to do in one plain sentence, not the raw error (#145)", () => {
   // A 503 with an HTML body gives this raw error (docs/reviews/2026-11-19-140-user_advocate.md, M1).
   const html = boardWithoutCatalog({ hydrated: true, catalogBusy: false, catalogError: `Unexpected token '<', "<html>Serv"... is not valid JSON` });
-  assert.match(html, /<h3>The course catalog did not load<\/h3><p>Check your connection, then try again\.<\/p>/, "the card has its title and one sentence");
+  // The sentence is true for a lost connection and for a server error such as this 503 (docs/reviews/2026-11-20-145-project_manager.md, M1).
+  assert.match(html, /<h3>The course catalog did not load<\/h3><p>Check your connection, or try later\.<\/p>/, "the card has its title and one sentence");
   assert.ok(!html.includes("Unexpected token"), "the raw error stays out of the page");
 });
 

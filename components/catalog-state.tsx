@@ -22,5 +22,6 @@ export function CatalogState({ quiet = false }: { quiet?: boolean }) {
     void reloadCatalog();
   };
   // Plain words only: the provider sends the raw error to the console (#145).
-  return <EmptyState role="alert" icon={<BookOpen size={25} />} title="The course catalog did not load" action={<button className="button button-primary" onClick={retry}><RefreshCw size={16} aria-hidden="true" /> Try again</button>}>Check your connection, then try again.</EmptyState>;
+  // One sentence for a lost connection and for a server error. Keep it on one line at 360 px, or the card grows past 15rem (globals.css).
+  return <EmptyState role="alert" icon={<BookOpen size={25} />} title="The course catalog did not load" action={<button className="button button-primary" onClick={retry}><RefreshCw size={16} aria-hidden="true" /> Try again</button>}>Check your connection, or try later.</EmptyState>;
 }
