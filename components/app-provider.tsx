@@ -209,6 +209,8 @@ export function useAppContextValue(catalogKey: string = DEFAULT_CATALOG_KEY): Ap
           : "Catalog cache rebuilt. Any stale-source fallbacks remain listed in catalog warnings.");
       }
     } catch (error) {
+      // The raw error is for developers. The failure card shows plain words (#145).
+      console.error("The catalog did not load.", error);
       setCatalogError(error instanceof Error ? error.message : "Unable to reach the catalog. Try again.");
     } finally { setCatalogBusy(false); }
   }, [catalogKey]);

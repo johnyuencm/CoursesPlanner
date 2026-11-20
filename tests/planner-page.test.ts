@@ -139,6 +139,13 @@ test("the planner says the catalog is unavailable only after the catalog request
   assert.ok(!html.includes("board-placeholder"), "the failure state reserves no blank screen for the board");
 });
 
+test("the failure card says what failed and what to do in one plain sentence, not the raw error (#145)", () => {
+  // A 503 with an HTML body gives this raw error (docs/reviews/2026-11-19-140-user_advocate.md, M1).
+  const html = boardWithoutCatalog({ hydrated: true, catalogBusy: false, catalogError: `Unexpected token '<', "<html>Serv"... is not valid JSON` });
+  assert.match(html, /<h3>The course catalog did not load<\/h3><p>Check your connection, then try again\.<\/p>/, "the card has its title and one sentence");
+  assert.ok(!html.includes("Unexpected token"), "the raw error stays out of the page");
+});
+
 test("while the catalog loads, a placeholder one screen tall holds the place of the board (#144)", () => {
   // The loaded board is taller than one screen at 1280 and 390 px. So the page text below the board
   // starts below the fold and stays there when the board lands (docs/reviews/2026-11-20-issue144-verification.md).

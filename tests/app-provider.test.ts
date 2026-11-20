@@ -26,9 +26,12 @@ test("the shared AppContext value keeps its identity across a render that change
   assert.equal(first, second, "context value identity changed");
 });
 
-test("a catalog load stays busy, not failed, until its request fails; then it stops with the error (#140)", async (t) => {
+test("a catalog load stays busy, not failed, until its request fails; then it stops with the error and logs it (#140, #145)", async (t) => {
   // The provider loads the catalog in an effect, so React's client renderer runs it. fetch is the system boundary.
   let failRequest: (error: Error) => void = () => {};
+  // The console is for developers: the raw error goes there, and the page shows plain words (#145).
+  const logged: unknown[][] = [];
+  t.mock.method(console, "error", (...args: unknown[]) => { logged.push(args); });
   const events = { addEventListener() {}, removeEventListener() {} };
   const globals = globalThis as Record<string, unknown>;
   const saved = { window: globals.window, fetch: globals.fetch, IS_REACT_ACT_ENVIRONMENT: globals.IS_REACT_ACT_ENVIRONMENT };
@@ -46,7 +49,9 @@ test("a catalog load stays busy, not failed, until its request fails; then it st
 
   await act(async () => root.render(createElement(Probe)));
   assert.deepEqual(load(), { busy: true, error: null, catalog: null }, "while the request is open, the load is busy and has no error");
-  await act(async () => failRequest(new TypeError("Failed to fetch")));
+  const failure = new TypeError("Failed to fetch");
+  await act(async () => failRequest(failure));
   assert.deepEqual(load(), { busy: false, error: "Failed to fetch", catalog: null }, "after the request fails, the load is not busy and has the error");
+  assert.ok(logged.some((args) => args.includes(failure)), "the raw error goes to the console");
   await act(async () => root.unmount());
 });
