@@ -11,6 +11,16 @@ import { EmptyState, LoadingState } from "./ui";
 export function CatalogState({ quiet = false }: { quiet?: boolean }) {
   const { catalogBusy, reloadCatalog } = useApp();
   if (catalogBusy && quiet) return null;
+  if (catalogBusy) return <LoadingState />;
+  const retry = () => {
+    // Try again goes away while the catalog loads again. The page heading stays, so focus moves there (#145).
+    const heading = document.querySelector<HTMLElement>("main h1");
+    if (heading) {
+      heading.tabIndex = -1;
+      heading.focus();
+    }
+    void reloadCatalog();
+  };
   // Plain words only: the provider sends the raw error to the console (#145).
-  return catalogBusy ? <LoadingState /> : <EmptyState role="alert" icon={<BookOpen size={25} />} title="The course catalog did not load" action={<button className="button button-primary" onClick={() => void reloadCatalog()}><RefreshCw size={16} aria-hidden="true" /> Try again</button>}>Check your connection, then try again.</EmptyState>;
+  return <EmptyState role="alert" icon={<BookOpen size={25} />} title="The course catalog did not load" action={<button className="button button-primary" onClick={retry}><RefreshCw size={16} aria-hidden="true" /> Try again</button>}>Check your connection, then try again.</EmptyState>;
 }
