@@ -146,6 +146,13 @@ test("the failure card says what failed and what to do in one plain sentence, no
   assert.ok(!html.includes("Unexpected token"), "the raw error stays out of the page");
 });
 
+test("after a failure, Try again comes before the backup panel, so a phone shows it without scrolling (#145)", () => {
+  // The backup panel grows after a failure (plan summary, checkbox), so at 390 px it pushed Try again below the fold.
+  const html = boardWithoutCatalog({ hydrated: true, catalogBusy: false, catalogError: "Failed to fetch" });
+  const retry = html.indexOf("Try again");
+  assert.ok(retry > 0 && retry < html.indexOf('aria-label="Plan backup"'), "Try again comes before the backup panel");
+});
+
 test("while the catalog loads, a placeholder one screen tall holds the place of the board (#144)", () => {
   // The loaded board is taller than one screen at 1280 and 390 px. So the page text below the board
   // starts below the fold and stays there when the board lands (docs/reviews/2026-11-20-issue144-verification.md).

@@ -249,10 +249,12 @@ export default function PlannerBoard() {
   const ruleGroups = progress ? topLevelGroups(progress.root) : [];
   if (!catalog) return <>
     <PageHeading title="Build your plan" description={catalogBusy ? "Your local plan remains available for backup while the catalog loads." : "Your local plan remains available for backup while the catalog is unavailable."} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span></div>} />
+    {/* After a failure, the failure card comes first, so Try again is in the first screen on a phone (#145). */}
+    {!catalogBusy && <CatalogState />}
     <PlanBackup />
     {/* Not quiet: the board is the main content of this page, so it shows the loading state (#140). */}
     {/* While it loads, the placeholder holds one screen, so the page text below stays out of view when the board lands (#144). */}
-    {catalogBusy ? <div className="board-placeholder"><CatalogState /></div> : <CatalogState />}
+    {catalogBusy && <div className="board-placeholder"><CatalogState /></div>}
   </>;
 
   const updateTerms = (change: (terms: Semester[]) => Semester[]) => setPlan((current) => ({ ...current, semesters: change(current.semesters) }));
