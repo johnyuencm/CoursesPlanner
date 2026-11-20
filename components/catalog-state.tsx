@@ -13,7 +13,8 @@ export function CatalogState({ quiet = false }: { quiet?: boolean }) {
   if (catalogBusy && quiet) return null;
   if (catalogBusy) return <LoadingState />;
   const retry = () => {
-    // Try again goes away while the catalog loads again. The page heading stays, so focus moves there (#145).
+    // Try again goes away while the catalog loads again. If the page has a heading, focus moves there, because the heading stays (#145).
+    // shortcut: Explore and Courses have no `main h1` while the catalog is missing, so there focus still drops to the body; give them a focus target in https://github.com/johnyuencm/CoursesPlanner/issues/149.
     const heading = document.querySelector<HTMLElement>("main h1");
     if (heading) {
       heading.tabIndex = -1;
