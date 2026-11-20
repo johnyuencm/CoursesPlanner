@@ -1,5 +1,7 @@
 // The planner text of an Audit-tier and a Map-tier program (#126), and while the catalog loads or fails (#140).
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -134,4 +136,14 @@ test("the planner says the catalog is unavailable only after the catalog request
   for (const failed of CATALOG_FAILED) assert.ok(html.includes(failed), `"${failed}" is missing after the request fails`);
   assert.ok(html.includes("Try again"), "the failure offers a retry");
   assert.ok(!html.includes("Loading the course map"), "no loading state shows after the request fails");
+  assert.ok(!html.includes("board-placeholder"), "the failure state reserves no blank screen for the board");
+});
+
+test("while the catalog loads, a placeholder one screen tall holds the place of the board (#144)", () => {
+  // The loaded board is taller than one screen at 1280 and 390 px. So the page text below the board
+  // starts below the fold and stays there when the board lands (docs/reviews/2026-11-20-issue144-verification.md).
+  for (const html of [boardWithoutCatalog(), boardWithoutCatalog({ hydrated: true })]) {
+    assert.match(html, /<div class="board-placeholder"><div [^>]*role="status"[^>]*>(?:(?!<\/div>)[^])*Loading the course map/, "the loading state is in the board placeholder");
+  }
+  assert.match(readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8"), /\.board-placeholder \{ min-height: 100vh; \}/, "the placeholder is one screen tall");
 });
