@@ -73,9 +73,10 @@ export class FakeElement extends FakeNode {
   removeAttribute(name: string) { this.attributes.delete(name); }
   get tabIndex(): number { return Number(this.getAttribute("tabindex") ?? (FOCUSABLE.has(this.nodeName) ? 0 : -1)); }
   set tabIndex(value: number) { this.setAttribute("tabindex", value); }
-  /** Like a browser: a control takes focus unless it is disabled. Any other element, such as a heading, needs a tabindex. */
+  /** A control takes focus unless it is disabled. Any other element, such as a heading, takes focus only with tabindex -1.
+   *  Stricter than a browser, which also focuses tabindex 0: a test fails if code puts a heading in the Tab order (#145). */
   focus() {
-    if (this.hasAttribute("tabindex") || (FOCUSABLE.has(this.nodeName) && !this.hasAttribute("disabled"))) this.ownerDocument!.focused = this;
+    if (FOCUSABLE.has(this.nodeName) ? !this.hasAttribute("disabled") : this.getAttribute("tabindex") === "-1") this.ownerDocument!.focused = this;
   }
   /** Like a browser: capture listeners from the top down, then bubble listeners from this element up. */
   click() {

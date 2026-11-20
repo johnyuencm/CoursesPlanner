@@ -35,7 +35,8 @@ test("after Try again, focus moves to the planner heading and stays there while 
   await act(async () => retry.click());
   assert.ok(document.body.textContent.includes("Loading the course map"), "the catalog loads again");
   // Compare nodes with ===: a failed assert prints its values, and a node holds the whole tree.
-  assert.ok(document.activeElement === heading, `focus moves to the page heading, not to ${document.activeElement.nodeName}`);
+  // The fake DOM focuses a heading only with tabindex -1, so this also checks that the heading stays out of the Tab order.
+  assert.ok(document.activeElement === heading, `focus moves to the page heading (tabindex -1), not to ${document.activeElement.nodeName}`);
 
   await act(async () => failRequest(failure));
   assert.ok(document.body.textContent.includes("The course catalog did not load"), "the retry fails");
