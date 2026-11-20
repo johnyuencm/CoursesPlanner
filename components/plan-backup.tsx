@@ -118,7 +118,6 @@ export function PlanBackup() {
   return <div className={`planner-backup${catalogOutage ? " planner-backup-outage" : ""}`} aria-label="Plan backup">
     {storageBlocked && <p className="plan-backup-banner" role="status">Saving is blocked. Download saves a recovery copy of the unreadable browser data, not the empty on-screen plan.</p>}
     {catalogOutage && <>
-      <p className="plan-backup-banner" role="status">The catalog is unavailable, so the semester board is hidden. Review the current plan below before restoring a backup over it.</p>
       <CurrentPlanSummary plan={plan} />
       <label className="plan-backup-ack">
         <input type="checkbox" checked={acknowledgedOutageRestore} onChange={(event) => setAcknowledgedOutageRestore(event.target.checked)} />

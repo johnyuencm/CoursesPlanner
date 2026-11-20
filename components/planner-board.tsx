@@ -248,7 +248,7 @@ export default function PlannerBoard() {
   }, [workspaceSelection.selectedCode]);
   const ruleGroups = progress ? topLevelGroups(progress.root) : [];
   if (!catalog) return <>
-    <PageHeading title="Build your plan" description={catalogBusy ? "Your local plan remains available for backup while the catalog loads." : "Your local plan remains available for backup while the catalog is unavailable."} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span></div>} />
+    <PageHeading title="Build your plan" description={catalogBusy ? "Your local plan remains available for backup while the catalog loads." : "Your local plan remains available for backup."} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span></div>} />
     {/* After a failure, the failure card comes first, so Try again is in the first screen on a phone (#145). */}
     {!catalogBusy && <CatalogState />}
     <PlanBackup />

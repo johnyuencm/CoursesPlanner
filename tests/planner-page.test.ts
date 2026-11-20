@@ -118,8 +118,8 @@ function boardWithoutCatalog(state: Partial<ReturnType<typeof useAppContextValue
   return renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: {} as never }, createElement(Board)));
 }
 
-/** The text that says the catalog failed (#140). */
-const CATALOG_FAILED = ["while the catalog is unavailable", "The catalog is unavailable", "The course catalog did not load"];
+/** The words that say the catalog failed (#140). Before #145, the heading and the backup panel also said "unavailable". */
+const CATALOG_FAILED = /did not load|unavailable/gi;
 
 test("while the catalog loads, the planner shows a loading status, not the unavailable text (#140)", () => {
   // The provider's first state is the server render. `hydrated` is the state after the plan loads from browser storage.
@@ -127,13 +127,15 @@ test("while the catalog loads, the planner shows a loading status, not the unava
     assert.match(html, /<(\w+)[^>]*role="status"[^>]*>(?:(?!<\/\1>)[^])*Loading the course map/, "a status element shows the loading state");
     // A status region with content speaks. An empty one stays silent until its text changes.
     assert.equal(html.match(/role="status"[^>]*>(?!<\/)/g)?.length, 1, "only the loading state speaks while the catalog loads");
-    for (const failed of CATALOG_FAILED) assert.ok(!html.includes(failed), `"${failed}" shows while the catalog loads`);
+    assert.equal(html.match(CATALOG_FAILED), null, "no failure text shows while the catalog loads");
   }
 });
 
-test("the planner says the catalog is unavailable only after the catalog request fails (#140)", () => {
-  const html = boardWithoutCatalog({ hydrated: true, catalogBusy: false, catalogError: "The catalog could not be loaded." });
-  for (const failed of CATALOG_FAILED) assert.ok(html.includes(failed), `"${failed}" is missing after the request fails`);
+test("after the request fails, the planner says so once, and only the failure card speaks, as an alert (#140, #145)", () => {
+  const html = boardWithoutCatalog({ hydrated: true, catalogBusy: false, catalogError: "Failed to fetch" });
+  assert.deepEqual(html.match(CATALOG_FAILED), ["did not load"], "the page says the catalog failed once, in the failure card");
+  assert.deepEqual([...html.matchAll(/role="(status|alert)"[^>]*>(?!<\/)/g)].map((match) => match[1]), ["alert"], "only one live region speaks, and it is an alert");
+  assert.match(html, /role="alert"[^>]*>(?:(?!<\/h3>)[^])*<h3>The course catalog did not load<\/h3>/, "the alert holds the failure card");
   assert.ok(html.includes("Try again"), "the failure offers a retry");
   assert.ok(!html.includes("Loading the course map"), "no loading state shows after the request fails");
   assert.ok(!html.includes("board-placeholder"), "the failure state reserves no blank screen for the board");
