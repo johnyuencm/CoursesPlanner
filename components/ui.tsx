@@ -56,8 +56,8 @@ export function LoadingState() {
   return <div className="empty-state loading-state" role="status"><LoaderCircle className="spin" size={28} aria-hidden="true" /><h2>Loading the course map</h2><p>Reading the official catalog and the plan saved in this browser.</p></div>;
 }
 
-export function EmptyState({ icon, title, children, action }: { icon?: ReactNode; title: string; children: ReactNode; action?: ReactNode }) {
-  return <div className="empty-state">{icon && <div className="empty-icon">{icon}</div>}<h3>{title}</h3><p>{children}</p>{action}</div>;
+export function EmptyState({ icon, title, children, action, role }: { icon?: ReactNode; title: string; children: ReactNode; action?: ReactNode; role?: "alert" }) {
+  return <div className="empty-state" role={role}>{icon && <div className="empty-icon">{icon}</div>}<h3>{title}</h3><p>{children}</p>{action}</div>;
 }
 
 export function creditLabel(course: Pick<Course, "credits" | "maxCredits">) {

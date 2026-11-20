@@ -565,6 +565,9 @@ textarea { resize: vertical; }
 
 /* The loaded board is taller than one screen, so one screen of placeholder keeps the page text below the fold until it lands (#144). */
 .board-placeholder { min-height: 100vh; }
+/* The failure card replaces the loading state at the same height, so the backup panel below it does not move (#145). */
+/* shortcut: 15rem holds the card while its title and sentence fit on one line each (360 px and wider); raise it if the copy grows. */
+.board-placeholder > .empty-state, .board-failed > .empty-state { min-height: 15rem; margin-bottom: 0.75rem; }
 .planner-layout { display: grid; grid-template-columns: minmax(0, 1fr) var(--rail); gap: 1rem; align-items: start; }
 .planner-main { min-width: 0; }
 .planner-actions { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; }

@@ -118,8 +118,8 @@ function boardWithoutCatalog(state: Partial<ReturnType<typeof useAppContextValue
   return renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: {} as never }, createElement(Board)));
 }
 
-/** The text that says the catalog failed (#140). */
-const CATALOG_FAILED = ["while the catalog is unavailable", "The catalog is unavailable", "The course catalog did not load"];
+/** The words that say the catalog failed (#140). Before #145, the heading and the backup panel also said "unavailable". */
+const CATALOG_FAILED = /did not load|unavailable/gi;
 
 test("while the catalog loads, the planner shows a loading status, not the unavailable text (#140)", () => {
   // The provider's first state is the server render. `hydrated` is the state after the plan loads from browser storage.
@@ -127,16 +127,45 @@ test("while the catalog loads, the planner shows a loading status, not the unava
     assert.match(html, /<(\w+)[^>]*role="status"[^>]*>(?:(?!<\/\1>)[^])*Loading the course map/, "a status element shows the loading state");
     // A status region with content speaks. An empty one stays silent until its text changes.
     assert.equal(html.match(/role="status"[^>]*>(?!<\/)/g)?.length, 1, "only the loading state speaks while the catalog loads");
-    for (const failed of CATALOG_FAILED) assert.ok(!html.includes(failed), `"${failed}" shows while the catalog loads`);
+    assert.equal(html.match(CATALOG_FAILED), null, "no failure text shows while the catalog loads");
   }
 });
 
-test("the planner says the catalog is unavailable only after the catalog request fails (#140)", () => {
-  const html = boardWithoutCatalog({ hydrated: true, catalogBusy: false, catalogError: "The catalog could not be loaded." });
-  for (const failed of CATALOG_FAILED) assert.ok(html.includes(failed), `"${failed}" is missing after the request fails`);
+test("after the request fails, the planner says so once, and only the failure card speaks, as an alert (#140, #145)", () => {
+  const html = boardWithoutCatalog({ hydrated: true, catalogBusy: false, catalogError: "Failed to fetch" });
+  assert.deepEqual(html.match(CATALOG_FAILED), ["did not load"], "the page says the catalog failed once, in the failure card");
+  assert.deepEqual([...html.matchAll(/role="(status|alert)"[^>]*>(?!<\/)/g)].map((match) => match[1]), ["alert"], "only one live region speaks, and it is an alert");
+  assert.match(html, /role="alert"[^>]*>(?:(?!<\/h3>)[^])*<h3>The course catalog did not load<\/h3>/, "the alert holds the failure card");
   assert.ok(html.includes("Try again"), "the failure offers a retry");
   assert.ok(!html.includes("Loading the course map"), "no loading state shows after the request fails");
   assert.ok(!html.includes("board-placeholder"), "the failure state reserves no blank screen for the board");
+});
+
+test("the failure card says what failed and what to do in one plain sentence, not the raw error (#145)", () => {
+  // A 503 with an HTML body gives this raw error (docs/reviews/2026-11-19-140-user_advocate.md, M1).
+  const html = boardWithoutCatalog({ hydrated: true, catalogBusy: false, catalogError: `Unexpected token '<', "<html>Serv"... is not valid JSON` });
+  // The sentence is true for a lost connection and for a server error such as this 503 (docs/reviews/2026-11-20-145-project_manager.md, M1).
+  assert.match(html, /<h3>The course catalog did not load<\/h3><p>Check your connection, or try later\.<\/p>/, "the card has its title and one sentence");
+  assert.ok(!html.includes("Unexpected token"), "the raw error stays out of the page");
+});
+
+test("after a failure, Try again comes before the backup panel, so a phone shows it without scrolling (#145)", () => {
+  // The backup panel grows after a failure (plan summary, checkbox), so at 390 px it pushed Try again below the fold.
+  const html = boardWithoutCatalog({ hydrated: true, catalogBusy: false, catalogError: "Failed to fetch" });
+  const retry = html.indexOf("Try again");
+  assert.ok(retry > 0 && retry < html.indexOf('aria-label="Plan backup"'), "Try again comes before the backup panel");
+});
+
+test("the reason Restore backup is off is visible text that describes the button, not only a tooltip (#145)", () => {
+  // Touch and keyboard users cannot open the title tooltip of a disabled button.
+  for (const [state, reason] of [
+    [{ hydrated: true }, "Wait for the catalog to finish loading before restoring."],
+    [{ hydrated: true, catalogBusy: false, catalogError: "Failed to fetch" }, "Review the current plan and confirm before restoring."],
+  ] as const) {
+    const html = boardWithoutCatalog(state);
+    const id = html.match(/<button[^>]*aria-describedby="([^"]+)"[^>]*>(?:(?!<\/button>)[^])*Restore backup/)?.[1];
+    assert.ok(id && html.includes(`<p id="${id}" class="muted">${reason}</p>`), `"${reason}" is visible text that describes Restore backup`);
+  }
 });
 
 test("while the catalog loads, a placeholder one screen tall holds the place of the board (#144)", () => {
