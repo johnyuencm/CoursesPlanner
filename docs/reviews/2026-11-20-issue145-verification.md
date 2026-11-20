@@ -180,3 +180,33 @@ Server HTML of both planner pages: "unavailable" 0 times, "did not load" 0 times
 - Real screen reader output. I read the live-region DOM, not NVDA or VoiceOver audio.
 - Real phones and real network throttling. I used Chromium emulation and a fixed 2.5 s route delay.
 - Worker CPU. The Worker serves the planner pages from the prerender cache (#144 record). The server render of the loading branch adds one line of text and moves the backup panel into the placeholder.
+
+## Re-check at fae0878
+
+The user_advocate seat walked the branch again at `fae0878786fa8ed62c005dc665906a567c69ed4f`. The method is the method above: `npm run build`, `wrangler dev` on 127.0.0.1:3000, Playwright 1.63 Chromium, a 2.5 s route delay, then abort (`internetdisconnected`) or a 503 with an HTML body. MSCS Boston and MSCS Seattle gave the same values.
+
+The card copy changed after phase 1. The tables above quote the old sentence "Check your connection, then try again." The new copy is:
+
+| Place | Text at `fae0878` |
+|---|---|
+| Card title | "The course catalog did not load" |
+| Card text, blocked request and 503 | "Check your connection, or try later." (one line at 360 px and wider) |
+
+| Check | 360x640 | 375x667 | 390x844 | 1280x900 |
+|---|---|---|---|---|
+| Card height | 240 px (15rem) | 240 | 240 | 240 |
+| Try again, top to bottom | 492-536 | 492-536 | 476-520 | 321-359 |
+| Bottom bar top | 576 | 603 | 780 | none |
+| Try again visible without scrolling | yes | yes | yes | yes |
+| "unavailable" / "did not load" in the page text | 0 / 1 | 0 / 1 | 0 / 1 | 0 / 1 |
+| Live regions with text after the failure | 1, the card (`alert`) | 1 | 1 | 1 |
+| Alert nodes added per failed load | 1 | 1 | 1 | 1 |
+| Restore reason | visible, `aria-describedby`, no `title` | same | same | same |
+| Focus after Try again (Enter) | h1, focus ring | h1, focus ring | h1, focus ring | h1, focus ring |
+| Focus after the retry fails / next Tab | h1 / Try again | same | same | same |
+| Focus when the board lands | h1 | h1 | h1 | h1 |
+| CLS at the failure | 0.025 | 0.018 | 0.022 | 0.084 |
+| Download backup while loading | 586-630, under the bottom bar | 586-630, under the bottom bar | 570-614, visible | visible |
+| Horizontal scroll / page errors | none / 0 | none / 0 | none / 0 | none / 0 |
+
+The shift sources did not change: `planner-backup-actions` at the phone sizes, and `static-page course-index` plus `planner-backup-actions` at 1280 px. A mouse press on Try again moves focus to the h1 without a focus ring. The console shows the browser resource error and the app log "The catalog did not load." once per failed load.
