@@ -136,7 +136,8 @@ export function PlanBackup() {
         <Upload size={16} /> {isReading ? "Reading backup…" : "Restore backup"}
       </button>
     </div>
-    {restoreReason && <p id={restoreReasonId} className="muted">{restoreReason}</p>}
+    {/* key: each reason is its own line, so a new reason does not count as a moved line (layout shift, #145). */}
+    {restoreReason && <p key={restoreReason} id={restoreReasonId} className="muted">{restoreReason}</p>}
     <input ref={fileInput} hidden aria-label="Choose a plan backup JSON file" type="file" accept="application/json,.json" onChange={importBackup} />
     {/* Empty until Download or Restore sets a message. A live region must exist before its text changes, or screen readers can miss the text. */}
     <p className="muted" role="status">{message}</p>

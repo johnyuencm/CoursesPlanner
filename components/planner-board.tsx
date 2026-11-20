@@ -248,13 +248,13 @@ export default function PlannerBoard() {
   }, [workspaceSelection.selectedCode]);
   const ruleGroups = progress ? topLevelGroups(progress.root) : [];
   if (!catalog) return <>
-    <PageHeading title="Build your plan" description={catalogBusy ? "Your local plan remains available for backup while the catalog loads." : "Your local plan remains available for backup."} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span></div>} />
-    {/* After a failure, the failure card comes first, so Try again is in the first screen on a phone (#145). */}
-    {!catalogBusy && <CatalogState />}
-    <PlanBackup />
+    <PageHeading title="Build your plan" description={catalogBusy ? "Your local plan remains available for backup while the catalog loads." : "Your local plan remains available. You can download a backup below."} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span></div>} />
     {/* Not quiet: the board is the main content of this page, so it shows the loading state (#140). */}
     {/* While it loads, the placeholder holds one screen, so the page text below stays out of view when the board lands (#144). */}
-    {catalogBusy && <div className="board-placeholder"><CatalogState /></div>}
+    {/* The loading state, then the failure card in its place, comes before the backup panel: Try again is in the first screen on a phone (#145). */}
+    {/* The card has the height of the loading state (globals.css), so the backup panel does not move when the load fails (#145). */}
+    {/* shortcut: the two descriptions above wrap to the same line count only at 360-1280 px; re-measure the failure layout shift when either text changes. */}
+    <div className={catalogBusy ? "board-placeholder" : "board-failed"}><CatalogState /><PlanBackup /></div>
   </>;
 
   const updateTerms = (change: (terms: Semester[]) => Semester[]) => setPlan((current) => ({ ...current, semesters: change(current.semesters) }));
