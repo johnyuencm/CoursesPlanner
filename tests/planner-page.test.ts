@@ -153,6 +153,18 @@ test("after a failure, Try again comes before the backup panel, so a phone shows
   assert.ok(retry > 0 && retry < html.indexOf('aria-label="Plan backup"'), "Try again comes before the backup panel");
 });
 
+test("the reason Restore backup is off is visible text that describes the button, not only a tooltip (#145)", () => {
+  // Touch and keyboard users cannot open the title tooltip of a disabled button.
+  for (const [state, reason] of [
+    [{ hydrated: true }, "Wait for the catalog to finish loading before restoring."],
+    [{ hydrated: true, catalogBusy: false, catalogError: "Failed to fetch" }, "Review the current plan and confirm before restoring."],
+  ] as const) {
+    const html = boardWithoutCatalog(state);
+    const id = html.match(/<button[^>]*aria-describedby="([^"]+)"[^>]*>(?:(?!<\/button>)[^])*Restore backup/)?.[1];
+    assert.ok(id && html.includes(`<p id="${id}" class="muted">${reason}</p>`), `"${reason}" is visible text that describes Restore backup`);
+  }
+});
+
 test("while the catalog loads, a placeholder one screen tall holds the place of the board (#144)", () => {
   // The loaded board is taller than one screen at 1280 and 390 px. So the page text below the board
   // starts below the fold and stays there when the board lands (docs/reviews/2026-11-20-issue144-verification.md).

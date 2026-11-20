@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 import { Download, Upload } from "lucide-react";
 import { canRestorePlanBackup, isCatalogOutage, MAX_PLAN_BACKUP_BYTES, parsePlanBackup, summarizePlan } from "@/lib/plan";
 import type { StudentPlan } from "@/lib/types";
@@ -57,6 +57,13 @@ export function PlanBackup() {
     catalogBusy,
     acknowledgedOutageRestore,
   });
+  // Visible text, not a title tooltip: touch and keyboard users cannot open the tooltip of a disabled button (#145).
+  const restoreReason = catalogOutage && !acknowledgedOutageRestore
+    ? "Review the current plan and confirm before restoring."
+    : !catalogAvailable && catalogBusy
+      ? "Wait for the catalog to finish loading before restoring."
+      : null;
+  const restoreReasonId = useId();
 
   useEffect(() => {
     mounted.current = true;
@@ -124,18 +131,13 @@ export function PlanBackup() {
         className="button button-secondary"
         type="button"
         disabled={!restoreEnabled}
-        title={
-          catalogOutage && !acknowledgedOutageRestore
-            ? "Review the current plan and confirm before restoring."
-            : !catalogAvailable && catalogBusy
-              ? "Wait for the catalog to finish loading before restoring."
-              : undefined
-        }
+        aria-describedby={restoreReason ? restoreReasonId : undefined}
         onClick={() => fileInput.current?.click()}
       >
         <Upload size={16} /> {isReading ? "Reading backup…" : "Restore backup"}
       </button>
     </div>
+    {restoreReason && <p id={restoreReasonId} className="muted">{restoreReason}</p>}
     <input ref={fileInput} hidden aria-label="Choose a plan backup JSON file" type="file" accept="application/json,.json" onChange={importBackup} />
     {/* Empty until Download or Restore sets a message. A live region must exist before its text changes, or screen readers can miss the text. */}
     <p className="muted" role="status">{message}</p>
