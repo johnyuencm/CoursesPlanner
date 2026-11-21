@@ -51,13 +51,22 @@ export function universityDir(rootDir: string, id: string): string {
   return path.join(rootDir, "data", "catalogs", id);
 }
 
+/** A disk file that is not JSON. Only readOptionalJson throws it, and never for a Worker asset body (#151). */
+class LocalJsonError extends SyntaxError {}
+
 export async function readOptionalJson(filePath: string): Promise<unknown> {
+  let text: string;
   try {
-    return JSON.parse(await readBoundedFile(filePath));
+    text = await readBoundedFile(filePath);
   } catch (error) {
     // Only a missing file uses the published asset. A corrupt or oversize disk file must fail loudly.
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     return snapshotAsset(filePath);
+  }
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new LocalJsonError((error as Error).message);
   }
 }
 
@@ -105,8 +114,8 @@ const invalidPrograms = (id: string, error: unknown) =>
 export async function readPrograms(university: UniversityDirectoryEntry, rootDir: string): Promise<DiscoveredPrograms | undefined> {
   if (!crawlable(university)) return undefined;
   const programs = await readOptionalJson(path.join(universityDir(rootDir, university.id), "programs.json")).catch((error: unknown) => {
-    // Only the local file gives a SyntaxError: a failed read or Worker asset fetch stays a generic 503 (#151).
-    throw error instanceof SyntaxError ? invalidPrograms(university.id, error) : error;
+    // Only the disk file can be invalid here: a failed read or Worker asset fetch stays a generic 503 (#151).
+    throw error instanceof LocalJsonError ? invalidPrograms(university.id, error) : error;
   });
   if (programs === undefined) return undefined;
   try {
