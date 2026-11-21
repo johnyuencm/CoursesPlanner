@@ -129,6 +129,29 @@ test("a lost programs.json of a published university is missing on every app end
   assert.equal(log.mock.callCount(), 2);
 });
 
+test("a broken data/published.json gives the generic 503, and the server log names the file (#151)", async (t) => {
+  const root = await publishedCopy();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  // The app reads data/published.json only when a program list is missing: lost, or not crawled yet?
+  await rm(path.join(root, PROGRAMS));
+  const log = t.mock.method(console, "error", () => {});
+  for (const [content, line] of [
+    ["{ not json", /^Roadmap read failed: data\/published\.json: /],
+    // Not a list of catalog keys: the build fails on it, so "queued" would be false.
+    ["{}", /^Roadmap read failed: data\/published\.json must be a JSON array of catalog keys$/],
+  ] as const) {
+    log.mock.resetCalls();
+    await writeFile(path.join(root, "data/published.json"), content);
+    const response = await handleRoadmapsRequest(new NextRequest("http://localhost/api/roadmaps"), root);
+    assert.deepEqual(
+      { status: response.status, body: await response.json() },
+      { status: 503, body: { error: "Roadmap data is temporarily unavailable." } },
+      content,
+    );
+    assert.deepEqual(log.mock.calls.map((call) => line.test(String(call.arguments[0]))), [true], content);
+  }
+});
+
 test("the app reads only tracked files: with local crawl output, each roadmap API answer is as from a clean copy (#127)", async (t) => {
   const clean = await publishedCopy();
   const dirty = await publishedCopy();

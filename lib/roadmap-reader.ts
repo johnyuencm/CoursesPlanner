@@ -129,8 +129,12 @@ export async function readPrograms(university: UniversityDirectoryEntry, rootDir
  * status knows (#127); revisit if the app may read crawl state.
  */
 async function isPublished(universityId: string, rootDir: string): Promise<boolean> {
-  const keys = await readOptionalJson(path.join(rootDir, "data", "published.json"));
-  return Array.isArray(keys) && keys.some((key) => typeof key === "string" && key.startsWith(`${universityId}/`));
+  const file = "data/published.json";
+  // Each error names the file, so a broken allowlist is not a nameless 503 in the log (#151).
+  const keys = await readOptionalJson(path.join(rootDir, file)).catch((error: Error) => { throw new Error(`${file}: ${error.message}`); });
+  if (keys === undefined) return false; // The Worker does not ship it. There, the build shipped every published list.
+  if (!Array.isArray(keys)) throw new Error(`${file} must be a JSON array of catalog keys`); // the build text too
+  return keys.some((key) => typeof key === "string" && key.startsWith(`${universityId}/`));
 }
 
 /** The newest time in a program directory: its discovery, each program status, and `also` when given. */
