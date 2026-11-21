@@ -176,3 +176,12 @@ test("while the catalog loads, a placeholder one screen tall holds the place of 
   }
   assert.match(readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8"), /\.board-placeholder \{ min-height: 100vh; \}/, "the placeholder is one screen tall");
 });
+
+test("on a phone, only html clips sideways overflow, so Chrome does not count scroll anchoring as layout shift (#147)", () => {
+  // A student scrolls to the page text while the catalog loads. When the board lands, Chrome keeps that text still (scroll anchoring).
+  // But Chrome counts that adjustment as layout shift for each box under an element with overflow clip: CLS 0.52 at 390 px
+  // (docs/reviews/2026-11-21-issue147-verification.md). The viewport takes the overflow of html, so html alone stops the sideways page scroll.
+  const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8").replace(/\/\*[^]*?\*\//g, "");
+  const clipped =[...css.matchAll(/([^{}]*)\{[^{}]*overflow(?:-x)?: clip/g)].flatMap((match) => match[1].split(",").map((selector) => selector.trim()));
+  assert.deepEqual(clipped, ["html"], "only html clips sideways overflow");
+});
