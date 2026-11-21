@@ -1,5 +1,5 @@
 // A small DOM, so React's client renderer can run in a test (#145). The project has no DOM library.
-// shortcut: it has only what React and the planner's no-catalog states use; use a DOM library (such as jsdom) when a test needs more, for example the loaded board (select options, layout).
+// shortcut: it has only what React and the planner board use, and no layout; use a DOM library (such as jsdom) when a test needs more, for example layout or scroll.
 
 const HTML_NS = "http://www.w3.org/1999/xhtml";
 const FOCUSABLE = new Set(["A", "BUTTON", "INPUT", "SELECT", "TEXTAREA"]);
@@ -67,6 +67,8 @@ export class FakeElement extends FakeNode {
     super(1, namespaceURI === HTML_NS ? localName.toUpperCase() : localName, ownerDocument);
   }
   get tagName(): string { return this.nodeName; }
+  /** The options below a select. React reads them to mark the selected option (#147). */
+  get options(): FakeElement[] { return [...this.elements()].filter((element) => element.nodeName === "OPTION"); }
   getAttribute(name: string): string | null { return this.attributes.get(name) ?? null; }
   hasAttribute(name: string): boolean { return this.attributes.has(name); }
   setAttribute(name: string, value: unknown) { this.attributes.set(name, String(value)); }
@@ -130,6 +132,9 @@ export function createFakeDom() {
     },
     addEventListener() {},
     removeEventListener() {},
+    // A link (next/link) waits for an idle moment through self.setTimeout; in a browser, self is the window (#147).
+    setTimeout,
+    clearTimeout,
   };
   document.defaultView = window;
   return { document, window };

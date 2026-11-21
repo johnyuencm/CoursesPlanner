@@ -40,7 +40,8 @@ function CurrentPlanSummary({ plan }: { plan: StudentPlan }) {
   );
 }
 
-export function PlanBackup() {
+/** `autoFocus`: Download backup takes focus when the panel mounts (#147). */
+export function PlanBackup({ autoFocus = false }: { autoFocus?: boolean }) {
   const { catalog, catalogBusy, exportPlanBackup, restorePlanBackup, hydrated, persistence, plan } = useApp();
   const fileInput = useRef<HTMLInputElement>(null);
   const reading = useRef(false);
@@ -125,7 +126,7 @@ export function PlanBackup() {
       </label>
     </>}
     <div className="planner-backup-actions">
-      <button className="button button-secondary" type="button" disabled={!hydrated || isReading} onClick={exportBackup}><Download size={16} /> {storageBlocked ? "Download recovery copy" : "Download backup"}</button>
+      <button className="button button-secondary" type="button" autoFocus={autoFocus} disabled={!hydrated || isReading} onClick={exportBackup}><Download size={16} /> {storageBlocked ? "Download recovery copy" : "Download backup"}</button>
       <button
         className="button button-secondary"
         type="button"
