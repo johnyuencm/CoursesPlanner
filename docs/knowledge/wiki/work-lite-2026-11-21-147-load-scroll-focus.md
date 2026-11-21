@@ -1,0 +1,12 @@
+# work-lite 2026-11-21: #147 scroll and focus when the board lands
+
+- **Goal:** fix johnyuencm/CoursesPlanner#147. At 390 px, a student who scrolls or tabs while the catalog loads got CLS 0.52-0.94 and lost focus on "Download backup" when the board landed.
+- **Root cause (focus):** the board renders the backup panel under the loading state, then in its heading. React removes the old panel, so the focused button leaves the page and focus goes to body.
+- **Root cause (CLS):** the visible text never jumped. Scroll anchoring kept it in place, and scrollY grew by the board height. Chrome scored this as layout shift because `body` and `.app-shell` had `overflow-x: clip` at 860 px and below. A clip on a box around the moved text gives CLS; a clip on `html` alone gives 0.
+- **Shipped:** branch `fix/147-load-scroll-focus`. `638e264`, `7041865`: focus moves to the new panel's "Download backup" with `preventScroll`. `5469c9e`: only `html` clips sideways overflow. Architecture pass: `52aaaac` focus moves in `useLayoutEffect` (no frame paints with focus on body); `0aa7383` the CSS test checks only the boxes around the page text.
+- **Verify:** at `6203d39`: `npm run typecheck` 0; `npm test` 0 (372 pass, 0 fail); `npm run build` 0. Live (wrangler dev, catalog delayed 2.5 s): scroll and Tab CLS 0.52-0.83 → 0 at 390 and 360 px; 1280 unchanged; no-input CLS same as #144; #145 Try-again focus on `main h1` kept; 56/56 runs move focus before paint. Record: `docs/reviews/2026-11-21-issue147-verification.md`.
+- **Review:** tech_lead, project_manager, user_advocate PASS at `0623f7c`; tech_lead r2 PASS at `6203d39`. Records: `docs/reviews/2026-11-21-147-*.md`.
+- **Architecture:** `artifacts/architecture-147-load-scroll-focus.html`. Top recommendation: candidate 1, focus in the same commit (built `52aaaac`). Built candidate 2 (`0aa7383`). Skipped: one backup panel for both states (product decision), panel-owned focus, one focus hook for the app (speculative), shared focus-test setup (with #153).
+- **Decisions named:** (1) the CSS change fixes a CLS score, not a visible jump; html still blocks sideways scroll if content later overflows. (2) Focus moves with no scroll, so after Tab then scroll the focused button can be off screen; one Tab brings it back.
+- **Limits:** the CSS test reads server HTML and finds only `overflow(-x): clip` with a space (TL r2 L1, L2). Not checked on real phones, iOS Safari or a real screen reader.
+- **Leftovers:** #153 (no live region says the board loaded), #149.

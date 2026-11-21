@@ -5,8 +5,10 @@ import path from "node:path";
 import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { load } from "cheerio";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
+import ProgramLayout from "../app/[universityId]/[programId]/layout";
 import PlannerPage, { generateMetadata } from "../app/[universityId]/[programId]/planner/page";
 import { AppContext, chainAddedNotice, useAppContextValue } from "../components/app-provider";
 import { CourseDetail, CoursePicker } from "../components/course-dialogs";
@@ -175,4 +177,23 @@ test("while the catalog loads, a placeholder one screen tall holds the place of 
     assert.match(html, /<div class="board-placeholder"><div [^>]*role="status"[^>]*>(?:(?!<\/div>)[^])*Loading the course map/, "the loading state is in the board placeholder");
   }
   assert.match(readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8"), /\.board-placeholder \{ min-height: 100vh; \}/, "the placeholder is one screen tall");
+});
+
+test("on a phone, no box around the page text clips overflow except html, so Chrome does not count scroll anchoring as layout shift (#147)", async () => {
+  // A student scrolls to the page text while the catalog loads. When the board lands, Chrome keeps that text still (scroll anchoring).
+  // But Chrome counts that adjustment as layout shift when a box around the moved text clips overflow: CLS 0.52 at 390 px
+  // (docs/reviews/2026-11-21-issue147-verification.md). A clip inside the text or on the board gives no shift (artifacts/architecture-147-load-scroll-focus.html).
+  // The viewport takes the overflow of html, so html alone stops the sideways page scroll.
+  const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8").replace(/\/\*[^]*?\*\//g, "");
+  const clipped = [...css.matchAll(/([^{}]*)\{[^{}]*overflow(?:-x)?: clip/g)].flatMap((match) => match[1].split(",").map((selector) => selector.trim()));
+  const [universityId = "", programId = ""] = MAP_KEY.split("/");
+  const params = () => Promise.resolve({ universityId, programId });
+  const page = await ProgramLayout({ params: params(), children: await PlannerPage({ params: params() }) });
+  // load() puts the markup in html and body, as app/layout.tsx does.
+  // shortcut: server markup has no runtime state, so a selector that matches only after a script or on hover does not match here; check such a clip live.
+  const $ = load(renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: {} as never }, page)));
+  const frame = $("#planner-about-title").parentsUntil("html");
+  assert.ok(frame.is(".app-shell") && frame.is("main"), "the app shell is around the page text");
+  assert.ok(clipped.includes("html"), "html clips sideways overflow");
+  assert.deepEqual(clipped.filter((selector) => frame.is(selector)), [], "no box around the page text clips overflow");
 });
