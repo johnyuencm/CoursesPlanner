@@ -6,6 +6,7 @@ import {
   listRoadmapUniversities,
   readProgramDirectory,
   readReadyRoadmap,
+  roadmapReadAnswer,
 } from "@/lib/roadmap-reader";
 
 export const runtime = "nodejs";
@@ -26,16 +27,6 @@ function remember(memoKey: string | null, value: unknown) {
   const body = JSON.stringify(value);
   if (memoKey !== null) productionBodies.set(memoKey, body);
   return jsonBody(body);
-}
-
-function safeReadError(error: unknown): { message: string; status: number } {
-  const message = error instanceof Error ? error.message : "";
-  if (message.startsWith("Unknown university:")) return { message: "Unknown university.", status: 404 };
-  if (message.startsWith("Unknown roadmap program:")) return { message: "Unknown roadmap program.", status: 404 };
-  if (message.startsWith("Roadmap is not ready:")) return { message: "Roadmap is not ready yet.", status: 503 };
-  // The body stays generic. One server log line gives the cause (a file path and its error). Error path only.
-  console.error(`/api/roadmaps: ${message || String(error)}`);
-  return { message: "Roadmap data is temporarily unavailable.", status: 503 };
 }
 
 // Production serves only the committed snapshot, which cannot change while the
@@ -86,8 +77,8 @@ export async function handleRoadmapsRequest(
     }
     return remember(memoKey, await readReadyRoadmap(university, programId, rootDir));
   } catch (error) {
-    const result = safeReadError(error);
-    return errorResponse(result.message, result.status);
+    const { message, status } = roadmapReadAnswer(error);
+    return errorResponse(message, status);
   }
 }
 

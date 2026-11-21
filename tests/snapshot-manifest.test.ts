@@ -63,7 +63,7 @@ test("the build reads only tracked files: ignored crawl output, an invalid statu
   assert.deepEqual(await buildSnapshotAssets(dirty), await buildSnapshotAssets(clean));
 });
 
-test("a roadmap read without programs.json is 404, also when the local crawl status says discovery is ready (#127)", async (t) => {
+test("a roadmap read without programs.json names the missing file, also when the local crawl status says discovery is ready (#127, #136)", async (t) => {
   const root = await publishedCopy();
   t.after(() => rm(root, { recursive: true, force: true }));
   await writeFile(path.join(root, "data/catalogs/northeastern/.roadmap-crawl-status.json"), JSON.stringify({
@@ -71,12 +71,20 @@ test("a roadmap read without programs.json is 404, also when the local crawl sta
     queue: [], counts: { queued: 0, ready: PUBLISHED.length, unsupported: 0, error: 0 }, updatedAt: "2026-11-08T00:00:00.000Z",
   }));
   await rm(path.join(root, PROGRAMS));
+  const program = KEY.split("/")[1];
   const response = await handleRoadmapsRequest(
-    new NextRequest(`http://localhost/api/roadmaps?university=northeastern&program=${KEY.split("/")[1]}`),
+    new NextRequest(`http://localhost/api/roadmaps?university=northeastern&program=${program}`),
     root,
   );
   assert.equal(response.status, 404);
-  assert.deepEqual(await response.json(), { error: "Unknown roadmap program." });
+  assert.deepEqual(await response.json(), { error: "The program list (programs.json) is missing." });
+  // The CLI message gives the path of the missing file.
+  await assert.rejects(
+    runCatalogCli([`--roadmap=${program}`, "--university=northeastern"], { rootDir: root, write: () => {} }),
+    { message: "Program list is missing: data/catalogs/northeastern/programs.json" },
+  );
+  // The build names the same file. No published snapshot is at fault.
+  await assert.rejects(buildSnapshotAssets(root), { message: "Program list is missing: data/catalogs/northeastern/programs.json" });
 });
 
 test("the app reads only tracked files: with local crawl output, each roadmap API answer is as from a clean copy (#127)", async (t) => {

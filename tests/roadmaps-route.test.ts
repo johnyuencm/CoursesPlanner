@@ -6,6 +6,7 @@ import test from "node:test";
 import { NextRequest } from "next/server";
 
 import { handleRoadmapsRequest } from "../app/api/roadmaps/route";
+import { handleCatalogRequest } from "../catalog-service/server";
 import type { UniversityDirectoryEntry } from "../lib/source-types";
 import type { Course, DiscoveredPrograms, ProgramRoadmap } from "../lib/types";
 
@@ -189,17 +190,38 @@ test("GET /api/roadmaps?university=<id>&program=<id> returns a validated ready r
   });
 });
 
-test("unknown university and program ids are 404, not-ready programs are 503", async () => {
+test("each roadmap read error has one status and one short text, on the route and the catalog service (#136)", async (t) => {
   await withFixture(async (rootDir) => {
-    const unknownUniversity = await request(rootDir, "?university=does-not-exist");
-    assert.equal(unknownUniversity.status, 404);
-
-    const unknownProgram = await request(rootDir, `?university=${TEST_ID}&program=does-not-exist`);
-    assert.equal(unknownProgram.status, 404);
-
-    const notReady = await request(rootDir, `?university=${TEST_ID}&program=${QUEUED_PROGRAM_ID}`);
-    assert.equal(notReady.status, 503);
-    assert.match((await notReady.json()).error, /not ready/);
+    const context = {
+      sources: [],
+      universities: buildDirectory(),
+      rootDir,
+      refresh: async () => { throw new Error("A roadmap read never refreshes a catalog."); },
+      statuses: () => ({}),
+    };
+    // The route answer. The catalog service must give the same status and body.
+    const answer = async (universityId: string, programId?: string) => {
+      const response = await request(rootDir, `?university=${universityId}${programId ? `&program=${programId}` : ""}`);
+      const route = { status: response.status, body: await response.json() };
+      const servicePath = `/universities/${universityId}/${programId ? `roadmaps/${programId}` : "programs"}`;
+      const service = await handleCatalogRequest("GET", new URL(`http://127.0.0.1${servicePath}`), Buffer.alloc(0), context);
+      assert.deepEqual({ status: service.status, body: JSON.parse(service.body) }, route, servicePath);
+      return route;
+    };
+    assert.deepEqual(await answer("does-not-exist"), { status: 404, body: { error: "Unknown university." } });
+    assert.deepEqual(await answer("does-not-exist", READY_PROGRAM_ID), { status: 404, body: { error: "Unknown university." } });
+    assert.deepEqual(await answer(TEST_ID, "does-not-exist"), { status: 404, body: { error: "Unknown roadmap program." } });
+    assert.deepEqual(await answer(TEST_ID, QUEUED_PROGRAM_ID), { status: 503, body: { error: "Roadmap is not ready yet." } });
+    // An error with no kind: the same generic 503, and each one logs the cause.
+    const log = t.mock.method(console, "error", () => {});
+    await writeFile(path.join(rootDir, "data", "catalogs", TEST_ID, "roadmaps", `${READY_PROGRAM_ID}.json`), JSON.stringify({ programId: "x" }));
+    assert.deepEqual(await answer(TEST_ID, READY_PROGRAM_ID), { status: 503, body: { error: "Roadmap data is temporarily unavailable." } });
+    assert.deepEqual(log.mock.calls.map((call) => /Program roadmap/.test(String(call.arguments[0]))), [true, true]);
+    await rm(path.join(rootDir, "data", "catalogs", TEST_ID, "programs.json"));
+    assert.deepEqual(
+      await answer(TEST_ID, READY_PROGRAM_ID),
+      { status: 404, body: { error: "The program list (programs.json) is missing." } },
+    );
   });
 });
 

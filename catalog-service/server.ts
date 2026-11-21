@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { validateCatalog } from "../lib/catalog";
+import { roadmapReadAnswer } from "../lib/roadmap-reader";
 import type { Catalog } from "../lib/types";
 import { defaultCatalogId, enabledSources, findSource, loadRegistry, loadUniversityDirectory } from "./registry";
 import { refreshSource, storagePaths } from "./refresh";
@@ -99,8 +100,8 @@ export async function handleCatalogRequest(
       const directory = await readCrawlDirectory(university, context.rootDir);
       return json(universityMatch[2] === "status" ? directory.status : directory);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return errorBody(error, message.startsWith("Unknown university:") || message.startsWith("Unknown roadmap program:") ? 404 : 503);
+      const { status, message } = roadmapReadAnswer(error);
+      return json({ error: message }, status);
     }
   }
   if (method === "GET" && url.pathname === "/catalogs") {
