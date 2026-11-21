@@ -23,6 +23,7 @@ const ROADMAP_READ_ERRORS = {
   "unknown-program": { status: 404, message: "Unknown roadmap program." },
   "missing-programs": { status: 404, message: "The program list (programs.json) is missing." },
   "not-ready": { status: 503, message: "Roadmap is not ready yet." },
+  "invalid-programs": { status: 503, message: "The program list (programs.json) is invalid." },
 } as const;
 
 /** A roadmap read failed for a known cause. The error message keeps the detail for the CLI and the build. */
@@ -34,11 +35,12 @@ export class RoadmapReadError extends Error {
 
 /** The HTTP answer to a failed roadmap read: the same on /api/roadmaps and the catalog service (#136). */
 export function roadmapReadAnswer(error: unknown): { status: number; message: string } {
-  if (error instanceof RoadmapReadError) return ROADMAP_READ_ERRORS[error.kind];
+  // A client or data-state answer writes no log line. A broken program list is a fault, so it logs too (#151).
+  if (error instanceof RoadmapReadError && error.kind !== "invalid-programs") return ROADMAP_READ_ERRORS[error.kind];
   const message = error instanceof Error ? error.message : "";
-  // The body stays generic. One server log line gives the cause (a file path and its error). Error path only.
+  // One server log line gives the cause (a file path and its error). Error path only.
   console.error(`Roadmap read failed: ${message || String(error)}`);
-  return { status: 503, message: "Roadmap data is temporarily unavailable." };
+  return error instanceof RoadmapReadError ? ROADMAP_READ_ERRORS[error.kind] : { status: 503, message: "Roadmap data is temporarily unavailable." };
 }
 
 export function universityDir(rootDir: string, id: string): string {
@@ -91,10 +93,18 @@ export function summarize(programs: DiscoveredPrograms, updatedAt: string): Road
   };
 }
 
+const missingPrograms = (id: string) =>
+  new RoadmapReadError("missing-programs", `Program list is missing: data/catalogs/${id}/programs.json`);
+const invalidPrograms = (id: string, error: unknown) =>
+  new RoadmapReadError("invalid-programs", `Program list is invalid: data/catalogs/${id}/programs.json: ${(error as Error).message}`);
+
 /** The tracked program directory (`programs.json`), validated. Undefined before discovery. Never reads the crawl status (#127). */
 export async function readPrograms(university: UniversityDirectoryEntry, rootDir: string): Promise<DiscoveredPrograms | undefined> {
   if (!crawlable(university)) return undefined;
-  const programs = await readOptionalJson(path.join(universityDir(rootDir, university.id), "programs.json"));
+  const programs = await readOptionalJson(path.join(universityDir(rootDir, university.id), "programs.json")).catch((error: unknown) => {
+    // Only the local file gives a SyntaxError: a failed read or Worker asset fetch stays a generic 503 (#151).
+    throw error instanceof SyntaxError ? invalidPrograms(university.id, error) : error;
+  });
   if (programs === undefined) return undefined;
   validateDiscoveredPrograms(programs, university.crawl!.allowedOrigins);
   if (
@@ -104,9 +114,6 @@ export async function readPrograms(university: UniversityDirectoryEntry, rootDir
   programs.programs.sort((a, b) => a.officialUrl.localeCompare(b.officialUrl) || a.id.localeCompare(b.id));
   return programs;
 }
-
-const missingPrograms = (id: string) =>
-  new RoadmapReadError("missing-programs", `Program list is missing: data/catalogs/${id}/programs.json`);
 
 /**
  * True when data/published.json lists a program of this university. The build ships the program list of each one,

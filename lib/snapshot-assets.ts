@@ -31,7 +31,8 @@ async function assetsBinding(): Promise<Assets | undefined> {
 function fetchJson(assets: Assets, file: string): Promise<unknown> {
   return assets.fetch(`https://assets.invalid/${SNAPSHOT_ASSET_DIR}/${file}`).then((response) => {
     if (!response.ok) throw new Error(`Snapshot asset ${file} answered ${response.status}`);
-    return response.json();
+    // A body that is not JSON is a failed fetch too. So a SyntaxError always comes from a local file (#151).
+    return response.json().catch((error: Error) => { throw new Error(`Snapshot asset ${file} is not JSON: ${error.message}`); });
   });
 }
 

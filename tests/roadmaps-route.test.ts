@@ -217,7 +217,17 @@ test("each roadmap read error has one status and one short text, on the route an
     await writeFile(path.join(rootDir, "data", "catalogs", TEST_ID, "roadmaps", `${READY_PROGRAM_ID}.json`), JSON.stringify({ programId: "x" }));
     assert.deepEqual(await answer(TEST_ID, READY_PROGRAM_ID), { status: 503, body: { error: "Roadmap data is temporarily unavailable." } });
     assert.deepEqual(log.mock.calls.map((call) => /Program roadmap/.test(String(call.arguments[0]))), [true, true]);
-    await rm(path.join(rootDir, "data", "catalogs", TEST_ID, "programs.json"));
+    // A corrupt program list has its own kind. It is a fault, so each adapter also logs the file and the cause (#151).
+    const programsFile = path.join(rootDir, "data", "catalogs", TEST_ID, "programs.json");
+    const invalid = { status: 503, body: { error: "The program list (programs.json) is invalid." } };
+    const logged = () => log.mock.calls.map((call) =>
+      /^Roadmap read failed: Program list is invalid: data\/catalogs\/test-university\/programs\.json: /.test(String(call.arguments[0])));
+    log.mock.resetCalls();
+    await writeFile(programsFile, "{ not json");
+    assert.deepEqual(await answer(TEST_ID), invalid);
+    assert.deepEqual(await answer(TEST_ID, READY_PROGRAM_ID), invalid);
+    assert.deepEqual(logged(), [true, true, true, true]);
+    await rm(programsFile);
     assert.deepEqual(
       await answer(TEST_ID, READY_PROGRAM_ID),
       { status: 404, body: { error: "The program list (programs.json) is missing." } },
