@@ -40,9 +40,10 @@ function CurrentPlanSummary({ plan }: { plan: StudentPlan }) {
   );
 }
 
-/** `autoFocus`: Download backup takes focus when the panel mounts (#147). */
-export function PlanBackup({ autoFocus = false }: { autoFocus?: boolean }) {
+/** `keepFocus`: the panel before this one had focus, so Download backup takes it (#147). */
+export function PlanBackup({ keepFocus = false }: { keepFocus?: boolean }) {
   const { catalog, catalogBusy, exportPlanBackup, restorePlanBackup, hydrated, persistence, plan } = useApp();
+  const downloadButton = useRef<HTMLButtonElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const reading = useRef(false);
   const mounted = useRef(true);
@@ -74,6 +75,11 @@ export function PlanBackup({ autoFocus = false }: { autoFocus?: boolean }) {
   useEffect(() => {
     if (!catalogOutage) setAcknowledgedOutageRestore(false);
   }, [catalogOutage]);
+
+  // No scroll: the student keeps the place they scrolled to, as if the old button had moved (#147).
+  useEffect(() => {
+    if (keepFocus) downloadButton.current?.focus({ preventScroll: true });
+  }, [keepFocus]);
 
   const exportBackup = () => {
     try {
@@ -126,7 +132,7 @@ export function PlanBackup({ autoFocus = false }: { autoFocus?: boolean }) {
       </label>
     </>}
     <div className="planner-backup-actions">
-      <button className="button button-secondary" type="button" autoFocus={autoFocus} disabled={!hydrated || isReading} onClick={exportBackup}><Download size={16} /> {storageBlocked ? "Download recovery copy" : "Download backup"}</button>
+      <button ref={downloadButton} className="button button-secondary" type="button" disabled={!hydrated || isReading} onClick={exportBackup}><Download size={16} /> {storageBlocked ? "Download recovery copy" : "Download backup"}</button>
       <button
         className="button button-secondary"
         type="button"
