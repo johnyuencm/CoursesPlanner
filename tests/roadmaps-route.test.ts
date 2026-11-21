@@ -231,10 +231,16 @@ test("each roadmap read error has one status and one short text, on the route an
       assert.deepEqual(await answer(TEST_ID, READY_PROGRAM_ID), invalid, content);
       assert.deepEqual(logged(), [true, true, true, true], content);
     }
+    // A lost program list is a fault too. The body names no folder; each adapter logs the path (#151).
+    log.mock.resetCalls();
     await rm(programsFile);
     assert.deepEqual(
       await answer(TEST_ID, READY_PROGRAM_ID),
       { status: 404, body: { error: "The program list (programs.json) is missing." } },
+    );
+    assert.deepEqual(
+      log.mock.calls.map((call) => call.arguments[0]),
+      Array(2).fill("Roadmap read failed: Program list is missing: data/catalogs/test-university/programs.json"),
     );
   });
 });

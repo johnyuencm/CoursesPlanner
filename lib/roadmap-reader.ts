@@ -35,8 +35,11 @@ export class RoadmapReadError extends Error {
 
 /** The HTTP answer to a failed roadmap read: the same on /api/roadmaps and the catalog service (#136). */
 export function roadmapReadAnswer(error: unknown): { status: number; message: string } {
-  // A client or data-state answer writes no log line. A broken program list is a fault, so it logs too (#151).
-  if (error instanceof RoadmapReadError && error.kind !== "invalid-programs") return ROADMAP_READ_ERRORS[error.kind];
+  // A client or data-state answer writes no log line. A lost or broken program list is a fault, so it logs too.
+  // The body stays one short text per kind: only the log names the folder, and so the university (#151).
+  if (error instanceof RoadmapReadError && error.kind !== "invalid-programs" && error.kind !== "missing-programs") {
+    return ROADMAP_READ_ERRORS[error.kind];
+  }
   const message = error instanceof Error ? error.message : "";
   // One server log line gives the cause (a file path and its error). Error path only.
   console.error(`Roadmap read failed: ${message || String(error)}`);
