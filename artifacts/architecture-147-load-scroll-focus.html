@@ -27,7 +27,8 @@
   <h1 class="text-2xl font-bold">Architecture pass: scroll and focus when the board lands (#147)</h1>
   <p class="text-sm text-stone-600 dark:text-stone-400">Scope: <code>git diff origin/master...HEAD -- app components lib tests</code> on branch <code>fix/147-load-scroll-focus</code> (product head <code>7041865</code>, review records up to <code>0d937e0</code>), plus the code that it calls: <code>components/planner-board.tsx</code>, <code>components/plan-backup.tsx</code>, <code>components/catalog-state.tsx</code>, the #145 focus code (<code>catalog-state.tsx</code> Try again, <code>app-shell.tsx</code> toast) and <code>components/ui.tsx</code>. Date: 2026-11-21 (UTC). Goal of #147: at 390 px, a student who scrolls or tabs while the catalog loads keeps the scroll place and the focus when the board lands, and CLS stays at 0.1 or below.</p>
   <div class="rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 p-4 space-y-1">
-    <p id="built-summary"><b>To build in this pass:</b> <a class="underline" href="#c1">candidate 1</a> (Strong, focus) and <a class="underline" href="#c2">candidate 2</a> (Worth exploring, CLS guard). Both serve the #147 goal.</p>
+    <p id="built-summary"><b>Built in this pass:</b> <a class="underline" href="#c1">candidate 1</a> (Strong, focus, <code>52aaaac</code>) and <a class="underline" href="#c2">candidate 2</a> (Worth exploring, CLS guard, <code>0aa7383</code>). Both serve the #147 goal.</p>
+    <p><b>Product code:</b> one word (<code>useEffect</code> to <code>useLayoutEffect</code>) and one comment line in <code>components/plan-backup.tsx</code>. The rest is tests. Verify: typecheck, 372 tests and the build pass; 56 live runs on each build. See <a class="underline" href="#verify">Verify</a>.</p>
     <p><b>Top recommendation:</b> <a class="underline" href="#c1">candidate 1</a>. See <a class="underline" href="#top">the end</a>.</p>
     <p><b>Not built:</b> candidates 3 to 6. See <a class="underline" href="#leftovers">Leftovers</a>.</p>
   </div>
@@ -39,7 +40,7 @@
     <span class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 text-xs font-bold">Strong</span>
     <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
     <span class="px-2 py-0.5 rounded bg-sky-200 text-sky-900 text-xs">serves #147: focus</span>
-    <span id="c1-status" class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">to build in this pass</span></div>
+    <span id="c1-status" class="px-2 py-0.5 rounded bg-emerald-700 text-white text-xs">built 52aaaac</span></div>
   <p><b>Files:</b> <code>components/plan-backup.tsx:79-82</code> (the focus move), <code>components/planner-board.tsx:250-253, :261, :314</code> (the focus read and the <code>keepFocus</code> prop), <code>tests/planner-load-focus.test.ts:13-42</code>.</p>
   <div class="grid md:grid-cols-2 gap-3">
     <div><p class="text-xs uppercase tracking-wider">Before: focus moves after paint</p>
@@ -65,7 +66,7 @@
   C->>C: layout effect, Download backup takes focus, no scroll
   C-->>B: the first frame paints with focus on Download backup</pre></div>
   </div>
-  <p><b>Problem:</b> The hand-off reads focus in the render, but it moves focus in a passive effect (<code>useEffect</code>). A passive effect can run after the browser paints. Live, the gap is 12 to 17 ms, and 1 of 6 Tab runs painted one frame with focus on <code>body</code> (TL-L1, UA-L2). The test cannot see the gap, because <code>act()</code> runs both kinds of effect before the assert.</p>
+  <p><b>Problem:</b> The hand-off reads focus in the render, but it moves focus in a passive effect (<code>useEffect</code>). React does not promise when a passive effect runs, and it can run after the browser paints. The UA walk saw one frame paint with focus on <code>body</code> in 1 of 6 Tab runs (TL-L1, UA-L2). This pass saw it in 1 of 56 runs (Seattle, 390 px, Tab then scroll). The test cannot see the gap, because <code>act()</code> runs both kinds of effect before the assert.</p>
   <p><b>Solution:</b> Move focus in a layout effect (<code>useLayoutEffect</code>). React runs it in the same commit that removes the old panel, so the browser cannot paint between the two. A probe after the board reads focus in its own layout effect: that is the focus of the first frame that can paint.</p>
   <p><b>Interface:</b> The hand-off promises "focus stays on Download backup when the board lands". That promise includes an order: it must be true when the board first paints. Today the module meets it only at the end.</p>
   <ul class="list-disc pl-5 text-sm">
@@ -74,7 +75,7 @@
     <li>One word of product code.</li>
     <li>Known pattern: <code>graph-canvas.tsx:126</code> uses <code>useLayoutEffect</code>.</li>
   </ul>
-  <p class="text-sm"><b>Risk:</b> <code>focus()</code> in a layout effect can make the browser do style and layout inside the commit. The browser does this layout before the paint anyway. The live check below measures CLS and the place of the page text again.</p>
+  <p class="text-sm"><b>Risk:</b> <code>focus()</code> in a layout effect can make the browser do style and layout inside the commit. The browser does this layout before the paint anyway. Live result: CLS and the place of the page text did not change (see <a class="underline" href="#verify">Verify</a>).</p>
 </section>
 
 <section id="c2" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
@@ -82,7 +83,7 @@
     <span class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 text-xs font-bold">Worth exploring</span>
     <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
     <span class="px-2 py-0.5 rounded bg-sky-200 text-sky-900 text-xs">serves #147: CLS</span>
-    <span id="c2-status" class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">to build in this pass</span></div>
+    <span id="c2-status" class="px-2 py-0.5 rounded bg-emerald-700 text-white text-xs">built 0aa7383, test only</span></div>
   <p><b>Files:</b> <code>tests/planner-page.test.ts:180-187</code>, <code>app/globals.css:829-834</code>. The page frame: <code>app/[universityId]/[programId]/layout.tsx:27-28</code>, <code>components/app-shell.tsx:58, :75, :109</code>, <code>app/[universityId]/[programId]/planner/page.tsx:23</code>.</p>
   <div class="grid md:grid-cols-2 gap-3 text-xs">
     <div class="space-y-2"><p class="uppercase tracking-wider">Before: the test checks the whole stylesheet</p>
@@ -231,8 +232,8 @@
   <h2 class="text-xl font-semibold">Reviewer inputs in this pass</h2>
   <div class="overflow-x-auto"><table class="text-sm">
     <tr><th>Input</th><th>Where</th><th>Result</th><th>Commit</th></tr>
-    <tr><td>TL-L1, UA-L2: focus is on <code>body</code> for one frame</td><td><a class="underline" href="#c1">1</a></td><td id="in-c1">To build in this pass. Decision on merit: the gap is real (live), the fix is one word, and a test can pin it.</td><td id="in-c1-sha" class="whitespace-nowrap">pending</td></tr>
-    <tr><td>PM L2, TL L3: the CSS test is strict</td><td><a class="underline" href="#c2">2</a></td><td id="in-c2">To build in this pass. The small page shows that an inner clip gives CLS 0.</td><td id="in-c2-sha" class="whitespace-nowrap">pending</td></tr>
+    <tr><td>TL-L1, UA-L2: focus is on <code>body</code> for one frame</td><td><a class="underline" href="#c1">1</a></td><td id="in-c1">Built. Decision on merit: the gap is real but rare (live), the fix is one word, and a test pins it. The focus test now fails on the old code ("not on BODY") and passes on the new code.</td><td id="in-c1-sha" class="whitespace-nowrap"><code>52aaaac</code></td></tr>
+    <tr><td>PM L2, TL L3: the CSS test is strict</td><td><a class="underline" href="#c2">2</a></td><td id="in-c2">Built. The small page shows that an inner clip gives CLS 0. The new test fails on 6 frame clips and passes on 3 inner clips that the old test failed.</td><td id="in-c2-sha" class="whitespace-nowrap"><code>0aa7383</code></td></tr>
     <tr><td>TL-L2: less protection against sideways overflow</td><td>none</td><td>Accepted in the record. A text test cannot measure layout.</td><td>none</td></tr>
     <tr><td>TL-L4: the focus target is always Download backup</td><td><a class="underline" href="#c4">4</a></td><td>No effect today.</td><td>none</td></tr>
     <tr><td>UA-L1: after Tab then scroll, focus is far off screen</td><td>none</td><td>Browser rule. A scroll to the button would break criterion 1a.</td><td>none</td></tr>
@@ -258,7 +259,38 @@
 
 <section id="verify" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
   <h2 class="text-xl font-semibold">Verify</h2>
-  <p class="text-sm">Pending: <code>npm run typecheck</code>, <code>npm test</code>, <code>npm run build</code>, and one live Tab check at 390 px after the focus change.</p>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Check at <code>0aa7383</code></th><th>Result</th></tr>
+    <tr><td><code>npm run typecheck</code></td><td>exit 0</td></tr>
+    <tr><td><code>npm test</code></td><td>exit 0, 372 pass, 0 fail (same count: this pass changes two tests and adds none)</td></tr>
+    <tr><td><code>npm run build</code></td><td>exit 0, 387 routes prerendered (2 skipped), working tree clean after the build</td></tr>
+    <tr><td>Focus test, new assert, old code (<code>useEffect</code>)</td><td>fails: "focus is on Download backup when the board first paints, not on BODY"</td></tr>
+    <tr><td>Focus test, new assert, <code>52aaaac</code></td><td>passes; the #145 retry focus test passes too</td></tr>
+  </table></div>
+  <p class="font-semibold">Candidate 2: what the new CSS test does with each stylesheet</p>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th><code>app/globals.css</code></th><th>New test</th></tr>
+    <tr><td>As committed (<code>html</code> clips)</td><td>pass</td></tr>
+    <tr><td>From <code>origin/master</code> (<code>html, body</code> and <code>.app-shell</code> clip)</td><td>fail: <code>body</code>, <code>.app-shell</code></td></tr>
+    <tr><td>Plus clips on <code>.semester-column</code>, <code>.course-index p</code>, <code>.planner-backup</code></td><td>pass (the old test failed here)</td></tr>
+    <tr><td>Plus one clip on <code>.workspace</code>, <code>.route-view</code>, <code>.static-page</code>, <code>main</code> or <code>body</code></td><td>fail, and the message names the selector (5 runs)</td></tr>
+  </table></div>
+  <p class="font-semibold">Candidate 1: live A/B with one probe (local <code>wrangler dev</code>, no deploy)</p>
+  <p class="text-sm">Method: <code>npm run build</code>, then <code>npm start</code> on 127.0.0.1:3000. Playwright Chromium, a fresh context for each run, <code>isMobile</code>, touch, scale 3. <code>**/api/catalog**</code> waits 2.5 s. "tab": Tab until "Download backup" has focus (12 presses). "tabscroll": then 3 x 150 px wheel. "Same task": a microtask queued in the <code>focusout</code> handler runs after <code>focusin</code>, so no frame can paint between the two events. "Painted frame on body": a <code>requestAnimationFrame</code> loop counts frames with the board in the page and focus on <code>body</code>. Each build: Boston 390x844 (tab 23, tabscroll 3), Seattle 390x844 (tab 5, tabscroll 15), Seattle 360x640 (tab 5, tabscroll 5). The old build is a local revert of the one word, built and served the same way, and not committed.</p>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Build</th><th>Runs</th><th>Focus after the board lands</th><th>Focus moved in the same task</th><th>Runs with a painted frame on body</th><th><code>focusout</code> to <code>focusin</code></th></tr>
+    <tr><td>Old, <code>useEffect</code></td><td>56</td><td>Download backup, 56 of 56</td><td>55 of 56</td><td class="text-red-600 font-semibold">1 (Seattle 390, tabscroll)</td><td>9 to 17 ms</td></tr>
+    <tr><td>New, <code>52aaaac</code></td><td>56</td><td>Download backup, 56 of 56, in the heading, <code>:focus-visible</code></td><td>56 of 56</td><td>0</td><td>9 to 32 ms, always inside one task</td></tr>
+  </table></div>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Scenario, new build</th><th>CLS (same as the old build and the #147 record)</th><th>Page text on screen</th><th>Focused button</th></tr>
+    <tr><td>tab, 390 px</td><td>0.004</td><td>below the fold</td><td>y 306, in view</td></tr>
+    <tr><td>tab, 360 px</td><td>0.0065</td><td>below the fold</td><td>y 322, in view</td></tr>
+    <tr><td>tabscroll, 390 px</td><td>0</td><td>765 to 765</td><td>above the view (UA-L1, browser rule)</td></tr>
+    <tr><td>tabscroll, 360 px</td><td>0</td><td>577 to 577</td><td>above the view</td></tr>
+    <tr><td>wheel, 390 px (no focus move)</td><td>0</td><td>315 to 315</td><td>focus stays on <code>body</code>, not moved</td></tr>
+  </table></div>
+  <p class="text-sm">Sideways overflow: 0 px in every run. Page errors: 0. The time between the two focus events is the work of one task: the commit, and the style and layout that <code>focus()</code> needs. Chromium fires <code>focusout</code> at once when React removes the focused button (checked on a small page). I stopped the server after the runs. The scripts (<code>live-tab.mjs</code>, <code>cls-inner.mjs</code>, <code>blur-order.mjs</code>) stayed in the session scratchpad.</p>
   <p class="text-sm"><b>Not checked:</b> No sub-agent explored the code; one agent did the scan. No real screen reader. No real phone or iOS Safari. The repo has no <code>GLOSSARY.md</code> and no <code>docs/adr/</code>, so no candidate contradicts an ADR.</p>
 </section>
 
