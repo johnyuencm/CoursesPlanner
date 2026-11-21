@@ -106,11 +106,15 @@ export async function readPrograms(university: UniversityDirectoryEntry, rootDir
     throw error instanceof SyntaxError ? invalidPrograms(university.id, error) : error;
   });
   if (programs === undefined) return undefined;
-  validateDiscoveredPrograms(programs, university.crawl!.allowedOrigins);
-  if (
-    programs.universityId !== university.id || programs.university !== university.university ||
-    programs.adapter !== university.crawl!.adapter || programs.sourceUrl !== university.crawl!.discoverySource.url
-  ) throw new Error("Discovered programs do not match the university registry");
+  try {
+    validateDiscoveredPrograms(programs, university.crawl!.allowedOrigins);
+    if (
+      programs.universityId !== university.id || programs.university !== university.university ||
+      programs.adapter !== university.crawl!.adapter || programs.sourceUrl !== university.crawl!.discoverySource.url
+    ) throw new Error("Discovered programs do not match the university registry");
+  } catch (error) {
+    throw invalidPrograms(university.id, error);
+  }
   programs.programs.sort((a, b) => a.officialUrl.localeCompare(b.officialUrl) || a.id.localeCompare(b.id));
   return programs;
 }
