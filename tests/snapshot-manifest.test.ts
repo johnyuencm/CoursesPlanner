@@ -87,6 +87,27 @@ test("a roadmap read without programs.json names the missing file, also when the
   await assert.rejects(buildSnapshotAssets(root), { message: "Program list is missing: data/catalogs/northeastern/programs.json" });
 });
 
+test("a lost programs.json of a published university is missing on every app endpoint, not queued (#151)", async (t) => {
+  const root = await publishedCopy();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await rm(path.join(root, PROGRAMS));
+  const get = async (query: string) => {
+    const response = await handleRoadmapsRequest(new NextRequest(`http://localhost/api/roadmaps${query}`), root);
+    return { status: response.status, body: await response.json() };
+  };
+  // data/published.json lists northeastern programs, and the build ships each published list. So the file is lost.
+  const missing = { status: 404, body: { error: "The program list (programs.json) is missing." } };
+  assert.deepEqual(await get(""), missing);
+  assert.deepEqual(await get("?university=northeastern"), missing);
+  // Nothing published: no list means that discovery has not run yet, so the status stays queued.
+  await writeFile(path.join(root, "data/published.json"), "[]");
+  const list = await get("");
+  assert.equal(list.status, 200);
+  assert.equal(list.body.universities.find((entry: { id: string }) => entry.id === "northeastern").status.status, "queued");
+  const directory = await get("?university=northeastern");
+  assert.deepEqual([directory.status, directory.body.programs, directory.body.status.status], [200, [], "queued"]);
+});
+
 test("the app reads only tracked files: with local crawl output, each roadmap API answer is as from a clean copy (#127)", async (t) => {
   const clean = await publishedCopy();
   const dirty = await publishedCopy();

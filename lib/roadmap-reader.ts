@@ -105,6 +105,20 @@ export async function readPrograms(university: UniversityDirectoryEntry, rootDir
   return programs;
 }
 
+const missingPrograms = (id: string) =>
+  new RoadmapReadError("missing-programs", `Program list is missing: data/catalogs/${id}/programs.json`);
+
+/**
+ * True when data/published.json lists a program of this university. The build ships the program list of each one,
+ * so a published university without a list lost the file (#151). Read only when the list is missing.
+ * shortcut: an unpublished local crawl that loses its list still reads as queued, because only the ignored crawl
+ * status knows (#127); revisit if the app may read crawl state.
+ */
+async function isPublished(universityId: string, rootDir: string): Promise<boolean> {
+  const keys = await readOptionalJson(path.join(rootDir, "data", "published.json"));
+  return Array.isArray(keys) && keys.some((key) => typeof key === "string" && key.startsWith(`${universityId}/`));
+}
+
 /** The newest time in a program directory: its discovery, each program status, and `also` when given. */
 export function latestUpdate(programs: DiscoveredPrograms, also?: string): string {
   return [programs.discoveredAt, ...programs.programs.map((program) => program.statusUpdatedAt), ...(also === undefined ? [] : [also])]
@@ -120,6 +134,8 @@ export async function readProgramDirectory(
   rootDir = process.cwd(),
 ): Promise<ProgramDirectoryResponse> {
   const programs = await readPrograms(university, rootDir);
+  // No list is a queued crawl, unless the university is published: then the file is lost (#151).
+  if (!programs && crawlable(university) && await isPublished(university.id, rootDir)) throw missingPrograms(university.id);
   return {
     universityId: university.id,
     programs: programs?.programs ?? [],
@@ -148,9 +164,7 @@ export async function readReadyRoadmap(
   // Tracked files only: the build ships this roadmap, and git ignores the crawl status (#127).
   const programs = await readPrograms(university, rootDir);
   // No programs.json: name the missing file, not an unknown program (#136).
-  if (!programs && crawlable(university)) {
-    throw new RoadmapReadError("missing-programs", `Program list is missing: data/catalogs/${university.id}/programs.json`);
-  }
+  if (!programs && crawlable(university)) throw missingPrograms(university.id);
   const program = programs?.programs.find((entry) => entry.id === programId);
   if (!program) throw new RoadmapReadError("unknown-program", `Unknown roadmap program: ${programId}`);
   if (program.status !== "ready") throw new RoadmapReadError("not-ready", `Roadmap is not ready: ${programId} (${program.status})`);
