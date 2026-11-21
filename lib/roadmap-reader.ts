@@ -17,6 +17,21 @@ const validId = (id: string) => /^[a-z0-9][a-z0-9-]{0,80}$/.test(id);
 const crawlable = (university: UniversityDirectoryEntry) =>
   university.support === "supported" && university.enabled && university.crawl !== undefined;
 
+/** The HTTP status and the short public message of each kind of roadmap read error (#136). */
+export const ROADMAP_READ_ERRORS = {
+  "unknown-university": { status: 404, message: "Unknown university." },
+  "unknown-program": { status: 404, message: "Unknown roadmap program." },
+  "missing-programs": { status: 404, message: "The program list (programs.json) is missing." },
+  "not-ready": { status: 503, message: "Roadmap is not ready yet." },
+} as const;
+
+/** A roadmap read failed for a known cause. The error message keeps the detail for the CLI and the build. */
+export class RoadmapReadError extends Error {
+  constructor(readonly kind: keyof typeof ROADMAP_READ_ERRORS, message: string) {
+    super(message);
+  }
+}
+
 export function universityDir(rootDir: string, id: string): string {
   if (!validId(id)) throw new Error(`Invalid university id: ${id}`);
   return path.join(rootDir, "data", "catalogs", id);
@@ -34,7 +49,7 @@ export async function readOptionalJson(filePath: string): Promise<unknown> {
 
 export function findUniversity(universities: UniversityDirectoryEntry[], id: string): UniversityDirectoryEntry {
   const university = validId(id) && universities.find((entry) => entry.id === id);
-  if (!university) throw new Error(`Unknown university: ${id}`);
+  if (!university) throw new RoadmapReadError("unknown-university", `Unknown university: ${id}`);
   return university;
 }
 
@@ -120,11 +135,16 @@ export async function readReadyRoadmap(
   programId: string,
   rootDir = process.cwd(),
 ): Promise<ProgramRoadmap> {
-  if (!validId(programId)) throw new Error(`Unknown roadmap program: ${programId}`);
+  if (!validId(programId)) throw new RoadmapReadError("unknown-program", `Unknown roadmap program: ${programId}`);
   // Tracked files only: the build ships this roadmap, and git ignores the crawl status (#127).
-  const program = (await readPrograms(university, rootDir))?.programs.find((entry) => entry.id === programId);
-  if (!program) throw new Error(`Unknown roadmap program: ${programId}`);
-  if (program.status !== "ready") throw new Error(`Roadmap is not ready: ${programId} (${program.status})`);
+  const programs = await readPrograms(university, rootDir);
+  // No programs.json: name the missing file, not an unknown program (#136).
+  if (!programs && crawlable(university)) {
+    throw new RoadmapReadError("missing-programs", `Program list is missing: data/catalogs/${university.id}/programs.json`);
+  }
+  const program = programs?.programs.find((entry) => entry.id === programId);
+  if (!program) throw new RoadmapReadError("unknown-program", `Unknown roadmap program: ${programId}`);
+  if (program.status !== "ready") throw new RoadmapReadError("not-ready", `Roadmap is not ready: ${programId} (${program.status})`);
   const roadmap = await readOptionalJson(path.join(universityDir(rootDir, university.id), "roadmaps", `${programId}.json`));
   validateProgramRoadmap(roadmap, university.crawl!.allowedOrigins);
   if (

@@ -6,6 +6,8 @@ import {
   listRoadmapUniversities,
   readProgramDirectory,
   readReadyRoadmap,
+  ROADMAP_READ_ERRORS,
+  RoadmapReadError,
 } from "@/lib/roadmap-reader";
 
 export const runtime = "nodejs";
@@ -29,10 +31,8 @@ function remember(memoKey: string | null, value: unknown) {
 }
 
 function safeReadError(error: unknown): { message: string; status: number } {
+  if (error instanceof RoadmapReadError) return ROADMAP_READ_ERRORS[error.kind];
   const message = error instanceof Error ? error.message : "";
-  if (message.startsWith("Unknown university:")) return { message: "Unknown university.", status: 404 };
-  if (message.startsWith("Unknown roadmap program:")) return { message: "Unknown roadmap program.", status: 404 };
-  if (message.startsWith("Roadmap is not ready:")) return { message: "Roadmap is not ready yet.", status: 503 };
   // The body stays generic. One server log line gives the cause (a file path and its error). Error path only.
   console.error(`/api/roadmaps: ${message || String(error)}`);
   return { message: "Roadmap data is temporarily unavailable.", status: 503 };

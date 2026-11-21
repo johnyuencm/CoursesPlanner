@@ -189,17 +189,21 @@ test("GET /api/roadmaps?university=<id>&program=<id> returns a validated ready r
   });
 });
 
-test("unknown university and program ids are 404, not-ready programs are 503", async () => {
+test("unknown university and program ids are 404, not-ready programs are 503, each with one short text (#136)", async () => {
   await withFixture(async (rootDir) => {
-    const unknownUniversity = await request(rootDir, "?university=does-not-exist");
-    assert.equal(unknownUniversity.status, 404);
-
-    const unknownProgram = await request(rootDir, `?university=${TEST_ID}&program=does-not-exist`);
-    assert.equal(unknownProgram.status, 404);
-
-    const notReady = await request(rootDir, `?university=${TEST_ID}&program=${QUEUED_PROGRAM_ID}`);
-    assert.equal(notReady.status, 503);
-    assert.match((await notReady.json()).error, /not ready/);
+    const answer = async (query: string) => {
+      const response = await request(rootDir, query);
+      return { status: response.status, body: await response.json() };
+    };
+    assert.deepEqual(await answer("?university=does-not-exist"), { status: 404, body: { error: "Unknown university." } });
+    assert.deepEqual(
+      await answer(`?university=${TEST_ID}&program=does-not-exist`),
+      { status: 404, body: { error: "Unknown roadmap program." } },
+    );
+    assert.deepEqual(
+      await answer(`?university=${TEST_ID}&program=${QUEUED_PROGRAM_ID}`),
+      { status: 503, body: { error: "Roadmap is not ready yet." } },
+    );
   });
 });
 
