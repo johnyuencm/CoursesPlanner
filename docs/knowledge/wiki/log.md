@@ -7,3 +7,4 @@
 - 2026-11-20 | root-cause | [[work-lite-2026-11-20-144-planner-cls]] | The board landed above the page text; a 100vh placeholder holds its space (PR #148).
 - 2026-11-20 | decision | [[work-lite-2026-11-20-145-failure-state]] | Failure card: one plain sentence, role=alert, focus to h1 after Try again.
 - 2026-11-21 | root-cause | [[work-lite-2026-11-21-136-roadmap-read-errors]] | Roadmap reads matched message prefixes; now one RoadmapReadError kind maps to status and text.
+- 2026-11-21 | root-cause | [[work-lite-2026-11-21-151-lost-programs-json]] | A lost programs.json read as "queued"; data/published.json now tells lost from not discovered.
