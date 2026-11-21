@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ChangeEvent } from "react";
 import { Download, Upload } from "lucide-react";
 import { canRestorePlanBackup, isCatalogOutage, MAX_PLAN_BACKUP_BYTES, parsePlanBackup, summarizePlan } from "@/lib/plan";
 import type { StudentPlan } from "@/lib/types";
@@ -77,7 +77,8 @@ export function PlanBackup({ keepFocus = false }: { keepFocus?: boolean }) {
   }, [catalogOutage]);
 
   // No scroll: the student keeps the place they scrolled to, as if the old button had moved (#147).
-  useEffect(() => {
+  // A layout effect runs in the commit that removes the old panel, so no frame paints with focus on the body.
+  useLayoutEffect(() => {
     if (keepFocus) downloadButton.current?.focus({ preventScroll: true });
   }, [keepFocus]);
 
