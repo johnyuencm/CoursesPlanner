@@ -226,6 +226,8 @@ test("selector render groups universities, prioritizes ready programs, and expos
 
   const errorMarkup = renderToStaticMarkup(createElement(RoadmapSelectorView, selectorViewProps({ error: "temporary failure" })));
   assert.match(errorMarkup, /Retry loading universities/);
+  // The list failed, so no option has a status label. "Queued ... waiting for crawl" must not sit above the true cause (#151).
+  assert.doesNotMatch(errorMarkup, /Status guide|waiting for crawl/);
 });
 
 test("selector hides the university control when no university has ready data (D1)", () => {
