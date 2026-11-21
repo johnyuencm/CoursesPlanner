@@ -21,9 +21,10 @@
 
 <header class="space-y-2">
   <h1 class="text-2xl font-bold">Architecture pass: roadmap read errors (#136)</h1>
-  <p class="text-sm text-stone-600 dark:text-stone-400">Scope: <code>git diff origin/master...HEAD -- lib app catalog-service tests</code> on branch <code>fix/136-roadmap-read-errors</code> (product head <code>ef98829</code>, review records up to <code>253184f</code>), plus the code that it calls (<code>lib/snapshot-manifest.ts</code>, <code>lib/snapshot-assets.ts</code>, <code>catalog-service/cli.ts</code>, <code>catalog-service/roadmaps.ts</code>, <code>components/roadmap-selector.tsx</code>). Date: 2026-11-21 (UTC). Goal of #136: one typed roadmap read error, and a short true text for each kind.</p>
+  <p class="text-sm text-stone-600 dark:text-stone-400">Scope: <code>git diff origin/master...HEAD -- lib app catalog-service tests</code> on branch <code>fix/136-roadmap-read-errors</code> (product head <code>ef98829</code>, review records up to <code>253184f</code>), plus the code that it calls (<code>lib/snapshot-manifest.ts</code>, <code>lib/snapshot-assets.ts</code>, <code>catalog-service/cli.ts</code>, <code>catalog-service/roadmaps.ts</code>, <code>components/roadmap-selector.tsx</code>). Line numbers are at <code>ef98829</code>. Date: 2026-11-21 (UTC). Goal of #136: one typed roadmap read error, and a short true text for each kind.</p>
   <div id="summary" class="rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 p-4 space-y-1">
-    <p><b>Plan of this pass:</b> build <a class="underline" href="#c1">candidate 1</a> (Strong) and <a class="underline" href="#c2">candidate 2</a> (Worth exploring). Both serve the #136 goal.</p>
+    <p><b>Built in this pass:</b> <a class="underline" href="#c1">candidate 1</a> (Strong, <code>5554eff</code>) and <a class="underline" href="#c2">candidate 2</a> (Worth exploring, <code>21a346a</code>). Both serve the #136 goal.</p>
+    <p><b>Verify at <code>21a346a</code>:</b> <code>npm run typecheck</code> exit 0, <code>npm test</code> 370 pass, 0 fail, <code>npm run build</code> exit 0. See <a class="underline" href="#verify">Verify</a>.</p>
     <p><b>Top recommendation:</b> <a class="underline" href="#c1">candidate 1</a>. See <a class="underline" href="#top">the end</a>.</p>
     <p><b>Leftovers:</b> candidates 3 to 6. See <a class="underline" href="#leftovers">Leftovers</a>.</p>
   </div>
@@ -35,7 +36,7 @@
     <span class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 text-xs font-bold">Strong</span>
     <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
     <span class="px-2 py-0.5 rounded bg-sky-200 text-sky-900 text-xs">serves #136</span>
-    <span id="c1-state" class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">planned</span></div>
+    <span id="c1-state" class="px-2 py-0.5 rounded bg-emerald-700 text-white text-xs">built 5554eff</span></div>
   <p><b>Files:</b> <code>lib/roadmap-reader.ts:20-33</code> (kinds, table, class), <code>app/api/roadmaps/route.ts:33-39</code> (<code>safeReadError</code>), <code>catalog-service/server.ts:6, :102-107</code> (catch), <code>tests/roadmaps-route.test.ts:193-221</code> (parity test).</p>
   <div class="grid md:grid-cols-2 gap-3">
     <div><p class="text-xs uppercase tracking-wider">Before</p>
@@ -47,7 +48,7 @@
   classDef wrong fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
   class B wrong</pre></div>
     <div><p class="text-xs uppercase tracking-wider">After</p>
-<pre class="mermaid">flowchart LR
+<pre class="mermaid">flowchart TB
   R["roadmap reader<br/>RoadmapReadError, kind"] -->|error| F["roadmapReadAnswer<br/>kind: private table<br/>else: log cause, generic 503"]
   F -->|"status, short text"| A["route.ts"]
   F -->|"status, short text"| B["server.ts"]
@@ -57,13 +58,15 @@
   <p><b>Problem:</b> Each HTTP adapter must know the class, the exported table and the rule for other errors. The two copies of that rule differ. The same broken file gives two texts, and the catalog service logs no cause.</p>
   <p><b>Solution:</b> The reader module exports one function: an error in, a status and a short text out. It logs the cause of an error that has no kind. The table becomes private. Both adapters call the function.</p>
   <p><b>Deletion test:</b> Delete <code>safeReadError</code> and the catch mapping in the catalog service. The rule concentrates in one function. Today it is in two places, and they drift.</p>
-  <p class="font-semibold">Evidence: one broken file, two adapters (probe at <code>253184f</code>)</p>
+  <p class="font-semibold">Evidence: one broken file, two adapters (probe before at <code>253184f</code>, after at <code>5554eff</code>)</p>
   <div class="overflow-x-auto"><table class="text-sm">
-    <tr><th>Broken file</th><th><code>/api/roadmaps</code></th><th>Catalog service</th></tr>
-    <tr><td>Roadmap file fails validation</td><td>503 "Roadmap data is temporarily unavailable.", 1 log line</td><td>503 "Catalog service operation failed.", no log line</td></tr>
-    <tr><td>Roadmap file is not JSON</td><td>503 "Roadmap data is temporarily unavailable.", 1 log line</td><td>503 "Catalog service operation failed.", no log line</td></tr>
-    <tr><td>Invalid crawl status (operator view, service only)</td><td>not read (#127)</td><td>503 "Catalog service operation failed.", no log line. The CLI names the file, the service does not.</td></tr>
+    <tr><th>Broken file</th><th><code>/api/roadmaps</code> (no change)</th><th>Catalog service, before</th><th>Catalog service, after</th></tr>
+    <tr><td>Roadmap file fails validation</td><td>503 "Roadmap data is temporarily unavailable.", 1 log line</td><td>503 "Catalog service operation failed.", no log line</td><td>same as the route</td></tr>
+    <tr><td>Roadmap file is not JSON</td><td>503 "Roadmap data is temporarily unavailable.", 1 log line</td><td>503 "Catalog service operation failed.", no log line</td><td>same as the route</td></tr>
+    <tr><td>Invalid crawl status (operator view, service only)</td><td>not read (#127)</td><td>503 "Catalog service operation failed.", no log line</td><td>503 "Roadmap data is temporarily unavailable.", 1 log line: <code>Roadmap read failed: &lt;root&gt;/data/catalogs/northeastern/.roadmap-crawl-status.json: Roadmap crawl status universityId is invalid</code></td></tr>
   </table></div>
+  <p class="text-sm"><b>Built:</b> <code>roadmapReadAnswer()</code> in <code>lib/roadmap-reader.ts</code>. <code>safeReadError</code> is gone from the route. The catch in the catalog service is 2 lines. <code>ROADMAP_READ_ERRORS</code> is no longer exported. The route log prefix is now <code>Roadmap read failed:</code>, not <code>/api/roadmaps:</code>.</p>
+  <p class="text-sm"><b>Test:</b> the #136 parity test adds an error with no kind (a roadmap file that fails validation). Both adapters must give 503 "Roadmap data is temporarily unavailable." and log the cause once each. Red before the change: the service gave "Catalog service operation failed.". Mutation: drop the log line, and the test fails.</p>
   <ul class="list-disc pl-5 text-sm">
     <li>Locality: one answer rule.</li>
     <li>Leverage: one function, two adapters.</li>
@@ -79,7 +82,7 @@
     <span class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 text-xs font-bold">Worth exploring</span>
     <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
     <span class="px-2 py-0.5 rounded bg-sky-200 text-sky-900 text-xs">serves #136</span>
-    <span id="c2-state" class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">planned</span></div>
+    <span id="c2-state" class="px-2 py-0.5 rounded bg-emerald-700 text-white text-xs">built 21a346a</span></div>
   <p><b>Files:</b> <code>lib/snapshot-manifest.ts:64-75</code> (the catch in <code>buildSnapshotAssets</code>), <code>tests/snapshot-manifest.test.ts:66-86</code>. Source: UA low 2.</p>
   <div class="grid md:grid-cols-2 gap-3 text-sm">
     <div class="space-y-2"><p class="text-xs uppercase tracking-wider">Before: <code>npm run build</code>, no <code>programs.json</code></p>
@@ -105,6 +108,8 @@
     <li>The build and the CLI agree.</li>
     <li>Leverage: a third consumer reads the kind.</li>
   </ul>
+  <p class="text-sm"><b>Built:</b> one pass-through line in the catch of <code>buildSnapshotAssets</code>. <b>Test:</b> the #127/#136 test in <code>tests/snapshot-manifest.test.ts</code> asserts the exact build message. Red before the change: the message had the snapshot prefix.</p>
+  <p class="text-sm"><b>Live check at <code>21a346a</code>:</b> <code>vite build</code> in a scratch worktree with <code>programs.json</code> removed. Result: exit 1, "Build failed with 1 error: Program list is missing: data/catalogs/northeastern/programs.json". The worktree is removed.</p>
   <p class="text-sm"><b>Note for #151:</b> an <code>invalid-programs</code> kind is also a program list fault. Add it to this pass-through check.</p>
 </section>
 
@@ -183,8 +188,8 @@
   <h2 class="text-xl font-semibold">Reviewer inputs in this pass</h2>
   <div class="overflow-x-auto"><table class="text-sm">
     <tr><th>Input</th><th>Where</th><th>Result</th><th>Commit</th></tr>
-    <tr><td>UA low 2: the build prefix names a published snapshot</td><td><a class="underline" href="#c2">2</a></td><td>planned</td><td id="in-c2">none yet</td></tr>
-    <tr><td>PM low: the service body for known kinds is now the short text</td><td><a class="underline" href="#c1">1</a></td><td>Kept. Candidate 1 extends the parity to errors with no kind.</td><td id="in-c1">none yet</td></tr>
+    <tr><td>UA low 2: the build prefix names a published snapshot</td><td><a class="underline" href="#c2">2</a></td><td>The build gives "Program list is missing: &lt;path&gt;" with no prefix.</td><td class="whitespace-nowrap"><code>21a346a</code></td></tr>
+    <tr><td>PM low: the service body for known kinds is now the short text</td><td><a class="underline" href="#c1">1</a></td><td>Kept. Candidate 1 extends the parity to errors with no kind.</td><td class="whitespace-nowrap"><code>5554eff</code></td></tr>
     <tr><td>TL low 1: <code>missing-programs</code> is 404, not 503</td><td><a class="underline" href="#c3">3</a></td><td>Kept 404. The reason is in candidate 3.</td><td>none</td></tr>
     <tr><td>UA low 1: the body does not name the folder; no log line for known kinds</td><td><a class="underline" href="#c6">6</a></td><td>Not built. The reason is in candidate 6.</td><td>none</td></tr>
     <tr><td>TL low 2, PM low: no <code>invalid-programs</code> kind</td><td>#151</td><td>Left alone.</td><td>none</td></tr>
@@ -192,8 +197,17 @@
     <tr><td>PM low: Worker CPU checked by reading only</td><td>verify</td><td>Candidate 1 changes only the error path. Candidate 2 runs only in the build.</td><td>none</td></tr>
   </table></div>
   <p class="text-sm"><b>Seams under test:</b> <code>handleRoadmapsRequest</code> and <code>handleCatalogRequest</code> (the two HTTP adapters), <code>buildSnapshotAssets</code> (the build) and <code>runCatalogCli</code> (the CLI). The panel-reviewed tests already use these seams.</p>
-  <p id="verify" class="text-sm"><b>Verify:</b> pending.</p>
-  <p class="text-sm"><b>Not checked:</b> No sub-agent explored the code; one agent did the scan. No live <code>next dev</code> or <code>wrangler dev</code> walk: the tests call the two handlers and the build function directly. The repo has no <code>GLOSSARY.md</code> and no ADRs to check against.</p>
+  <div id="verify" class="text-sm space-y-1">
+    <p><b>Verify at <code>21a346a</code>:</b></p>
+    <div class="overflow-x-auto"><table class="text-sm">
+      <tr><th>Command</th><th>Result</th></tr>
+      <tr><td><code>npm run typecheck</code></td><td>exit 0</td></tr>
+      <tr><td><code>npm test</code></td><td>exit 0, 370 tests, 370 pass, 0 fail. The count does not change: the new asserts are in 2 existing tests.</td></tr>
+      <tr><td><code>npm run build</code></td><td>exit 0, "Build complete.". Working tree clean after the build.</td></tr>
+    </table></div>
+    <p><b>Worker CPU:</b> checked by reading. Candidate 1 changes only the error path of the route: one <code>instanceof</code> and one table read, as before. Candidate 2 runs only in the build.</p>
+  </div>
+  <p class="text-sm"><b>Not checked:</b> No sub-agent explored the code; one agent did the scan. No live <code>next dev</code>, <code>npm run catalog:serve</code> or <code>wrangler dev</code> walk: the tests and the probes call the two handlers directly. The build was run live (candidate 2). The repo has no <code>GLOSSARY.md</code> and no ADRs to check against.</p>
 </section>
 
 <section id="leftovers" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
@@ -210,7 +224,7 @@
 
 <section id="top" class="rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 p-5 space-y-2">
   <h2 class="text-xl font-semibold">Top recommendation</h2>
-  <p><a class="underline" href="#c1">Candidate 1: one answer function for a failed roadmap read.</a> It finishes the design that #136 came from (<code>artifacts/architecture-127-build-tracked-only.html</code>, candidate 2: "one map gives the HTTP status, the public text and the log line"). Both adapters then give the same answer for every failure, and the catalog service logs the cause. #151 then adds a kind in one file.</p>
+  <p><a class="underline" href="#c1">Candidate 1: one answer function for a failed roadmap read</a> (built <code>5554eff</code>). It finishes the design that #136 came from (<code>artifacts/architecture-127-build-tracked-only.html</code>, candidate 2: "one map gives the HTTP status, the public text and the log line"). Both adapters then give the same answer for every failure, and the catalog service logs the cause. #151 then adds a kind in one file.</p>
 </section>
 
 </main>
