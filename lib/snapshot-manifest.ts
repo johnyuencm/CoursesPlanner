@@ -71,8 +71,8 @@ export async function buildSnapshotAssets(rootDir: string): Promise<Map<string, 
         programFiles.set(universityId, await readPrograms(university, rootDir));
       }
     } catch (error) {
-      // A missing program list is not the fault of this snapshot. The message names the file (#136).
-      if (error instanceof RoadmapReadError && error.kind === "missing-programs") throw error;
+      // A missing or invalid program list is not the fault of this snapshot. The message names the file (#136, #151).
+      if (error instanceof RoadmapReadError && (error.kind === "missing-programs" || error.kind === "invalid-programs")) throw error;
       throw new Error(`Published snapshot ${key} is missing or invalid: ${(error as Error).message}`);
     }
   }

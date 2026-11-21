@@ -87,6 +87,19 @@ test("a roadmap read without programs.json names the missing file, also when the
   await assert.rejects(buildSnapshotAssets(root), { message: "Program list is missing: data/catalogs/northeastern/programs.json" });
 });
 
+test("an invalid programs.json names the file in the CLI and the build, with no snapshot prefix (#151)", async (t) => {
+  const root = await publishedCopy();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, PROGRAMS), "{ not json");
+  const message = /^Program list is invalid: data\/catalogs\/northeastern\/programs\.json: /;
+  await assert.rejects(
+    runCatalogCli([`--roadmap=${KEY.split("/")[1]}`, "--university=northeastern"], { rootDir: root, write: () => {} }),
+    { message },
+  );
+  // The program list is at fault, not one published snapshot.
+  await assert.rejects(buildSnapshotAssets(root), { message });
+});
+
 test("a lost programs.json of a published university is missing on every app endpoint, not queued (#151)", async (t) => {
   const root = await publishedCopy();
   t.after(() => rm(root, { recursive: true, force: true }));
