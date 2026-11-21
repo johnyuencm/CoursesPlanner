@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { validateCatalog } from "../lib/catalog";
-import { ROADMAP_READ_ERRORS, RoadmapReadError } from "../lib/roadmap-reader";
+import { roadmapReadAnswer } from "../lib/roadmap-reader";
 import type { Catalog } from "../lib/types";
 import { defaultCatalogId, enabledSources, findSource, loadRegistry, loadUniversityDirectory } from "./registry";
 import { refreshSource, storagePaths } from "./refresh";
@@ -100,9 +100,7 @@ export async function handleCatalogRequest(
       const directory = await readCrawlDirectory(university, context.rootDir);
       return json(universityMatch[2] === "status" ? directory.status : directory);
     } catch (error) {
-      if (!(error instanceof RoadmapReadError)) return errorBody(error, 503);
-      // The same status and short text as /api/roadmaps (#136).
-      const { status, message } = ROADMAP_READ_ERRORS[error.kind];
+      const { status, message } = roadmapReadAnswer(error);
       return json({ error: message }, status);
     }
   }

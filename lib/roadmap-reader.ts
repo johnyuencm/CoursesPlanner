@@ -18,7 +18,7 @@ const crawlable = (university: UniversityDirectoryEntry) =>
   university.support === "supported" && university.enabled && university.crawl !== undefined;
 
 /** The HTTP status and the short public message of each kind of roadmap read error (#136). */
-export const ROADMAP_READ_ERRORS = {
+const ROADMAP_READ_ERRORS = {
   "unknown-university": { status: 404, message: "Unknown university." },
   "unknown-program": { status: 404, message: "Unknown roadmap program." },
   "missing-programs": { status: 404, message: "The program list (programs.json) is missing." },
@@ -30,6 +30,15 @@ export class RoadmapReadError extends Error {
   constructor(readonly kind: keyof typeof ROADMAP_READ_ERRORS, message: string) {
     super(message);
   }
+}
+
+/** The HTTP answer to a failed roadmap read: the same on /api/roadmaps and the catalog service (#136). */
+export function roadmapReadAnswer(error: unknown): { status: number; message: string } {
+  if (error instanceof RoadmapReadError) return ROADMAP_READ_ERRORS[error.kind];
+  const message = error instanceof Error ? error.message : "";
+  // The body stays generic. One server log line gives the cause (a file path and its error). Error path only.
+  console.error(`Roadmap read failed: ${message || String(error)}`);
+  return { status: 503, message: "Roadmap data is temporarily unavailable." };
 }
 
 export function universityDir(rootDir: string, id: string): string {

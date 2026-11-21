@@ -190,7 +190,7 @@ test("GET /api/roadmaps?university=<id>&program=<id> returns a validated ready r
   });
 });
 
-test("each roadmap read error has one status and one short text, on the route and the catalog service (#136)", async () => {
+test("each roadmap read error has one status and one short text, on the route and the catalog service (#136)", async (t) => {
   await withFixture(async (rootDir) => {
     const context = {
       sources: [],
@@ -212,6 +212,11 @@ test("each roadmap read error has one status and one short text, on the route an
     assert.deepEqual(await answer("does-not-exist", READY_PROGRAM_ID), { status: 404, body: { error: "Unknown university." } });
     assert.deepEqual(await answer(TEST_ID, "does-not-exist"), { status: 404, body: { error: "Unknown roadmap program." } });
     assert.deepEqual(await answer(TEST_ID, QUEUED_PROGRAM_ID), { status: 503, body: { error: "Roadmap is not ready yet." } });
+    // An error with no kind: the same generic 503, and each one logs the cause.
+    const log = t.mock.method(console, "error", () => {});
+    await writeFile(path.join(rootDir, "data", "catalogs", TEST_ID, "roadmaps", `${READY_PROGRAM_ID}.json`), JSON.stringify({ programId: "x" }));
+    assert.deepEqual(await answer(TEST_ID, READY_PROGRAM_ID), { status: 503, body: { error: "Roadmap data is temporarily unavailable." } });
+    assert.deepEqual(log.mock.calls.map((call) => /Program roadmap/.test(String(call.arguments[0]))), [true, true]);
     await rm(path.join(rootDir, "data", "catalogs", TEST_ID, "programs.json"));
     assert.deepEqual(
       await answer(TEST_ID, READY_PROGRAM_ID),
