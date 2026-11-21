@@ -83,6 +83,8 @@ test("a roadmap read without programs.json names the missing file, also when the
     runCatalogCli([`--roadmap=${program}`, "--university=northeastern"], { rootDir: root, write: () => {} }),
     { message: "Program list is missing: data/catalogs/northeastern/programs.json" },
   );
+  // The build names the same file. No published snapshot is at fault.
+  await assert.rejects(buildSnapshotAssets(root), { message: "Program list is missing: data/catalogs/northeastern/programs.json" });
 });
 
 test("the app reads only tracked files: with local crawl output, each roadmap API answer is as from a clean copy (#127)", async (t) => {
