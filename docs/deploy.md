@@ -343,6 +343,6 @@ Over the daily request limit, Cloudflare returns errors until the next day. It d
 
 ### Static 404 for unknown program paths (issue #110, third step)
 
-`worker.ts` now answers an unknown program or course path with a static 404 string (`lib/not-found.ts`). It does not call vinext. The text equals `app/global-not-found.tsx`. A route miss such as `/nothing` still uses `global-not-found`.
+`worker.ts` now answers an unknown program or course path with a static 404 string (`lib/not-found.ts`). It does not call vinext. The words equal `app/global-not-found.tsx`; the static page has inline style only and does not load `globals.css`. It sets `cache-control: public, max-age=300`, so a browser can show a stale 404 for 5 minutes after a deploy adds that page. A route miss such as `/nothing` still uses `global-not-found`.
 
 Live CPU numbers are not measured yet. Deploy, then run the `wrangler tail` steps above (40 warm rounds). Pass: unknown-course 404 p50 6 ms or lower, course page p50 4 ms or lower. Record the Worker version and the table here.
