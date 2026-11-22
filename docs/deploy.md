@@ -217,7 +217,7 @@ Fix. The build makes the page list. `worker.ts` reads it with no I/O and no `awa
 vite build: programPageIndex() (lib/snapshot-manifest.ts)
   -> virtual:program-pages: JSON array of page paths (125 paths, about 8 KB)
 worker.ts at isolate start: new Set(pagePaths)
-request: isUnknownProgramPath(pathname, pages) -> /__unknown-page or vinext
+request: isUnknownProgramPath(pathname, pages) -> static 404 (lib/not-found.ts) or vinext
 ```
 
 - The list has every page of every catalog key in `CATALOGS`. More published programs only make the list longer.
@@ -340,3 +340,9 @@ Send requests in a second terminal, then read `cpuTime` for each event.
 | 20,000 static asset files | 839 files (5 programs). Each Map-tier program adds about 130 files (HTML and RSC per page) |
 
 Over the daily request limit, Cloudflare returns errors until the next day. It does not bill. Do not turn on Workers Paid, Cloudflare Images or other paid add-ons without the owner's explicit yes.
+
+### Static 404 for unknown program paths (issue #110, third step)
+
+`worker.ts` now answers an unknown program or course path with a static 404 string (`lib/not-found.ts`). It does not call vinext. The words equal `app/global-not-found.tsx`; the static page has inline style only and does not load `globals.css`. It sets `cache-control: public, max-age=300`, so a browser can show a stale 404 for 5 minutes after a deploy adds that page. A route miss such as `/nothing` still uses `global-not-found`.
+
+Live CPU numbers are not measured yet. Deploy, then run the `wrangler tail` steps above (40 warm rounds). Pass: unknown-course 404 p50 6 ms or lower, course page p50 4 ms or lower. Record the Worker version and the table here.

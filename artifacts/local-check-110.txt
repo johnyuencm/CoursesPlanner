@@ -1,0 +1,6 @@
+Local check (wrangler dev on dist build, 2026-11-22), not CPU:
+<program>/courses/zz-9999 404 481 bytes (static)
+/zz/yy 404 481 bytes (static)
+<program>/courses/cs-5800 200 31137 bytes
+/nothing 404 6694 bytes (global-not-found)
+npm test: 371 pass, exit 0. npm run typecheck exit 0. npm run build exit 0.
