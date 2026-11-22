@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture pass #151</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; background: #fafaf9; color: #1c1917; }
+  @media (prefers-color-scheme: dark) { body { background: #1c1917; color: #f5f5f4; } }
+  pre.mermaid { background: transparent; overflow-x: auto; }
+  code { overflow-wrap: anywhere; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border-bottom: 1px solid rgba(120, 113, 108, .35); padding: .35rem .5rem; text-align: left; vertical-align: top; }
+</style>
+</head>
+<body>
+<main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+<header class="space-y-2">
+  <h1 class="text-2xl font-bold">Architecture pass: lost programs.json (#151)</h1>
+  <p class="text-sm text-stone-600 dark:text-stone-400">Scope: <code>git diff origin/fix/136-roadmap-read-errors...HEAD -- lib app catalog-service components tests</code> on branch <code>fix/151-lost-programs-json</code> (product head <code>aeda4f4</code>, review records up to <code>690a965</code>), plus the code that it calls (<code>lib/snapshot-assets.ts</code>, <code>lib/snapshot-manifest.ts</code>, <code>app/api/roadmaps/route.ts</code>, <code>catalog-service/server.ts</code>, <code>catalog-service/roadmaps.ts</code>, <code>catalog-service/cli.ts</code>, <code>components/roadmap-selector.tsx</code>, <code>lib/roadmaps.ts</code>). Line numbers are at <code>8609cc3</code>. Date: 2026-11-21 (UTC). Goal of #151: a broken local program list tells the true cause.</p>
+  <div id="summary" class="rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 p-4 space-y-1">
+    <p><b>Fix-now (panel):</b> M1 <code>a3ed193</code> and TL L3 <code>cddb63a</code>. <b>Found in the scan:</b> a review commit reverted the Worker asset body guard. <code>bf49eac</code> restores it. See <a class="underline" href="#fixnow">Fix-now</a>.</p>
+    <p><b>Built in this pass:</b> <a class="underline" href="#c1">candidate 1</a> (Strong, <code>48d5910</code>) and <a class="underline" href="#c2">candidate 2</a> (Worth exploring, <code>8609cc3</code>). Both serve #151.</p>
+    <p><b>Verify at <code>8609cc3</code>:</b> <code>npm run typecheck</code> exit 0, <code>npm test</code> 373 pass, 0 fail, <code>npm run build</code> exit 0. Live <code>next dev</code> walk: the log lines and the selector match the tests. See <a class="underline" href="#verify">Verify</a>.</p>
+    <p><b>Top recommendation:</b> <a class="underline" href="#c1">candidate 1</a>. See <a class="underline" href="#top">the end</a>.</p>
+    <p><b>Leftovers:</b> candidates 3 to 6 and four reviewer lows. See <a class="underline" href="#leftovers">Leftovers</a>.</p>
+  </div>
+  <p class="text-xs text-stone-500 dark:text-stone-400">Legend: box = module or function, red node = wrong or missing answer, dashed arrow = a rule that another module keeps, arrow label = what moves. Ratings: Strong, Worth exploring, Speculative. Badge "serves #151" = the candidate serves the goal of #151.</p>
+</header>
+
+<section id="fixnow" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">Fix-now: what the panel asked, and one regression</h2>
+    <span class="px-2 py-0.5 rounded bg-emerald-700 text-white text-xs">built bf49eac, a3ed193, cddb63a</span></div>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Item</th><th>Before</th><th>After</th><th>Commit</th></tr>
+    <tr><td>M1 (all three seats): the lost-list 404 names no university and writes no log line</td><td>404 <code>{"error":"The program list (programs.json) is missing."}</code>. No log line.</td><td>Same body. One log line per request: <code>Roadmap read failed: Program list is missing: data/catalogs/&lt;id&gt;/programs.json</code>. The queued state writes no line.</td><td class="whitespace-nowrap"><code>a3ed193</code></td></tr>
+    <tr><td>TL L3: a corrupt <code>data/published.json</code></td><td>503. Log: <code>Roadmap read failed: Expected property name or '}' in JSON at position 2 (line 1 column 3)</code>, with no file. A file that is not an array: 200 "queued", which is false.</td><td>503 "Roadmap data is temporarily unavailable.". Log: <code>Roadmap read failed: data/published.json: &lt;cause&gt;</code>, or <code>Roadmap read failed: data/published.json must be a JSON array of catalog keys</code> (the build text).</td><td class="whitespace-nowrap"><code>cddb63a</code></td></tr>
+    <tr><td>Scan: review commit <code>2872b49</code> (message: docs only) also put <code>lib/snapshot-assets.ts</code> back to the base version</td><td>No guard: an asset body that is not JSON gives a <code>SyntaxError</code>. The panel reviewed <code>aeda4f4</code>, which had the guard.</td><td>The file is as at <code>aeda4f4</code> again. #155 owns its test. <a class="underline" href="#c1">Candidate 1</a> removes the reader's need for it.</td><td class="whitespace-nowrap"><code>bf49eac</code></td></tr>
+  </table></div>
+  <div class="rounded border border-sky-400 p-3 text-sm space-y-1">
+    <p><b>M1 decision:</b> the log line only. The HTTP body stays the one short text of the kind.</p>
+    <ul class="list-disc pl-5">
+      <li>The user advocate judged the corrupt case actionable in dev, because its log line gives the path. The lost case now matches it.</li>
+      <li>The log gives the full path. A path is more exact than a university id.</li>
+      <li>A university id in the body is safe: the client sent it, or the list already shows it. But it changes the error and the answer interface for a dev-only gain. #136 fixed one short text per kind.</li>
+    </ul>
+  </div>
+  <p class="text-sm"><b>Tests (red before, green after):</b> M1: the #136 parity test (<code>tests/roadmaps-route.test.ts:234-244</code>, route and catalog service), the lost-list test (<code>tests/snapshot-manifest.test.ts:105</code>, list and <code>?university=</code>, 2 lines, queued adds none) and the #136 missing-file test (<code>:66</code>, the route line). 3 tests fail without the change. L3: a new test (<code>:132</code>, 2 contents). It fails without the change.</p>
+</section>
+
+<section id="c1" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">1. The program list read owns its local-file rule</h2>
+    <span class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 text-xs font-bold">Strong</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
+    <span class="px-2 py-0.5 rounded bg-sky-200 text-sky-900 text-xs">serves #151</span>
+    <span id="c1-state" class="px-2 py-0.5 rounded bg-emerald-700 text-white text-xs">built 48d5910</span></div>
+  <p><b>Files:</b> <code>lib/roadmap-reader.ts:55-71</code> (<code>LocalJsonError</code>, <code>readOptionalJson</code>), <code>:114-118</code> (<code>readPrograms</code>), <code>lib/snapshot-assets.ts:31-36</code> (the guard). Source: TL L2, PM L2 and the scan finding.</p>
+  <div class="grid md:grid-cols-2 gap-3">
+    <div><p class="text-xs uppercase tracking-wider">Before</p>
+<pre class="mermaid">flowchart LR
+  P["readPrograms<br/>any SyntaxError: invalid-programs"] -->|reads| R["readOptionalJson"]
+  R -->|disk file| D["JSON.parse"]
+  R -->|ENOENT| S["snapshotAsset<br/>Worker asset"]
+  G["guard in snapshot-assets.ts<br/>bad body: plain Error"] -.->|keeps the rule true| P
+  X["2872b49 removed the guard<br/>no test failed"] -.-> G
+  classDef wrong fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+  class X wrong</pre></div>
+    <div><p class="text-xs uppercase tracking-wider">After</p>
+<pre class="mermaid">flowchart LR
+  R["readOptionalJson<br/>picks the source"] -->|"disk file not JSON: LocalJsonError"| P["readPrograms"]
+  R -->|"asset error, guard or not"| P
+  P -->|LocalJsonError| I["invalid-programs<br/>503 + log"]
+  P -->|other error| G["generic 503 + log"]</pre></div>
+  </div>
+  <p><b>Problem:</b> <code>readPrograms</code> mapped every <code>SyntaxError</code> to <code>invalid-programs</code>. That was true only while another module turned a bad asset body into a plain <code>Error</code>. A review commit removed that guard. No test failed, because no test reaches the asset path.</p>
+  <p><b>Solution:</b> <code>readOptionalJson</code> is the one function that picks the source. It now throws a private <code>SyntaxError</code> subclass, <code>LocalJsonError</code>, for a disk file only. <code>readPrograms</code> maps only that class. The guard stays, because it puts the asset name in the log.</p>
+  <p class="font-semibold">Evidence: the asset body is HTML (as <code>vite dev</code> serves it), and no local <code>programs.json</code> exists</p>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Probe state</th><th>What <code>readPrograms</code> throws</th><th>Answer</th></tr>
+    <tr><td>A: <code>48d5910</code>, guard present</td><td><code>Error</code>, no kind: "Snapshot asset manifest.json is not JSON: Unexpected token '&lt;' …"</td><td>generic 503</td></tr>
+    <tr><td>B: <code>48d5910</code>, guard removed</td><td><code>SyntaxError</code>, no kind</td><td>generic 503</td></tr>
+    <tr><td>C: reader at <code>cddb63a</code>, guard removed (the branch at <code>690a965</code>)</td><td><code>RoadmapReadError</code> <code>invalid-programs</code>: "Program list is invalid: data/catalogs/northeastern/programs.json: Unexpected token '&lt;' …"</td><td class="text-red-700 dark:text-red-400">false: the file does not exist</td></tr>
+  </table></div>
+  <p class="text-sm"><b>Probe:</b> Node, in a throwaway worktree. A loader hook served <code>virtual:published-snapshots</code> as a fake ASSETS binding that answers HTML. Not committed: #155 owns the Worker test.</p>
+  <p class="text-sm"><b>Reach:</b> on today's routes the false text did not reach a client. <code>handleRoadmapsRequest</code> reads <code>universities.json</code> through the same asset path first (<code>app/api/roadmaps/route.ts:68</code>), and that read fails first. The rule held by the order of reads, not by design.</p>
+  <p><b>Deletion test:</b> Delete the guard. The reader stays true. Only the asset name leaves the log. The rule concentrates in <code>readOptionalJson</code>.</p>
+  <p class="text-sm"><b>Test:</b> The #136 parity test (3 bad contents, 2 adapters) and the #151 CLI and build test cover the disk path. Mutation: throw the plain <code>SyntaxError</code> again, and both tests fail. Messages and error names do not change: the subclass keeps the name <code>SyntaxError</code>.</p>
+  <ul class="list-disc pl-5 text-sm">
+    <li>Locality: the source rule sits where the source is picked.</li>
+    <li>Interface unchanged: the class is private.</li>
+    <li>The reader no longer needs the guard.</li>
+    <li>Existing tests pin the rule.</li>
+  </ul>
+</section>
+
+<section id="c2" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">2. The status guide shows only when the university list has options</h2>
+    <span class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 text-xs font-bold">Worth exploring</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
+    <span class="px-2 py-0.5 rounded bg-sky-200 text-sky-900 text-xs">serves #151</span>
+    <span id="c2-state" class="px-2 py-0.5 rounded bg-emerald-700 text-white text-xs">built 8609cc3</span></div>
+  <p><b>Files:</b> <code>components/roadmap-selector.tsx:98-106</code>, <code>tests/roadmaps-selector.test.ts:229-230</code>. Source: UA L3, PM J2.</p>
+  <div class="grid md:grid-cols-2 gap-3 text-sm">
+    <div class="space-y-2"><p class="text-xs uppercase tracking-wider">Before: the selector at 390 px, <code>programs.json</code> lost</p>
+      <div class="border border-red-500 rounded p-2 text-xs"><b>Status guide</b> · <b>Ready</b> can open · <span class="text-red-600 dark:text-red-400"><b>Queued</b> waiting for crawl</span> · <b>Unverified</b> needs review · <b>Unsupported</b> has no supported roadmap · <b>Unavailable</b> failed to load</div>
+      <div class="border rounded p-2 text-xs">University: Current program (default)</div>
+      <div class="border rounded p-2 text-xs">Unable to load universities: The program list (programs.json) is missing. <u>Retry loading universities</u></div></div>
+    <div class="space-y-2"><p class="text-xs uppercase tracking-wider">After</p>
+      <div class="border rounded p-2 text-xs">University: Current program (default)</div>
+      <div class="border border-emerald-600 rounded p-2 text-xs">Unable to load universities: The program list (programs.json) is missing. <u>Retry loading universities</u></div></div>
+  </div>
+  <p><b>Problem:</b> The list failed, so no option has a status label. The guide still said "Queued waiting for crawl" above the true cause. Issue #151 asks that a lost <code>programs.json</code> does not show "Queued ... waiting for crawl".</p>
+  <p><b>Solution:</b> Render the guide only when <code>universities.length &gt; 0</code>.</p>
+  <p class="text-sm"><b>Why not <code>!error</code>:</b> With <code>!error</code>, a retry shows the guide while the list loads and hides it on the error. The status line and the retry button then move down and up. With the length rule, the guide stays hidden in both states.</p>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Live check (<code>next dev</code>, 390 px, <code>programs.json</code> removed)</th><th>Result</th></tr>
+    <tr><td>Status line</td><td>"Unable to load universities: The program list (programs.json) is missing. Retry loading universities"</td></tr>
+    <tr><td>Status guide, "waiting for crawl"</td><td>not in the page</td></tr>
+    <tr><td>Guide paragraph (<code>#roadmap-selector-guide</code>, read by <code>aria-describedby</code>)</td><td>present</td></tr>
+    <tr><td>Retry</td><td>"Loading universities…", then the same error. The guide never showed. The status line top stayed at 368 px.</td></tr>
+    <tr><td>Horizontal scroll</td><td>none</td></tr>
+    <tr><td>Files restored, panel opened</td><td>41 options. The status guide shows.</td></tr>
+  </table></div>
+  <p class="text-sm"><b>Test:</b> the error render must not contain "Status guide" or "waiting for crawl". It failed before the change.</p>
+  <ul class="list-disc pl-5 text-sm">
+    <li>The failed state shows one cause.</li>
+    <li>No jump on retry.</li>
+    <li>The aria reference stays valid.</li>
+  </ul>
+</section>
+
+<section id="c3" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-3">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">3. One lost list fails the whole university list</h2>
+    <span class="px-2 py-0.5 rounded bg-stone-300 text-stone-800 text-xs font-bold">Speculative</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
+    <span class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">not built</span></div>
+  <p><b>Files:</b> <code>lib/roadmap-reader.ts:174-183</code> (<code>listRoadmapUniversities</code>, <code>Promise.all</code>), <code>components/roadmap-selector.tsx:84</code>, <code>lib/roadmaps.ts:29-32</code>, <code>catalog-service/cli.ts:52</code>. Source: UA L2, TL question 2, PM J1.</p>
+  <div class="grid md:grid-cols-2 gap-3">
+    <div><p class="text-xs uppercase tracking-wider">Today</p>
+<pre class="mermaid">flowchart LR
+  L["listRoadmapUniversities<br/>Promise.all"] -->|1 throw| E["404 for all 40"]
+  E -->|error text| S["selector shows<br/>the true cause"]</pre></div>
+    <div><p class="text-xs uppercase tracking-wider">Idea, with today's data</p>
+<pre class="mermaid">flowchart LR
+  L["catch per university"] -->|"status: error"| U["Unavailable row"]
+  U -->|"no selectable university"| H["selector hides itself"]
+  H --> N["no cause on screen"]
+  classDef wrong fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+  class N wrong</pre></div>
+  </div>
+  <p><b>Idea:</b> Catch the program list error per university. Give that university the status "error" ("Unavailable").</p>
+  <p class="text-sm"><b>Why not:</b></p>
+  <ul class="list-disc pl-5 text-sm">
+    <li>Only northeastern is crawlable. With "error", no university is selectable, so the selector hides itself (<code>components/roadmap-selector.tsx:84</code>). The true cause leaves the screen. #151 removed that hidden state.</li>
+    <li>The CLI <code>--list-universities</code> uses the same function. Its test wants an invalid crawl status to fail the command and name the file (<code>tests/snapshot-manifest.test.ts:187</code>).</li>
+    <li>The state is dev-only. The build blocks it.</li>
+  </ul>
+  <p class="text-sm"><b>Revisit:</b> when a second university has a published list. The row must then also show the reason.</p>
+</section>
+
+<section id="c4" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">4. One reader for the published allowlist</h2>
+    <span class="px-2 py-0.5 rounded bg-stone-300 text-stone-800 text-xs font-bold">Speculative</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">local-substitutable</span>
+    <span class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">not built: not #151</span></div>
+  <p><b>Files:</b> <code>lib/roadmap-reader.ts:140-147</code> (<code>isPublished</code>), <code>lib/snapshot-manifest.ts:14, :54-62</code>.</p>
+  <p><b>Problem:</b> Two modules parse <code>data/published.json</code>, with two sets of rules. After <code>cddb63a</code>, the app names the file. For a corrupt file, the build still gives a raw <code>SyntaxError</code> with no file name.</p>
+  <p class="text-sm"><b>Why not:</b> The gain is the build text, not the program list. So it does not serve #151. A shared reader must live in the reader module: the manifest imports the reader, and the other way pulls build code into the Worker bundle.</p>
+  <p class="text-sm"><b>Leftover:</b> the build twin of TL L3 is a one-line wrap in <code>buildSnapshotAssets</code>.</p>
+</section>
+
+<section id="c5" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">5. The program list kinds are named in two modules</h2>
+    <span class="px-2 py-0.5 rounded bg-stone-300 text-stone-800 text-xs font-bold">Speculative</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">in-process</span>
+    <span class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">not built</span></div>
+  <p><b>Files:</b> <code>lib/roadmap-reader.ts:38-45</code> (the log rule), <code>lib/snapshot-manifest.ts:75</code> (the build pass-through).</p>
+  <p><b>Problem:</b> Both places list <code>missing-programs</code> and <code>invalid-programs</code>. One shared flag looks smaller.</p>
+  <p class="text-sm"><b>Why not:</b> The two rules match only today. One rule is "a fault writes a log line". The other is "not the fault of this snapshot". A future roadmap file kind would log but keep the snapshot prefix. One flag would be wrong for it.</p>
+</section>
+
+<section id="c6" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
+  <div class="flex flex-wrap items-center gap-2"><h2 class="text-xl font-semibold">6. <code>readPrograms</code> tells its states apart (#136 candidate 4)</h2>
+    <span class="px-2 py-0.5 rounded bg-stone-300 text-stone-800 text-xs font-bold">Speculative</span>
+    <span class="px-2 py-0.5 rounded bg-stone-200 text-stone-700 text-xs">local-substitutable</span>
+    <span class="px-2 py-0.5 rounded bg-stone-500 text-white text-xs">closed: #151 decided the shape</span></div>
+  <p><b>Files:</b> <code>lib/roadmap-reader.ts:114-132</code>, <code>:159-171</code>, <code>:185-194</code>, <code>catalog-service/roadmaps.ts:53-57</code>.</p>
+  <p class="text-sm"><b>Why not:</b> <code>readPrograms</code> keeps "file or undefined". The crawler (<code>readState</code>) must read a missing list as "discover again" after a reset. The app read decides "lost or queued" with the allowlist. A roadmap read for a crawlable university with no list is always "missing" (#136). Each caller asks a different question, so no shared deepening is left.</p>
+</section>
+
+<section class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
+  <h2 class="text-xl font-semibold">Reviewer inputs in this pass</h2>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Input</th><th>Where</th><th>Result</th><th>Commit</th></tr>
+    <tr><td>M1 (TL, PM, UA): the lost-list error names no university, no log line</td><td><a class="underline" href="#fixnow">fix-now</a></td><td>One log line with the full path. The body is unchanged.</td><td class="whitespace-nowrap"><code>a3ed193</code></td></tr>
+    <tr><td>TL L3, PM L3: corrupt <code>data/published.json</code></td><td><a class="underline" href="#fixnow">fix-now</a></td><td>The log names the file. A file that is not an array is a 503 too, not "queued".</td><td class="whitespace-nowrap"><code>cddb63a</code></td></tr>
+    <tr><td>TL L2, PM L2: the Worker guard has no test</td><td><a class="underline" href="#c1">1</a></td><td>Guard restored. The reader no longer depends on it. The test stays with #155.</td><td class="whitespace-nowrap"><code>bf49eac</code>, <code>48d5910</code></td></tr>
+    <tr><td>UA L3, PM J2: the guide next to the error</td><td><a class="underline" href="#c2">2</a></td><td>Hidden while the university list has no options.</td><td class="whitespace-nowrap"><code>8609cc3</code></td></tr>
+    <tr><td>UA L2, TL question 2, PM J1: one lost file hides all universities</td><td><a class="underline" href="#c3">3</a></td><td>Not built. The reason is in candidate 3.</td><td>none</td></tr>
+    <tr><td>TL L1, PM L1, UA L6: 404 on the list endpoint</td><td>leftovers</td><td>Kept: one status per kind (#136 candidate 3). 404 is true for <code>&amp;program=</code> in production.</td><td>none</td></tr>
+    <tr><td>UA L4: focus goes to <code>&lt;body&gt;</code> after retry</td><td>leftovers</td><td>Not built: a selector mechanic from before #151.</td><td>none</td></tr>
+    <tr><td>UA L5: a schema failure names a program, not the field</td><td>leftovers</td><td>Not built: validator text from before #151 (<code>lib/catalog.ts:520</code>).</td><td>none</td></tr>
+    <tr><td>UA L1, PM M2, TL L4: CLI <code>--list-*</code> and an unpublished crawl say "queued"</td><td>#155</td><td>Not built here.</td><td>none</td></tr>
+  </table></div>
+  <p class="text-sm"><b>Seams under test:</b> <code>handleRoadmapsRequest</code> and <code>handleCatalogRequest</code> (the two HTTP adapters), <code>buildSnapshotAssets</code> (the build), <code>runCatalogCli</code> (the CLI) and <code>RoadmapSelectorView</code> (the selector view). The panel-reviewed tests already use these seams.</p>
+  <div id="verify" class="text-sm space-y-2">
+    <p><b>Verify at <code>8609cc3</code>:</b></p>
+    <div class="overflow-x-auto"><table class="text-sm">
+      <tr><th>Command</th><th>Result</th></tr>
+      <tr><td><code>npm run typecheck</code></td><td>exit 0</td></tr>
+      <tr><td><code>npm test</code></td><td>exit 0, 373 tests, 373 pass, 0 fail. 372 before: one new test (a broken <code>data/published.json</code>). The other asserts are in existing tests.</td></tr>
+      <tr><td><code>npm run build</code></td><td>exit 0, "Build complete.". Working tree clean after the build.</td></tr>
+    </table></div>
+    <p><b>Live walk:</b> <code>next dev</code> (Turbopack) in a throwaway worktree <code>.worktrees/live151</code> at <code>8609cc3</code>. The worktree is removed. Nothing was deployed.</p>
+    <div class="overflow-x-auto"><table class="text-sm">
+      <tr><th>State</th><th>Request</th><th>Answer</th><th>Server log line</th></tr>
+      <tr><td><code>programs.json</code> removed</td><td><code>GET /api/roadmaps</code></td><td>404 "The program list (programs.json) is missing."</td><td><code>Roadmap read failed: Program list is missing: data/catalogs/northeastern/programs.json</code></td></tr>
+      <tr><td>same</td><td><code>?university=northeastern</code></td><td>404, same text</td><td>same line</td></tr>
+      <tr><td>same</td><td><code>&amp;program=computer-science-mscs-sea-8b0d00dbda</code></td><td>404, same text</td><td>same line</td></tr>
+      <tr><td>+ <code>data/published.json</code> = <code>{ not json</code></td><td><code>GET /api/roadmaps</code></td><td>503 "Roadmap data is temporarily unavailable."</td><td><code>Roadmap read failed: data/published.json: Expected property name or '}' in JSON at position 2 (line 1 column 3)</code></td></tr>
+      <tr><td>+ <code>data/published.json</code> = <code>{}</code></td><td><code>GET /api/roadmaps</code></td><td>503, same text</td><td><code>Roadmap read failed: data/published.json must be a JSON array of catalog keys</code></td></tr>
+      <tr><td>files restored</td><td><code>GET /api/roadmaps</code></td><td>200</td><td>none</td></tr>
+    </table></div>
+    <p><b>Worker CPU:</b> checked by reading. M1 adds one comparison on the error path. <code>isPublished</code> runs only when a crawlable university has no list, and the Worker always has the published lists. Candidate 1 splits one <code>try</code> block in two: the read and the parse are the same. Candidate 2 is one length check in the view.</p>
+  </div>
+  <p class="text-sm"><b>Not checked:</b> No sub-agent explored the code: this session has no sub-agent tool, so one agent did the scan. No <code>npm run dev:vinext</code> or <code>wrangler dev</code> walk: the asset path was probed in Node (candidate 1). The repo has no <code>GLOSSARY.md</code> and no <code>docs/adr/</code>.</p>
+  <p class="text-sm"><b>Note for a live walk in a worktree:</b> Turbopack refuses a <code>node_modules</code> symlink that leaves the worktree. A hard-link copy (<code>cp -al node_modules &lt;worktree&gt;/node_modules</code>) works. On this machine, first delete the copied self-link <code>&lt;worktree&gt;/node_modules/node_modules</code>, or Turbopack fails again.</p>
+</section>
+
+<section id="leftovers" class="bg-white dark:bg-stone-800 rounded-xl shadow p-5 space-y-2">
+  <h2 class="text-xl font-semibold">Leftovers</h2>
+  <div class="overflow-x-auto"><table class="text-sm">
+    <tr><th>Candidate or input</th><th>Rating</th><th>Why skipped</th><th>Owner</th></tr>
+    <tr><td><a class="underline" href="#c3">3. One lost list fails the whole list</a></td><td>Speculative</td><td>It hides the true cause today. The CLI shares the function.</td><td>review recommendation</td></tr>
+    <tr><td><a class="underline" href="#c4">4. One allowlist reader</a>, and the build twin of TL L3</td><td>Speculative</td><td>Build text, not the program list.</td><td>follow-up (not filed)</td></tr>
+    <tr><td><a class="underline" href="#c5">5. Program list kinds in two modules</a></td><td>Speculative</td><td>Two rules that match only today.</td><td>review recommendation</td></tr>
+    <tr><td><a class="underline" href="#c6">6. <code>readPrograms</code> states</a></td><td>Speculative</td><td>#151 decided the shape.</td><td>closed</td></tr>
+    <tr><td>TL L1, PM L1, UA L6: 404 on the list endpoint</td><td>n/a</td><td>One status per kind.</td><td>review recommendation</td></tr>
+    <tr><td>UA L4: focus after retry</td><td>n/a</td><td>Not the goal of #151.</td><td>follow-up (not filed)</td></tr>
+    <tr><td>UA L5: schema text names a program</td><td>n/a</td><td>Validator text from before #151.</td><td>follow-up (not filed)</td></tr>
+    <tr><td>CLI <code>--list-*</code>, unpublished crawl, Worker guard test</td><td>n/a</td><td>Out of scope here.</td><td>#155</td></tr>
+  </table></div>
+  <p class="text-sm">No candidate contradicts an ADR. The repo has no <code>docs/adr/</code>.</p>
+</section>
+
+<section id="top" class="rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 p-5 space-y-2">
+  <h2 class="text-xl font-semibold">Top recommendation</h2>
+  <p><a class="underline" href="#c1">Candidate 1: the program list read owns its local-file rule</a> (built <code>48d5910</code>). The <code>invalid-programs</code> text is the core of #151. Before this pass, it was true only while an untested line in another module stayed in place. A review commit removed that line once on this branch, and no test failed. Now the rule sits in the one function that picks the source, and the existing tests pin it.</p>
+</section>
+
+</main>
+<script>
+  mermaid.initialize({ startOnLoad: true, deterministicIds: true, theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "neutral" });
+</script>
+</body>
+</html>

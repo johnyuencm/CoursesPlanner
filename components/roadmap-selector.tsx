@@ -95,14 +95,15 @@ export function RoadmapSelectorView({
       </summary>
       {universityId && <p><button type="button" className="button button-secondary button-small" onClick={onReset}><RotateCcw size={14} aria-hidden="true" /> Back to the current program</button></p>}
       <p id="roadmap-selector-guide" className="roadmap-selector-guide">Ready programs appear first. Other discovered programs stay visible with their status but cannot open until ready.</p>
-      <div className="roadmap-status-guide" role="note" aria-label="Roadmap status guide">
+      {/* The guide explains option labels. With no university list (loading or failed), no option has one (#151). */}
+      {universities.length > 0 && <div className="roadmap-status-guide" role="note" aria-label="Roadmap status guide">
         <strong>Status guide</strong>
         <span><b>Ready</b> can open</span>
         <span><b>Queued</b> waiting for crawl</span>
         <span><b>Unverified</b> needs review</span>
         <span><b>Unsupported</b> has no supported roadmap</span>
         <span><b>Unavailable</b> failed to load</span>
-      </div>
+      </div>}
       <div className="roadmap-selector-fields">
         <label className="field-label" htmlFor="roadmap-university">University
           <select id="roadmap-university" aria-describedby="roadmap-selector-guide" value={universityId} disabled={loading} onChange={(event) => onUniversityChange(event.target.value)}>

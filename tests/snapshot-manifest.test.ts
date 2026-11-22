@@ -72,19 +72,84 @@ test("a roadmap read without programs.json names the missing file, also when the
   }));
   await rm(path.join(root, PROGRAMS));
   const program = KEY.split("/")[1];
+  const log = t.mock.method(console, "error", () => {});
   const response = await handleRoadmapsRequest(
     new NextRequest(`http://localhost/api/roadmaps?university=northeastern&program=${program}`),
     root,
   );
   assert.equal(response.status, 404);
   assert.deepEqual(await response.json(), { error: "The program list (programs.json) is missing." });
-  // The CLI message gives the path of the missing file.
+  // The route log and the CLI message give the path of the missing file (#151).
+  assert.deepEqual(log.mock.calls.map((call) => call.arguments[0]), [`Roadmap read failed: Program list is missing: ${PROGRAMS}`]);
   await assert.rejects(
     runCatalogCli([`--roadmap=${program}`, "--university=northeastern"], { rootDir: root, write: () => {} }),
     { message: "Program list is missing: data/catalogs/northeastern/programs.json" },
   );
   // The build names the same file. No published snapshot is at fault.
   await assert.rejects(buildSnapshotAssets(root), { message: "Program list is missing: data/catalogs/northeastern/programs.json" });
+});
+
+test("an invalid programs.json names the file in the CLI and the build, with no snapshot prefix (#151)", async (t) => {
+  const root = await publishedCopy();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(path.join(root, PROGRAMS), "{ not json");
+  const message = /^Program list is invalid: data\/catalogs\/northeastern\/programs\.json: /;
+  await assert.rejects(
+    runCatalogCli([`--roadmap=${KEY.split("/")[1]}`, "--university=northeastern"], { rootDir: root, write: () => {} }),
+    { message },
+  );
+  // The program list is at fault, not one published snapshot.
+  await assert.rejects(buildSnapshotAssets(root), { message });
+});
+
+test("a lost programs.json of a published university is missing on every app endpoint, not queued (#151)", async (t) => {
+  const root = await publishedCopy();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await rm(path.join(root, PROGRAMS));
+  const get = async (query: string) => {
+    const response = await handleRoadmapsRequest(new NextRequest(`http://localhost/api/roadmaps${query}`), root);
+    return { status: response.status, body: await response.json() };
+  };
+  const log = t.mock.method(console, "error", () => {});
+  // data/published.json lists northeastern programs, and the build ships each published list. So the file is lost.
+  const missing = { status: 404, body: { error: "The program list (programs.json) is missing." } };
+  assert.deepEqual(await get(""), missing);
+  assert.deepEqual(await get("?university=northeastern"), missing);
+  // The list error names no university, so the server log gives the folder: one line per request.
+  const logged = `Roadmap read failed: Program list is missing: ${PROGRAMS}`;
+  assert.deepEqual(log.mock.calls.map((call) => call.arguments[0]), [logged, logged]);
+  // Nothing published: no list means that discovery has not run yet, so the status stays queued.
+  await writeFile(path.join(root, "data/published.json"), "[]");
+  const list = await get("");
+  assert.equal(list.status, 200);
+  assert.equal(list.body.universities.find((entry: { id: string }) => entry.id === "northeastern").status.status, "queued");
+  const directory = await get("?university=northeastern");
+  assert.deepEqual([directory.status, directory.body.programs, directory.body.status.status], [200, [], "queued"]);
+  // Queued is a data state, not a fault: no more log lines.
+  assert.equal(log.mock.callCount(), 2);
+});
+
+test("a broken data/published.json gives the generic 503, and the server log names the file (#151)", async (t) => {
+  const root = await publishedCopy();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  // The app reads data/published.json only when a program list is missing: lost, or not crawled yet?
+  await rm(path.join(root, PROGRAMS));
+  const log = t.mock.method(console, "error", () => {});
+  for (const [content, line] of [
+    ["{ not json", /^Roadmap read failed: data\/published\.json: /],
+    // Not a list of catalog keys: the build fails on it, so "queued" would be false.
+    ["{}", /^Roadmap read failed: data\/published\.json must be a JSON array of catalog keys$/],
+  ] as const) {
+    log.mock.resetCalls();
+    await writeFile(path.join(root, "data/published.json"), content);
+    const response = await handleRoadmapsRequest(new NextRequest("http://localhost/api/roadmaps"), root);
+    assert.deepEqual(
+      { status: response.status, body: await response.json() },
+      { status: 503, body: { error: "Roadmap data is temporarily unavailable." } },
+      content,
+    );
+    assert.deepEqual(log.mock.calls.map((call) => line.test(String(call.arguments[0]))), [true], content);
+  }
 });
 
 test("the app reads only tracked files: with local crawl output, each roadmap API answer is as from a clean copy (#127)", async (t) => {
@@ -155,8 +220,9 @@ test("removing a program from the allowlist removes it from the shipped site", a
 });
 
 // PR #54 finding 3: no module bundles snapshot files, so Node tools treat a deleted folder as missing.
-test("the CLI and readers still work when a snapshot folder is deleted", async () => {
+test("the CLI and readers still work when a snapshot folder is deleted", async (t) => {
   const root = await publishedCopy();
+  t.mock.method(console, "error", () => {}); // The 404 logs the lost program list (#151).
   try {
     await rm(path.join(root, "data/catalogs/northeastern"), { recursive: true });
     let output = "";

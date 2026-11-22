@@ -23,6 +23,7 @@ const ROADMAP_READ_ERRORS = {
   "unknown-program": { status: 404, message: "Unknown roadmap program." },
   "missing-programs": { status: 404, message: "The program list (programs.json) is missing." },
   "not-ready": { status: 503, message: "Roadmap is not ready yet." },
+  "invalid-programs": { status: 503, message: "The program list (programs.json) is invalid." },
 } as const;
 
 /** A roadmap read failed for a known cause. The error message keeps the detail for the CLI and the build. */
@@ -34,11 +35,15 @@ export class RoadmapReadError extends Error {
 
 /** The HTTP answer to a failed roadmap read: the same on /api/roadmaps and the catalog service (#136). */
 export function roadmapReadAnswer(error: unknown): { status: number; message: string } {
-  if (error instanceof RoadmapReadError) return ROADMAP_READ_ERRORS[error.kind];
+  // A client or data-state answer writes no log line. A lost or broken program list is a fault, so it logs too.
+  // The body stays one short text per kind: only the log names the folder, and so the university (#151).
+  if (error instanceof RoadmapReadError && error.kind !== "invalid-programs" && error.kind !== "missing-programs") {
+    return ROADMAP_READ_ERRORS[error.kind];
+  }
   const message = error instanceof Error ? error.message : "";
-  // The body stays generic. One server log line gives the cause (a file path and its error). Error path only.
+  // One server log line gives the cause (a file path and its error). Error path only.
   console.error(`Roadmap read failed: ${message || String(error)}`);
-  return { status: 503, message: "Roadmap data is temporarily unavailable." };
+  return error instanceof RoadmapReadError ? ROADMAP_READ_ERRORS[error.kind] : { status: 503, message: "Roadmap data is temporarily unavailable." };
 }
 
 export function universityDir(rootDir: string, id: string): string {
@@ -46,13 +51,22 @@ export function universityDir(rootDir: string, id: string): string {
   return path.join(rootDir, "data", "catalogs", id);
 }
 
+/** A disk file that is not JSON. Only readOptionalJson throws it, and never for a Worker asset body (#151). */
+class LocalJsonError extends SyntaxError {}
+
 export async function readOptionalJson(filePath: string): Promise<unknown> {
+  let text: string;
   try {
-    return JSON.parse(await readBoundedFile(filePath));
+    text = await readBoundedFile(filePath);
   } catch (error) {
     // Only a missing file uses the published asset. A corrupt or oversize disk file must fail loudly.
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     return snapshotAsset(filePath);
+  }
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new LocalJsonError((error as Error).message);
   }
 }
 
@@ -91,18 +105,45 @@ export function summarize(programs: DiscoveredPrograms, updatedAt: string): Road
   };
 }
 
+const missingPrograms = (id: string) =>
+  new RoadmapReadError("missing-programs", `Program list is missing: data/catalogs/${id}/programs.json`);
+const invalidPrograms = (id: string, error: unknown) =>
+  new RoadmapReadError("invalid-programs", `Program list is invalid: data/catalogs/${id}/programs.json: ${(error as Error).message}`);
+
 /** The tracked program directory (`programs.json`), validated. Undefined before discovery. Never reads the crawl status (#127). */
 export async function readPrograms(university: UniversityDirectoryEntry, rootDir: string): Promise<DiscoveredPrograms | undefined> {
   if (!crawlable(university)) return undefined;
-  const programs = await readOptionalJson(path.join(universityDir(rootDir, university.id), "programs.json"));
+  const programs = await readOptionalJson(path.join(universityDir(rootDir, university.id), "programs.json")).catch((error: unknown) => {
+    // Only the disk file can be invalid here: a failed read or Worker asset fetch stays a generic 503 (#151).
+    throw error instanceof LocalJsonError ? invalidPrograms(university.id, error) : error;
+  });
   if (programs === undefined) return undefined;
-  validateDiscoveredPrograms(programs, university.crawl!.allowedOrigins);
-  if (
-    programs.universityId !== university.id || programs.university !== university.university ||
-    programs.adapter !== university.crawl!.adapter || programs.sourceUrl !== university.crawl!.discoverySource.url
-  ) throw new Error("Discovered programs do not match the university registry");
+  try {
+    validateDiscoveredPrograms(programs, university.crawl!.allowedOrigins);
+    if (
+      programs.universityId !== university.id || programs.university !== university.university ||
+      programs.adapter !== university.crawl!.adapter || programs.sourceUrl !== university.crawl!.discoverySource.url
+    ) throw new Error("Discovered programs do not match the university registry");
+  } catch (error) {
+    throw invalidPrograms(university.id, error);
+  }
   programs.programs.sort((a, b) => a.officialUrl.localeCompare(b.officialUrl) || a.id.localeCompare(b.id));
   return programs;
+}
+
+/**
+ * True when data/published.json lists a program of this university. The build ships the program list of each one,
+ * so a published university without a list lost the file (#151). Read only when the list is missing.
+ * shortcut: an unpublished local crawl that loses its list still reads as queued, because only the ignored crawl
+ * status knows (#127); revisit if the app may read crawl state.
+ */
+async function isPublished(universityId: string, rootDir: string): Promise<boolean> {
+  const file = "data/published.json";
+  // Each error names the file, so a broken allowlist is not a nameless 503 in the log (#151).
+  const keys = await readOptionalJson(path.join(rootDir, file)).catch((error: Error) => { throw new Error(`${file}: ${error.message}`); });
+  if (keys === undefined) return false; // The Worker does not ship it. There, the build shipped every published list.
+  if (!Array.isArray(keys)) throw new Error(`${file} must be a JSON array of catalog keys`); // the build text too
+  return keys.some((key) => typeof key === "string" && key.startsWith(`${universityId}/`));
 }
 
 /** The newest time in a program directory: its discovery, each program status, and `also` when given. */
@@ -120,6 +161,8 @@ export async function readProgramDirectory(
   rootDir = process.cwd(),
 ): Promise<ProgramDirectoryResponse> {
   const programs = await readPrograms(university, rootDir);
+  // No list is a queued crawl, unless the university is published: then the file is lost (#151).
+  if (!programs && crawlable(university) && await isPublished(university.id, rootDir)) throw missingPrograms(university.id);
   return {
     universityId: university.id,
     programs: programs?.programs ?? [],
@@ -148,9 +191,7 @@ export async function readReadyRoadmap(
   // Tracked files only: the build ships this roadmap, and git ignores the crawl status (#127).
   const programs = await readPrograms(university, rootDir);
   // No programs.json: name the missing file, not an unknown program (#136).
-  if (!programs && crawlable(university)) {
-    throw new RoadmapReadError("missing-programs", `Program list is missing: data/catalogs/${university.id}/programs.json`);
-  }
+  if (!programs && crawlable(university)) throw missingPrograms(university.id);
   const program = programs?.programs.find((entry) => entry.id === programId);
   if (!program) throw new RoadmapReadError("unknown-program", `Unknown roadmap program: ${programId}`);
   if (program.status !== "ready") throw new RoadmapReadError("not-ready", `Roadmap is not ready: ${programId} (${program.status})`);

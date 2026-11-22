@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -217,10 +217,30 @@ test("each roadmap read error has one status and one short text, on the route an
     await writeFile(path.join(rootDir, "data", "catalogs", TEST_ID, "roadmaps", `${READY_PROGRAM_ID}.json`), JSON.stringify({ programId: "x" }));
     assert.deepEqual(await answer(TEST_ID, READY_PROGRAM_ID), { status: 503, body: { error: "Roadmap data is temporarily unavailable." } });
     assert.deepEqual(log.mock.calls.map((call) => /Program roadmap/.test(String(call.arguments[0]))), [true, true]);
-    await rm(path.join(rootDir, "data", "catalogs", TEST_ID, "programs.json"));
+    // A corrupt program list has its own kind. It is a fault, so each adapter also logs the file and the cause (#151).
+    const programsFile = path.join(rootDir, "data", "catalogs", TEST_ID, "programs.json");
+    const valid = JSON.parse(await readFile(programsFile, "utf8"));
+    const invalid = { status: 503, body: { error: "The program list (programs.json) is invalid." } };
+    const logged = () => log.mock.calls.map((call) =>
+      /^Roadmap read failed: Program list is invalid: data\/catalogs\/test-university\/programs\.json: /.test(String(call.arguments[0])));
+    // Not JSON, not a program list, and a list of another university.
+    for (const content of ["{ not json", JSON.stringify({ version: 1 }), JSON.stringify({ ...valid, university: "Other University" })]) {
+      log.mock.resetCalls();
+      await writeFile(programsFile, content);
+      assert.deepEqual(await answer(TEST_ID), invalid, content);
+      assert.deepEqual(await answer(TEST_ID, READY_PROGRAM_ID), invalid, content);
+      assert.deepEqual(logged(), [true, true, true, true], content);
+    }
+    // A lost program list is a fault too. The body names no folder; each adapter logs the path (#151).
+    log.mock.resetCalls();
+    await rm(programsFile);
     assert.deepEqual(
       await answer(TEST_ID, READY_PROGRAM_ID),
       { status: 404, body: { error: "The program list (programs.json) is missing." } },
+    );
+    assert.deepEqual(
+      log.mock.calls.map((call) => call.arguments[0]),
+      Array(2).fill("Roadmap read failed: Program list is missing: data/catalogs/test-university/programs.json"),
     );
   });
 });
