@@ -182,3 +182,17 @@ test("the sitemap and canonical URLs use the program paths (#71)", async () => {
   const params = Promise.resolve({ universityId: "northeastern", programId: "computer-science-mscs-sea-8b0d00dbda", code: "cs-5800" });
   assert.equal((await generateMetadata({ params })).alternates?.canonical, `/${DEFAULT_CATALOG_KEY}/courses/cs-5800`);
 });
+
+test("unknown program and course paths get a static 404 from worker.ts, with no vinext render (#110)", async () => {
+  const { unknownPageResponse } = await import("../lib/not-found");
+  const response = unknownPageResponse();
+  assert.equal(response.status, 404);
+  assert.match(response.headers.get("content-type") ?? "", /^text\/html/);
+  assert.match(response.headers.get("cache-control") ?? "", /max-age/);
+  const body = await response.text();
+  assert.match(body, /Page not found/);
+  assert.match(body, /noindex/);
+  const worker = await readFile(path.join(process.cwd(), "worker.ts"), "utf8");
+  assert.match(worker, /isUnknownProgramPath\([^)]*\)\) return unknownPageResponse\(\)/);
+  assert.doesNotMatch(worker, /__unknown-page/);
+});
