@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ChangeEvent } from "react";
 import { Download, Upload } from "lucide-react";
 import { canRestorePlanBackup, isCatalogOutage, MAX_PLAN_BACKUP_BYTES, parsePlanBackup, summarizePlan } from "@/lib/plan";
 import type { StudentPlan } from "@/lib/types";
@@ -40,8 +40,10 @@ function CurrentPlanSummary({ plan }: { plan: StudentPlan }) {
   );
 }
 
-export function PlanBackup() {
+/** `keepFocus`: the panel before this one had focus, so Download backup takes it (#147). */
+export function PlanBackup({ keepFocus = false }: { keepFocus?: boolean }) {
   const { catalog, catalogBusy, exportPlanBackup, restorePlanBackup, hydrated, persistence, plan } = useApp();
+  const downloadButton = useRef<HTMLButtonElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const reading = useRef(false);
   const mounted = useRef(true);
@@ -73,6 +75,12 @@ export function PlanBackup() {
   useEffect(() => {
     if (!catalogOutage) setAcknowledgedOutageRestore(false);
   }, [catalogOutage]);
+
+  // No scroll: the student keeps the place they scrolled to, as if the old button had moved (#147).
+  // A layout effect runs in the commit that removes the old panel, so no frame paints with focus on the body.
+  useLayoutEffect(() => {
+    if (keepFocus) downloadButton.current?.focus({ preventScroll: true });
+  }, [keepFocus]);
 
   const exportBackup = () => {
     try {
@@ -125,7 +133,7 @@ export function PlanBackup() {
       </label>
     </>}
     <div className="planner-backup-actions">
-      <button className="button button-secondary" type="button" disabled={!hydrated || isReading} onClick={exportBackup}><Download size={16} /> {storageBlocked ? "Download recovery copy" : "Download backup"}</button>
+      <button ref={downloadButton} className="button button-secondary" type="button" disabled={!hydrated || isReading} onClick={exportBackup}><Download size={16} /> {storageBlocked ? "Download recovery copy" : "Download backup"}</button>
       <button
         className="button button-secondary"
         type="button"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -247,6 +247,10 @@ export default function PlannerBoard() {
     document.getElementById(planCourseDomId(workspaceSelection.selectedCode))?.scrollIntoView({ block: "nearest" });
   }, [workspaceSelection.selectedCode]);
   const ruleGroups = progress ? topLevelGroups(progress.root) : [];
+  // When the board lands, the backup panel moves into the heading, so React removes the old panel and mounts a new one.
+  // Read focus during render, before the commit removes the old panel, so that the new panel keeps it (#147).
+  const waiting = useRef<HTMLDivElement>(null);
+  const backupHadFocus = Boolean(catalog && waiting.current?.contains(document.activeElement));
   if (!catalog) return <>
     <PageHeading title="Build your plan" description={catalogBusy ? "Your local plan remains available for backup while the catalog loads." : "Your local plan remains available. You can download a backup below."} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span></div>} />
     {/* Not quiet: the board is the main content of this page, so it shows the loading state (#140). */}
@@ -254,7 +258,7 @@ export default function PlannerBoard() {
     {/* The loading state, then the failure card in its place, comes before the backup panel: Try again is in the first screen on a phone (#145). */}
     {/* The card has the height of the loading state (globals.css), so the backup panel does not move when the load fails (#145). */}
     {/* shortcut: the two descriptions above wrap to the same line count only at 360-1280 px; re-measure the failure layout shift when either text changes. */}
-    <div className={catalogBusy ? "board-placeholder" : "board-failed"}><CatalogState /><PlanBackup /></div>
+    <div ref={waiting} className={catalogBusy ? "board-placeholder" : "board-failed"}><CatalogState /><PlanBackup /></div>
   </>;
 
   const updateTerms = (change: (terms: Semester[]) => Semester[]) => setPlan((current) => ({ ...current, semesters: change(current.semesters) }));
@@ -307,7 +311,7 @@ export default function PlannerBoard() {
   };
 
   return <>
-    <PageHeading title="Build your plan" description={progress?.tier === "audit" ? "Arrange semesters, test prerequisites, and see every degree requirement update as you go." : `Arrange semesters. The planner checks ${MAP_TIER_CHECKS} as you go.`} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span><PlanBackup /><Link className="button button-secondary" href={routes.explore}>View on map</Link><button className="button button-secondary" onClick={() => document.getElementById("plan-issue-rail")?.focus()}>{progress?.tier === "audit" ? "Review audit" : "Review plan checks"}</button><button className="button button-secondary" onClick={() => openPicker()}><Plus size={16} /> Add course</button></div>} />
+    <PageHeading title="Build your plan" description={progress?.tier === "audit" ? "Arrange semesters, test prerequisites, and see every degree requirement update as you go." : `Arrange semesters. The planner checks ${MAP_TIER_CHECKS} as you go.`} actions={<div className="heading-actions"><span className={`save-status ${persistence}`}><span />{!hydrated ? "Local plan" : persistence === "saved" ? "Saved on this device" : persistence === "blocked" ? "Saving blocked" : persistence === "error" ? "Save failed" : "Preparing"}</span><PlanBackup keepFocus={backupHadFocus} /><Link className="button button-secondary" href={routes.explore}>View on map</Link><button className="button button-secondary" onClick={() => document.getElementById("plan-issue-rail")?.focus()}>{progress?.tier === "audit" ? "Review audit" : "Review plan checks"}</button><button className="button button-secondary" onClick={() => openPicker()}><Plus size={16} /> Add course</button></div>} />
     <TargetPathCard />
     <CriticalPathCard />
     {progress && <section className="status-card-row four" aria-label="Plan status">
