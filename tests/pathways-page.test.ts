@@ -31,6 +31,7 @@ test("the Audit-tier Paths page (MSCS Seattle) keeps its degree audit text (#138
   for (const kept of [
     "Recommendations never change your official core, breadth, elective, or credit audit. Confirm course fit and availability with your advisor.",
     "These recommendations do not change degree rules. Graduation status still comes only from the modeled catalog audit.",
+    "Use these ideas as a starting point. Degree validation stays grounded in official catalog rules.",
   ]) assert.ok(text.includes(kept), `"${kept}" is missing`);
 });
 
@@ -38,8 +39,11 @@ test("the Map-tier Paths page never says it gives a degree audit (#138)", async 
   const text = await pathsText(MAP_KEY);
   // "audit" stays only where the text says that there is none, or names the official university audit.
   assert.doesNotMatch(text.replace(/no degree audit|official university audit/gi, ""), /audit/i);
+  // The same claim in other words: a Map-tier program has no degree validation either.
+  assert.doesNotMatch(text, /degree validation/i);
   for (const shown of [
     "Recommendations never change your official degree requirements. Confirm course fit and availability with your advisor.",
     "These recommendations do not change degree rules. The planner gives no degree audit for this program, so graduation status comes only from your official university audit.",
+    "Use these ideas as a starting point. Check degree rules in the official catalog.",
   ]) assert.ok(text.includes(shown), `"${shown}" is missing`);
 });
