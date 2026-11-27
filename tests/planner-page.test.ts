@@ -15,9 +15,7 @@ import { DEFAULT_CATALOG_KEY } from "../lib/catalog-key";
 import { readProgramCatalog } from "../lib/program-catalog";
 import { validatePlan } from "../lib/requirements-v2";
 import type { StudentPlan } from "../lib/types";
-
-/** MSCS Boston: a roadmap with no modeled degree rules, so Map tier. */
-const MAP_KEY = "northeastern/computer-science-mscs-976b977119";
+import { MAP_KEY, pageText } from "./page-text";
 
 /**
  * One issue of every kind, so the issue rail shows its messages: CS 2100 misses its prerequisite
@@ -53,9 +51,7 @@ async function plannerText(key: string): Promise<string> {
   const render = (issues: boolean) => renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: {} as never }, createElement(LoadedPlanner, { issues })));
   const html = render(false) + render(true);
   const { description } = await generateMetadata({ params: params() });
-  // Attributes that a browser shows or a screen reader reads. Class names are not text.
-  const attributes = [...html.matchAll(/\s(?:aria-(?:label|description|valuetext)|title|alt|placeholder)="([^"]*)"/g)].map((match) => match[1]);
-  return `${html.replace(/<[^>]+>/g, " ")} ${attributes.join(" ")} ${description}`.replace(/\s+/g, " ");
+  return pageText(html, description);
 }
 
 test("the Audit-tier planner (MSCS Seattle) keeps its degree audit text (#126)", async () => {
