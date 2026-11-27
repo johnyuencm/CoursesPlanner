@@ -178,6 +178,6 @@ export function PathwaysWorkspace() {
         </section>
       </aside>
     </div>
-    <section className="pathway-closing"><div><Compass size={24} /><h2>Your direction can change.</h2><p>Use these ideas as a starting point. Degree validation stays grounded in official catalog rules.</p></div><button className="button button-primary" onClick={() => openPicker()}><Plus size={15} /> Add a course to my plan</button></section>
+    <section className="pathway-closing"><div><Compass size={24} /><h2>Your direction can change.</h2><p>Use these ideas as a starting point. {audit ? "Degree validation stays grounded in official catalog rules." : "Check degree rules in the official catalog."}</p></div><button className="button button-primary" onClick={() => openPicker()}><Plus size={15} /> Add a course to my plan</button></section>
   </>;
 }
