@@ -50,7 +50,7 @@ const defaults = pathwayConfig as Pathway[];
 const HEADING_COPY = "Pick a persona. Core, recommended and dependency-critical ★ courses overlay the Explore map; everything else fades. These never change official degree rules.";
 
 export function PathwaysWorkspace() {
-  const { catalogKey, catalog, openCourse, openPicker, plan, announce, notice, careerTargetId, setCareerTargetId, hydrated } = useApp();
+  const { catalogKey, catalog, progress, openCourse, openPicker, plan, announce, notice, careerTargetId, setCareerTargetId, hydrated } = useApp();
   // The reset Undo belongs to this page: leaving Paths withdraws it, so it can never act on a page that is gone.
   const resetNotice = useRef<number | null>(null);
   const noticeRef = useRef(notice);
@@ -137,10 +137,12 @@ export function PathwaysWorkspace() {
   const recommended = selected.groups.flatMap((group) => group.courses);
   const inPlan = recommended.filter((code) => recorded.has(code)).length;
   const eligibleNext = recommended.filter((code) => !recorded.has(code)).map((code) => courseMap.get(code)).filter((course): course is Course => course !== undefined && getEligibility(course, prior).status === "eligible");
+  // Only an Audit-tier program has a degree audit. The text of a Map-tier program must not claim one (#138).
+  const audit = progress?.tier === "audit";
 
   return <>
     <PageHeading title={PERSONA_PROMPT} description={HEADING_COPY} actions={<div className="heading-actions"><Link className="button button-primary" href={routes.explore}>Show on map</Link><button className="button button-secondary" onClick={() => setEditing((value) => !value)}><Edit3 size={15} /> {editing ? "Stop editing" : "Edit suggestions"}</button>{editing && <button className="button button-primary" onClick={save}><Save size={15} /> Save on this device</button>}</div>} />
-    <div className="recommendation-banner"><Info size={18} /><div><strong>Suggested persona — not a degree requirement.</strong><p>Recommendations never change your official core, breadth, elective, or credit audit. Confirm course fit and availability with your advisor.</p></div></div>
+    <div className="recommendation-banner"><Info size={18} /><div><strong>Suggested persona — not a degree requirement.</strong><p>{audit ? "Recommendations never change your official core, breadth, elective, or credit audit." : "Recommendations never change your official degree requirements."} Confirm course fit and availability with your advisor.</p></div></div>
     {loadError && <div className="global-banner warning inline-banner" role="alert"><TriangleAlert size={16} aria-hidden="true" /><span>{loadError}</span></div>}
     <section className="persona-picker" aria-label={PERSONA_PROMPT}>{pathways.map((pathway) => <button key={pathway.id} type="button" className={selected.id === pathway.id ? "selected" : ""} aria-pressed={selected.id === pathway.id} onClick={() => { setSelectedId(pathway.id); setCareerTargetId(pathway.id); }}><strong>{pathway.name}</strong><span>{pathway.description}</span>{careerTargetId === pathway.id ? <small>On the map</small> : null}</button>)}</section>
     <div className="pathway-layout">
@@ -167,7 +169,7 @@ export function PathwaysWorkspace() {
         </section>
         <section className="rail-card">
           <h3>Validation</h3>
-          <p>These recommendations do not change degree rules. Graduation status still comes only from the modeled catalog audit.</p>
+          <p>These recommendations do not change degree rules. {audit ? "Graduation status still comes only from the modeled catalog audit." : "The planner gives no degree audit for this program, so graduation status comes only from your official university audit."}</p>
         </section>
         <section className="rail-card">
           <h3>Next recommended courses</h3>
