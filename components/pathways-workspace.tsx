@@ -168,8 +168,8 @@ export function PathwaysWorkspace() {
           <p>Explore keeps core, recommended and dependency-critical ★ courses for {selected.name} readable and fades the rest. Plan is unchanged.</p>
         </section>
         <section className="rail-card">
-          <h3>Validation</h3>
-          <p>These recommendations do not change degree rules. {audit ? "Graduation status still comes only from the modeled catalog audit." : "The planner gives no degree audit for this program, so graduation status comes only from your official university audit."}</p>
+          <h3>{audit ? "Validation" : "Degree rules"}</h3>
+          <p>These recommendations do not change degree rules. {audit ? "Graduation status still comes only from the modeled catalog audit." : "The planner gives no degree audit for this program, so graduation status comes only from your official university audit. Ask your advisor how to get it."}</p>
         </section>
         <section className="rail-card">
           <h3>Next recommended courses</h3>

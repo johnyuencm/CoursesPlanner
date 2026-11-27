@@ -41,9 +41,11 @@ test("the Map-tier Paths page never says it gives a degree audit (#138)", async 
   assert.doesNotMatch(text.replace(/no degree audit|official university audit/gi, ""), /audit/i);
   // The same claim in other words: a Map-tier program has no degree validation either.
   assert.doesNotMatch(text, /degree validation/i);
+  // The card heading must not say "Validation" over a sentence that says there is none (UA r1).
+  assert.ok(text.includes("Degree rules") && !/\bValidation\b/.test(text));
   for (const shown of [
     "Recommendations never change your official degree requirements. Confirm course fit and availability with your advisor.",
-    "These recommendations do not change degree rules. The planner gives no degree audit for this program, so graduation status comes only from your official university audit.",
+    "These recommendations do not change degree rules. The planner gives no degree audit for this program, so graduation status comes only from your official university audit. Ask your advisor how to get it.",
     "Use these ideas as a starting point. Check degree rules in the official catalog.",
   ]) assert.ok(text.includes(shown), `"${shown}" is missing`);
 });
